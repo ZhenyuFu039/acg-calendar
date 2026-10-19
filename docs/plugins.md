@@ -1,6 +1,6 @@
 # 本地游戏插件 API 1
 
-本阶段支持两类适配器：随主程序发布的可信 Python 采集器，以及无需改源码的 `local-json` 数据插件。外部插件不执行 Python/JS，不安装依赖，也不触发任意网址请求。它读取本地 `events.json`；自行编写的采集程序可以在软件外运行并生成该文件。现有两款游戏的自动公告抓取继续由内置适配器完成，不需要 AI。
+本阶段支持随主程序发布的可信采集器，以及无需改源码的 `local-json` 数据插件。外部插件不执行 Python/JS，也不安装依赖。普通插件只读取本地 `events.json`；可选 `source.type:gamekee` 或 `azurlane-wiki` 会使用主程序内置、限域的公开资料采集引擎。自行编写的其他网站采集程序可以在软件外运行并生成该文件。所有现有采集器均不依赖 AI。
 
 这提供了新增游戏、通用显示、同步隔离与协议兼容的实际路径；任意网站的抓取器仍需有人编写，复制一个 manifest 不会自动理解该网站。在线插件市场、自动安装/更新、任意代码插件与热加载尚未开放。
 
@@ -36,7 +36,7 @@ Copy-Item -LiteralPath '.\examples\plugins\sample-game' -Destination '.\data\plu
 }
 ```
 
-`id` 为 2–64 位小写字母、数字、连字符，以字母开头；时区采用 IANA 名称。游戏名称、区服、来源都从这些元数据生成。当前外部插件以短名称作图标占位，不读取任意 SVG/图标路径，也不把其他游戏奖励标成嵌晶玉。JSON 文件各不超过 2 MB。
+`id` 为 2–64 位小写字母、数字、连字符，以字母开头；时区采用 IANA 名称。游戏名称、区服、来源都从这些元数据生成。`game.icon` 可指向插件内相对路径的 PNG/JPEG/WebP 静态图片；未指定则用短名称占位。不读取任意 SVG 或外部文件，不把其他游戏奖励标成嵌晶玉。JSON 文件各不超过 2 MB，单张图片最多 5 MB。
 
 Windows 的 Python 需要 IANA 时区数据（首次部署）：
 
@@ -68,7 +68,8 @@ python -m pip install -r requirements.txt
 
 - `versions` 为完整快照，1–100 个版本，每版本至多 2000 项；空的 `events:[]` 合法。被移出快照的官方活动不再显示，但个人标记不会删除。
 - 每个游戏内部，活动 `id` 必须跨版本唯一且稳定。主程序将 `游戏ID + 发布者活动ID` 命名空间化；标题、日期或所属版本变化不应改变活动 ID。
-- `category` 为 `event / gacha / exchange / update / maintenance`。API 1 的本地 JSON 活动为时间区间；单点更新、奖励、图片、维护引用解析暂由内置适配器提供。
+- `category` 为 `event / gacha / exchange / update / maintenance`。普通本地 JSON 活动为时间区间；单点更新、维护引用由内置来源引擎解析，奖励由对应游戏适配器提供。
+- 活动可添加 `artwork:{"file":"assets/banner.png","source_url":"https://example.com/notice"}`，由主程序验证为插件内静态图片后导入本地缓存。网页和桌面端共用该图片，可用于时间条与详情顶部。
 - 时间必须带偏移或 `Z`，写入时统一转换 UTC；`exact` 为来源明确、`estimated` 为预计、`unknown` 必须搭配 `at:null`。不把预计截止当作确定提醒。
 - 可选 `parent_id` 引用同版本中另一活动的发布者 ID，用于活动和兑换等子项关系；不得循环。
 - `source_url` 必须为 HTTPS，程序不会自动请求它。插件作者负责提供准确的来源、许可和更新时间，程序不会验证该来源是否官方。
@@ -78,6 +79,14 @@ python -m pip install -r requirements.txt
 
 ## 内置代码适配器
 
+### GameKee 声明式来源
+
+完整实例见 [NIKKE 国际服插件](../plugins/nikke-global/README.md)，包含 manifest、规则、真实来源快照及头图。`source` 声明 `type`、`entry_url`、`game_alias`、`wiki_id`、`server_id`、`server_name` 和规则相对路径；主程序校验区服并使用限定接口，不接受任意网站请求。未来新站点仍需增加可信引擎。此扩展已包含于 V0.0.7，旧 V0.0.5 需升级主程序后才能自动采集并显示本地插件图片。
+
 `Provider` 的接口是 `descriptor / sync_key / collector / rules() / prepare(version)`；采集器提供 `seed()` 和 `start(force=False)`。描述中声明 ID、名称、来源、图标、时区与能力。新可信采集器只在 `create_registry` 注册，主窗口和网页不必添加新的游戏分支。
 
+`azurlane-wiki` 实例见 [碧蓝航线国服包](../plugins/azurlane-cn/README.md)。可信引擎固定读取 BWIKI 国服活动表及其改建公告，规则 JSON 提供已核对的中英文头图映射，只允许对应 Wiki 图片 CDN。英文日期不进入国服时间字段。此引擎同样已包含于 V0.0.7（旧 V0.0.5 不支持）。
+
 当前内置采集器仍在主程序进程中运行，并使用现有 Store，因此属于可信代码边界。未来若开放外部可执行插件，应增加独立进程协议、权限策略和故障处理；进程隔离本身不能称作安全沙箱。
+
+`zzz-official` 实例见 [绝区零国服包](../plugins/zzz-cn/README.md)。可信引擎固定读取绝区零官网中文公告，按明确活动区间与调频子标题解析时间/独立头图；BWIKI 仅在名称及精确区间完全匹配时补图。预计维护结束保持预计状态。此引擎已包含于 V0.0.7，旧 V0.0.5 需升级。

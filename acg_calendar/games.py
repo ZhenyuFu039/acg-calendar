@@ -5,7 +5,7 @@ GAMES = [
 ]
 GAME_IDS = {game['id'] for game in GAMES}
 for game in GAMES:
-    game['icon'] = '/assets/arknights-logo.png' if game['id'] == 'arknights-cn' else '/assets/endfield-icon-zh.svg'
+    game['icon'] = '/assets/arknights-app-icon.png' if game['id'] == 'arknights-cn' else '/assets/endfield-app-icon.png'
     game['color'] = '#477E9F' if game['id'] == 'arknights-cn' else '#A38337'
 
 

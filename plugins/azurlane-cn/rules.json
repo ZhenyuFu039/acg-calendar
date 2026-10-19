@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "ruleset_version": "azurlane-cn-2",
+  "strategy": "bwiki_cn_bulletins_with_verified_wiki_artwork",
+  "ai_used": false,
+  "sources": {
+    "calendar_url": "https://wiki.biligame.com/blhx/%E6%B8%B8%E6%88%8F%E6%B4%BB%E5%8A%A8%E8%A1%A8",
+    "news_reference": "https://azurlane.koumakan.jp/wiki/Recent_News",
+    "schedule_authority": "cn_bulletins_only",
+    "english_dates_used": false
+  },
+  "time": {
+    "timezone": "Asia/Shanghai",
+    "date_pattern": "(?P<month>\\d{1,2})月(?P<day>\\d{1,2})日\\s*(?:(?P<reference>维护(?:后|前)?)|(?P<hour>\\d{1,2}):(?P<minute>\\d{2})(?::(?P<second>\\d{2}))?)?",
+    "maintenance_after": "estimated_planned_end",
+    "maintenance_before": "known_maintenance_start_else_estimated_server_10am",
+    "provisional_maintenance_hour": 10,
+    "missing_clock": "unknown",
+    "never_use_en_clock_for_cn": true
+  },
+  "collection": {
+    "history_days": 50,
+    "max_announcements": 16
+  },
+  "title_overrides": {
+    "世界巡游|2026-09-30T16:00:00Z": "世界巡游 · 第三十一期"
+  },
+  "artwork": [
+    {
+      "title": "自选轻量复刻",
+      "language": "zh-cn",
+      "image_url": "https://patchwiki.biligame.com/images/blhx/a/a4/8yq98tavcux0rzbfoxp564wlz51v3dm.png",
+      "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E8%87%AA%E9%80%89%E8%BD%BB%E9%87%8F%E5%A4%8D%E5%88%BB%E7%95%8C%E9%9D%A2.png",
+      "match_basis": "中文专题明确引用的对应活动素材"
+    },
+    {
+      "title": "世界巡游 · 第三十一期",
+      "language": "zh-cn",
+      "image_url": "https://patchwiki.biligame.com/images/blhx/2/2e/6dn98wi6r35jka0sap6nqr7gdzsggtr.png",
+      "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E4%B8%96%E7%95%8C%E5%B7%A1%E6%B8%B820261001.png",
+      "match_basis": "中文专题明确引用的对应活动素材"
+    },
+    {
+      "title": "幽影迷城 · 累计奖励领取",
+      "language": "zh-cn",
+      "image_url": "https://patchwiki.biligame.com/images/blhx/1/1b/oou92llr22z10bry4qe4q1y1v1x7xks.jpg",
+      "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg",
+      "match_basis": "中文专题明确引用的对应活动素材"
+    },
+    {
+      "title": "幽影迷城 · 活动商店",
+      "language": "zh-cn",
+      "image_url": "https://patchwiki.biligame.com/images/blhx/1/1b/oou92llr22z10bry4qe4q1y1v1x7xks.jpg",
+      "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg",
+      "match_basis": "中文专题明确引用的对应活动素材"
+    },
+    {
+      "title": "幽影迷城",
+      "language": "zh-cn",
+      "image_url": "https://patchwiki.biligame.com/images/blhx/1/1b/oou92llr22z10bry4qe4q1y1v1x7xks.jpg",
+      "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg",
+      "match_basis": "中文专题明确引用的对应活动素材"
+    },
+    {
+      "title": "限界挑战：天秤座",
+      "language": "zh-cn",
+      "image_url": "https://patchwiki.biligame.com/images/blhx/2/21/cs9aqw1rmnrj9ink6pe8snina6dr4oz.jpg",
+      "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%A4%A9%E7%A7%A4%E5%BA%A7%E9%99%90%E7%95%8C%E5%AF%B9%E6%89%8B.jpg",
+      "match_basis": "中文专题明确引用的对应活动素材"
+    },
+    {
+      "title": "严厉女仆不严厉",
+      "english_title": "The Strict Maid Isn’t So Strict",
+      "language": "en",
+      "image_url": "https://azurlane.netojuu.com/images/1/1c/The_Strict_Maid_Isn%27t_So_Strict_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/The_Strict_Maid_Isn%E2%80%99t_So_Strict",
+      "file_url": "https://azurlane.koumakan.jp/wiki/File:The_Strict_Maid_Isn%27t_So_Strict_Event_Banner_EN.jpg",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "match_basis": "人工核对公告关联活动、中英文名称及活动奖励/玩法"
+    },
+    {
+      "title": "幽影迷城",
+      "english_title": "Tales of the Paranormal",
+      "language": "en",
+      "image_url": "https://azurlane.netojuu.com/images/c/c2/Tales_of_the_Paranormal_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+      "file_url": "https://azurlane.koumakan.jp/wiki/File:Tales_of_the_Paranormal_Event_Banner_EN.jpg",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "match_basis": "人工核对公告关联活动、中英文名称及活动奖励/玩法"
+    },
+    {
+      "title": "异常的日常进行中",
+      "english_title": "Tales of the Paranormal",
+      "language": "en",
+      "image_url": "https://azurlane.netojuu.com/images/9/9a/A_Slightly_Paranormal_State_of_Affairs_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+      "file_url": "https://azurlane.koumakan.jp/wiki/File:A_Slightly_Paranormal_State_of_Affairs_Event_Banner_EN.jpg",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "match_basis": "人工核对公告关联活动、中英文名称及活动奖励/玩法"
+    },
+    {
+      "title": "作战准备：新纪元都市NO.7",
+      "english_title": "Call to Arms: New Era City No. 7",
+      "language": "en",
+      "image_url": "https://azurlane.netojuu.com/images/0/0a/Call_to_Arms_New_Era_City_No._7_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Call_to_Arms:_New_Era_City_No._7",
+      "file_url": "https://azurlane.koumakan.jp/wiki/File:Call_to_Arms_New_Era_City_No._7_Event_Banner_EN.jpg",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "match_basis": "人工核对公告关联活动、中英文名称及活动奖励/玩法"
+    },
+    {
+      "title": "Fight！都市求职大作战！",
+      "english_title": "Fight On! The Ultimate Job-Hunting Operation!",
+      "language": "en",
+      "image_url": "https://azurlane.netojuu.com/images/2/2d/Fight_On%21_The_Ultimate_Job-Hunting_Operation%21_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Fight_On!_The_Ultimate_Job-Hunting_Operation!",
+      "file_url": "https://azurlane.koumakan.jp/wiki/File:Fight_On!_The_Ultimate_Job-Hunting_Operation!_Event_Banner_EN.jpg",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "match_basis": "人工核对公告关联活动、中英文名称及活动奖励/玩法"
+    },
+    {
+      "title": "闪耀的“魔法”",
+      "english_title": "Éclat Magique",
+      "language": "en",
+      "image_url": "https://azurlane.netojuu.com/images/3/34/%C3%89clat_Magique_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/%C3%89clat_Magique",
+      "file_url": "https://azurlane.koumakan.jp/wiki/File:%C3%89clat_Magique_Event_Banner_EN.jpg",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "match_basis": "人工核对公告关联活动、中英文名称及活动奖励/玩法"
+    },
+    {
+      "title": "蓝图补完计划 · 那不勒斯",
+      "english_title": "Blueprint Completion Plan",
+      "language": "en",
+      "image_url": "https://azurlane.netojuu.com/images/6/6f/PR7_Catchup_Napoli_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Blueprint_Completion_Plan#Napoli",
+      "file_url": "https://azurlane.koumakan.jp/wiki/File:PR7_Catchup_Napoli_Event_Banner_EN.jpg",
+      "license_url": "https://creativecommons.org/licenses/by-nc-sa/4.0/",
+      "match_basis": "人工核对公告关联活动、中英文名称及活动奖励/玩法"
+    }
+  ],
+  "scope": {
+    "include": "公告明确列出的限时活动、建造、蓝图、META、挑战、兑换及领取",
+    "exclude": [
+      "付费礼包",
+      "限时换装售卖",
+      "永久新增系统",
+      "角色技能及修复",
+      "未选择的自选复刻活动及其伴随活动"
+    ],
+    "never_duplicate_capsule_options": true
+  }
+}

@@ -6,6 +6,8 @@ import urllib.parse
 import urllib.request
 import zlib
 
+from . import __version__
+
 
 def wiki_url(url):
     try:
@@ -41,7 +43,7 @@ class WikiHTTP:
         if delay > 0:
             time.sleep(delay)
         self.last = time.monotonic()
-        headers = {'User-Agent': 'PlaytimeCalendar/0.0.4 (local calendar; https://github.com/ZhenyuFu039/acg-calendar)', 'Accept-Encoding': 'identity', 'Accept': 'application/json,text/html,image/*;q=0.8'}
+        headers = {'User-Agent': f'PlaytimeCalendar/{__version__} (local calendar; https://github.com/ZhenyuFu039/acg-calendar)', 'Accept-Encoding': 'identity', 'Accept': 'application/json,text/html,image/*;q=0.8'}
         if urllib.parse.urlsplit(url).hostname == 'zonai.skland.com':
             headers['Referer'] = 'https://wiki.skland.com/endfield/'
         request = urllib.request.Request(url, headers=headers)

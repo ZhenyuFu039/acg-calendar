@@ -45,7 +45,7 @@ const base='http://127.0.0.1:8793';
     assert.equal(await page.locator('.timeline-row .game-icon').count(),38);
     for(const game of ['arknights-cn','endfield-cn']) {
       const icon=page.locator(`.timeline-row[data-game="${game}"] .game-icon`).first();
-      assert.match(await icon.getAttribute('src'),game==='arknights-cn'?/arknights-logo\.png$/:/endfield-icon-zh\.svg$/);
+      assert.match(await icon.getAttribute('src'),game==='arknights-cn'?/arknights-app-icon\.png$/:/endfield-app-icon\.png$/);
       const box=await icon.locator('..').boundingBox();assert.ok(Math.abs(box.width-box.height)<1,'Game icon should occupy a square');
     }
     assert.match(await page.locator('.timeline-row').filter({hasText:'卡莉的芳菲童话'}).locator('.reward-cell').innerText(),/1,500/);

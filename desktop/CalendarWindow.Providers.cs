@@ -1,7 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.IO;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -22,6 +25,25 @@ public sealed partial class CalendarWindow
     Dictionary<string, int> eventOrder = new();
     readonly StackPanel gameCombination = new();
     string combinationSignature = "";
+    readonly Dictionary<string, string> providerPicturePaths = new();
+
+    async Task UpdateProviderPictures()
+    {
+        foreach (var game in games)
+        {
+            if (game.Icon == null || !Regex.IsMatch(game.Icon, @"^/api/artwork/[a-f0-9]{32}\.(png|jpg|webp)$") || providerPicturePaths.GetValueOrDefault(game.Id) == game.Icon) continue;
+            try
+            {
+                var data = await http.GetByteArrayAsync(address + game.Icon);
+                if (data.Length > 5_000_000) continue;
+                using var stream = new MemoryStream(data);
+                var image = new System.Windows.Media.Imaging.BitmapImage(); image.BeginInit(); image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                image.StreamSource = stream; image.EndInit(); image.Freeze();
+                gamePictures[game.Id] = image; providerPicturePaths[game.Id] = game.Icon;
+            }
+            catch { /* Missing plugin media must not interrupt the calendar. */ }
+        }
+    }
 
     string GameLabel(string id) => games.FirstOrDefault(g => g.Id == id)?.Short_Name ?? id;
     string GameColor(string id) => games.FirstOrDefault(g => g.Id == id)?.Color ?? "#6D8658";
@@ -66,7 +88,7 @@ public sealed partial class CalendarWindow
 
     object GameIdentity(string id)
     {
-        if (GamePicture(id) is ImageSource image) return new Image { Source = image, Stretch = Stretch.Uniform };
+        if (GamePicture(id) is ImageSource image) return new Border { CornerRadius = new CornerRadius(3), Background = new ImageBrush(image) { Stretch = Stretch.UniformToFill } };
         var label = Text(games.FirstOrDefault(g => g.Id == id)?.Monogram ?? "?", 14, true);
         label.HorizontalAlignment = HorizontalAlignment.Center; label.VerticalAlignment = VerticalAlignment.Center;
         return label;

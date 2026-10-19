@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .parser import ROOT, iso, load_rules, stamp
+from .plugin_media import import_image
 
 API_VERSION = 1
 ID = re.compile(r"[a-z][a-z0-9-]{1,63}\Z")
@@ -123,13 +124,15 @@ class JsonProvider:
         color = game.get("color", "#6D8658")
         if not isinstance(color, str) or not re.fullmatch(r"#[0-9a-fA-F]{6}", color):
             raise ValueError("游戏颜色需为 #RRGGBB")
-        # Ignore arbitrary icon paths / styles / executable fields in manifests.
+        # Only declared metadata and validated static local images cross the boundary.
         self.descriptor = {k: game[k] for k in ("id", "name", "short_name", "server", "timezone", "source_label")}
         self.descriptor.update(color=color, monogram=game.get("short_name", "?")[:2], icon=None, source_kind="local_json", api_version=API_VERSION, plugin_kind="local-json", capabilities=["sync", "rules"])
         self.directory, self.store = directory, store
         self.sync_key = "sync:" + game["id"]
         self.collector = self
         self.probes = {}
+        if game.get("icon"):
+            self.descriptor["icon"] = import_image(directory, game["icon"], store.path.parent)["path"]
 
     def rules(self):
         return {"api_version": API_VERSION, "strategy": "local-json", "game_id": self.descriptor["id"], "file": "events.json", "ai_used": False}
@@ -182,6 +185,11 @@ class JsonProvider:
                 parent = row.get("parent_id")
                 parent_id = game + "-" + hashlib.sha256(text_value(parent, "父活动 ID").encode()).hexdigest()[:20] if parent else None
                 events.append({"id": event_id, "publisher_id": local_id, "version_id": version_id, "title": text_value(row.get("title"), "活动标题"), "category": category, "subtype": text_value(row.get("subtype", "活动"), "子类型"), "section": "活动", "time_kind": "interval", **endpoints, "parent_id": parent_id, "parent_title": None, "phases": [], "description": str(row.get("description", ""))[:5000], "requirements": [], "warnings": [], "source": {"url": public_url(row.get("source_url")), "kind": "local_json", "title": self.descriptor["source_label"], "time_text": "", "block_text": ""}})
+                if row.get("artwork") is not None:
+                    picture = row["artwork"]
+                    if not isinstance(picture, dict) or not isinstance(picture.get("file"), str):
+                        raise ValueError("插件头图需指定本地 file")
+                    events[-1]["artwork"] = {**import_image(self.directory, picture["file"], self.store.path.parent), "source_url": public_url(picture.get("source_url", row["source_url"])), "match": "plugin_local_asset"}
             result.append({"schema_version": 1, "id": version_id, "game": game, "name": text_value(period.get("name"), "版本名"), "timezone": self.descriptor["timezone"], "source": {"url": public_url(period.get("source_url")), "title": self.descriptor["source_label"], "origin": "local-json", "kind": "local_json"}, "maintenance": {"start": None, "planned_end": None}, "warnings": [], "analysis": {"strategy": "local-json", "ai_used": False, "event_count": len(events)}, "events": events})
         for version in result:
             parents = {e["id"]: e.get("parent_id") for e in version["events"]}
@@ -248,7 +256,20 @@ class ProviderRegistry:
                 manifest = bounded_json(path)
                 if isinstance(manifest, dict) and manifest.get("enabled") is False:
                     continue
-                self.add(JsonProvider(path.parent, manifest, store))
+                source = manifest.get("source", {}) if isinstance(manifest, dict) else {}
+                if source and (not isinstance(source, dict) or source.get("type") not in {"gamekee", "azurlane-wiki", "zzz-official"}):
+                    raise ValueError("不支持的声明式采集来源")
+                if source and source["type"] == "zzz-official":
+                    from .zzz import ZZZProvider
+                    self.add(ZZZProvider(path.parent, manifest, store))
+                elif source and source["type"] == "azurlane-wiki":
+                    from .azurlane import AzurLaneProvider
+                    self.add(AzurLaneProvider(path.parent, manifest, store))
+                elif source:
+                    from .gamekee import GameKeeProvider
+                    self.add(GameKeeProvider(path.parent, manifest, store))
+                else:
+                    self.add(JsonProvider(path.parent, manifest, store))
             except (OSError, ValueError, TypeError, KeyError) as error:
                 self.errors.append({"plugin": path.parent.name, "error": str(error)[:400]})
 

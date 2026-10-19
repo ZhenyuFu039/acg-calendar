@@ -1,0 +1,24 @@
+{
+  "api_version": 1,
+  "kind": "local-json",
+  "enabled": true,
+  "game": {
+    "id": "nikke-global",
+    "name": "胜利女神：NIKKE",
+    "short_name": "NIKKE",
+    "server": "国际服",
+    "timezone": "Asia/Tokyo",
+    "source_label": "GameKee 外服日历与更新公告（社区来源）",
+    "color": "#A25770",
+    "icon": "assets/app-icon.png"
+  },
+  "source": {
+    "type": "gamekee",
+    "entry_url": "https://www.gamekee.com/nikke/huodong/19",
+    "game_alias": "nikke",
+    "wiki_id": 1253,
+    "server_id": 19,
+    "server_name": "外服",
+    "rules": "rules.json"
+  }
+}

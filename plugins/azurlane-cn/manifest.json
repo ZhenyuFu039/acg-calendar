@@ -1,0 +1,19 @@
+{
+  "api_version": 1,
+  "kind": "local-json",
+  "enabled": true,
+  "game": {
+    "id": "azurlane-cn",
+    "name": "碧蓝航线",
+    "short_name": "碧蓝航线",
+    "server": "国服",
+    "timezone": "Asia/Shanghai",
+    "source_label": "BWIKI 国服公告；Azur Lane Wiki 补充头图（社区来源）",
+    "color": "#3299AC",
+    "icon": "assets/app-icon.png"
+  },
+  "source": {
+    "type": "azurlane-wiki",
+    "rules": "rules.json"
+  }
+}

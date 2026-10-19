@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "strategy": "official-cn-announcement-windows-with-exact-wiki-artwork",
+  "ai_used": false,
+  "sources": {
+    "official_url": "https://zenless.hoyoverse.com/zh-cn/news?category=296",
+    "wiki_url": "https://wiki.biligame.com/zzz/活动一览",
+    "wiki_license": {"name": "CC BY-NC-SA 4.0", "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"},
+    "priority": ["official_cn_explicit_event_time", "official_cn_version_maintenance_reference"],
+    "wiki_usage": "只在标准化名称和完整精确时间区间完全相同且唯一时补充缺失头图；不覆盖官方时间。"
+  },
+  "collection": {"page_size": 50, "version_count": 2},
+  "articles": {
+    "event_title_pattern": "活动说明$|版本「丽都城募」说明$",
+    "frequency_title_pattern": "版本限时频段",
+    "excluded": ["永久剧情开放", "商城上新与付费礼包", "社区抽奖及社交平台活动", "预下载窗口", "台前试镜单独条目"],
+    "frequency_children": "按正文的「名称」调频活动标题拆分，使用该标题后的图片；不用整篇合成图代替缺失子活动头图。"
+  },
+  "time": {
+    "timezone": "Asia/Shanghai",
+    "server_time_offset": "+08:00",
+    "explicit_date_forms": ["YYYY/MM/DD HH:mm", "YYYY-MM-DD HH:mm"],
+    "after_version_update": "关联对应版本官方维护开始与预计小时数；结果始终为 estimated，绝不因时间经过升级为 exact。",
+    "version_end": "只读取官方明确的版本结束时间，未公布则 unknown；不使用商城下架时间推算。",
+    "publication_and_api_expiry": "只作来源元数据，禁止当作活动时间",
+    "reminder_policy": "沿用主程序规则，仅精确或手动确认的端点参与精确提醒；预计维护结束不参与。"
+  }
+}

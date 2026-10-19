@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "ruleset_version": "nikke-global-2",
+  "strategy": "gamekee_calendar_and_notice_sections",
+  "ai_used": false,
+  "timezone": "Asia/Tokyo",
+  "time": {
+    "default_notice_offset_hours": 9,
+    "maintenance_offset_hours": 8,
+    "explicit_timezone_overrides_default": true,
+    "maintenance_relative_start": "estimated",
+    "card_only_time_state": "estimated",
+    "conflict_policy": "prefer_notice",
+    "unknown_deadline": "keep_null",
+    "date_pattern": "(?P<year>20\\d{2})年(?P<month>\\d{1,2})月(?P<day>\\d{1,2})日(?:(?P<hour>\\d{1,2}):(?P<minute>\\d{2})(?::(?P<second>\\d{2}))?)?",
+    "clock_pattern": "(?<![\\d:])(?P<hour>\\d{1,2}):(?P<minute>\\d{2})(?::(?P<second>\\d{2}))?",
+    "labels": ["活动时间", "开放时间", "活动期间", "特殊招募开放时间", "贩售时间"]
+  },
+  "sections": {
+    "heading_pattern": "^(?P<number>\\d+(?:\\.\\d+)*)(?:[.．])?\\s+(?P<title>.+)$",
+    "include": ["1.1", "1.2", "4", "5", "6", "7", "8", "11.1"],
+    "category_rules": [
+      {"contains": ["SSR妮姬"], "category": "gacha", "subtype": "特殊招募"},
+      {"contains": ["试用"], "category": "event", "subtype": "角色试用"},
+      {"contains": ["档案馆", "故事时间线", "番外篇"], "category": "update", "subtype": "玩法更新"},
+      {"contains": ["签到"], "category": "event", "subtype": "限时签到"},
+      {"contains": ["PASS"], "category": "event", "subtype": "活动通行证（含付费）"},
+      {"contains": ["突击", "突袭", "协同作战", "FULL BURST DAY"], "category": "event", "subtype": "限时玩法"}
+    ],
+    "split_challenge": true,
+    "split_shop_deadline": true,
+    "split_repeated_windows": true,
+    "keep_unscheduled_updates": true,
+    "exclude_paid_shop_sections": ["2", "3", "11.2", "11.3", "11.4"]
+  },
+  "matching": {
+    "card_prefix_pattern": "^【[^】]+】\\s*",
+    "name_pattern": "[A-Za-z][A-Za-z0-9]*(?:[ '’!:-]+[A-Za-z0-9]+)*",
+    "ambiguity_policy": "do_not_match",
+    "artwork_priority": ["exact_calendar_activity", "same_notice_section"],
+    "never_reuse_version_cover": true
+  },
+  "curation": {
+    "merge_challenge_into_parent": true,
+    "exclude_title_contains": ["妮姬试用功能", "4周年情报站", "四周年情报站"]
+  },
+  "collection": {
+    "history_days": 45,
+    "max_rows": 200,
+    "max_announcements": 3,
+    "max_images": 24,
+    "max_image_bytes": 5000000,
+    "request_interval_seconds": 0.5
+  }
+}

@@ -7,8 +7,6 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
-using System.Xml.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -98,6 +96,16 @@ public sealed partial class CalendarWindow : Window
             var sample = Path.Combine(dataDirectory, "plugins", "sample-game"); Directory.CreateDirectory(sample);
             foreach (var name in new[] { "manifest.json", "events.json" })
                 File.Copy(Path.Combine(root, "examples", "plugins", "sample-game", name), Path.Combine(sample, name));
+            foreach (var pluginName in new[] { "nikke-global", "azurlane-cn", "zzz-cn" })
+            {
+                var plugin = Path.Combine(root, "plugins", pluginName);
+                if (!Directory.Exists(plugin)) continue;
+                foreach (var source in Directory.GetFiles(plugin, "*", SearchOption.AllDirectories))
+                {
+                    var target = Path.Combine(dataDirectory, "plugins", pluginName, Path.GetRelativePath(plugin, source));
+                    Directory.CreateDirectory(Path.GetDirectoryName(target)!); File.Copy(source, target);
+                }
+            }
         }
         Title = "游时 · 桌面日历"; Width = 390; Height = 620;
         var iconUri = new Uri("pack://application:,,,/Assets/playtime.ico");
@@ -223,6 +231,7 @@ public sealed partial class CalendarWindow : Window
             notificationsMenu.Checked = state.RootElement.GetProperty("settings").GetProperty("native_notifications").GetBoolean();
             UpdateReminderControls(state.RootElement.GetProperty("settings"));
             UpdateProviders(state.RootElement);
+            await UpdateProviderPictures();
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
             events = events.Select(e => e with { Source = e.Source.Clone(), Artwork = e.Artwork.ValueKind == JsonValueKind.Undefined ? default : e.Artwork.Clone(), Reward = e.Reward.ValueKind == JsonValueKind.Undefined ? default : e.Reward.Clone() }).ToArray();
@@ -263,7 +272,7 @@ public sealed partial class CalendarWindow : Window
             var card = new Border { Background = CardBackground(), CornerRadius = new CornerRadius(8), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = gameColor, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
             AttachBubbleDrag(card);
             var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
-            var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(3), ToolTip = GameLabel(entry.Game) };
+            var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), ToolTip = GameLabel(entry.Game) };
             badge.Child = (UIElement)GameIdentity(entry.Game); layout.Children.Add(badge);
             var body = new StackPanel();
             string type = entry.Category switch { "gacha" => "寻访", "exchange" => "兑换", "update" => "更新", "maintenance" => "维护", _ => "活动" };
@@ -316,24 +325,11 @@ public sealed partial class CalendarWindow : Window
         if (gamePictures.TryGetValue(game, out var cached)) return cached;
         try
         {
-            ImageSource image;
-            if (game == "arknights-cn")
-            {
-                var bitmap = new System.Windows.Media.Imaging.BitmapImage(); bitmap.BeginInit();
-                bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
-                bitmap.UriSource = new Uri(Path.Combine(root, "web", "assets", "arknights-logo.png")); bitmap.EndInit(); image = bitmap;
-            }
-            else if (game == "endfield-cn")
-            {
-                // This bundled icon contains only paths in a 512-square viewBox.
-                using var reader = XmlReader.Create(Path.Combine(root, "web", "assets", "endfield-icon-zh.svg"), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
-                var document = XDocument.Load(reader); var drawing = new DrawingGroup();
-                drawing.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 512, 512))));
-                foreach (var path in document.Descendants().Where(e => e.Name.LocalName == "path"))
-                    drawing.Children.Add(new GeometryDrawing(Brushes.Black, null, Geometry.Parse(path.Attribute("d")!.Value)));
-                image = new DrawingImage(drawing);
-            }
-            else return null;
+            var icon = games.FirstOrDefault(g => g.Id == game)?.Icon;
+            if (icon == null || !System.Text.RegularExpressions.Regex.IsMatch(icon, @"^/assets/[A-Za-z0-9_.-]+\.png$")) return null;
+            var image = new System.Windows.Media.Imaging.BitmapImage(); image.BeginInit();
+            image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+            image.UriSource = new Uri(Path.Combine(root, "web", "assets", Path.GetFileName(icon))); image.EndInit();
             image.Freeze(); gamePictures[game] = image; return image;
         }
         catch { return null; }
@@ -426,9 +422,24 @@ public sealed partial class CalendarWindow : Window
             if (!System.Text.Encoding.UTF8.GetString(arkIcs).Contains("PRTS")) throw new Exception("Arknights calendar attribution missing");
             gameSelect.SelectedValue = "sample-game"; Render(); SaveRender("plugin.png");
             if (cards.Children.Count != 2 || rewardHeader.Visibility != Visibility.Collapsed || GamePicture("sample-game") != null) throw new Exception("Third-party game metadata or currency isolation failed");
+            if (games.Any(g => g.Id == "nikke-global"))
+            {
+                gameSelect.SelectedValue = "nikke-global"; Render(); SaveRender("nikke.png");
+                if (cards.Children.Count != events.Count(e => e.Game == "nikke-global") || GamePicture("nikke-global") == null || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("NIKKE plugin, local logo or currency isolation failed");
+            }
+            if (games.Any(g => g.Id == "azurlane-cn"))
+            {
+                gameSelect.SelectedValue = "azurlane-cn"; Render(); SaveRender("azurlane.png");
+                if (cards.Children.Count != events.Count(e => e.Game == "azurlane-cn") || cards.Children.Count == 0 || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("Azur Lane plugin or currency isolation failed");
+            }
+            if (games.Any(g => g.Id == "zzz-cn"))
+            {
+                gameSelect.SelectedValue = "zzz-cn"; Render(); SaveRender("zzz.png");
+                if (cards.Children.Count != events.Count(e => e.Game == "zzz-cn") || cards.Children.Count == 0 || GamePicture("zzz-cn") == null || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("ZZZ plugin, APP icon or currency isolation failed");
+            }
             await Mutate("/api/workspace", new { view = new { selected_games = new[] { "endfield-cn", "sample-game" }, scope = "selected", sort = "remaining" } }, true);
             gameSelect.SelectedValue = "selected"; Render(); SaveRender("selected-games.png");
-            if (cards.Children.Count != events.Count(e => e.Game != "arknights-cn")) throw new Exception("Custom game combination omitted or leaked entries");
+            if (cards.Children.Count != events.Count(e => e.Game is "endfield-cn" or "sample-game")) throw new Exception("Custom game combination omitted or leaked entries");
             byte[] selectedIcs = await http.GetByteArrayAsync(address + "/api/calendar.ics?game=selected");
             if (System.Text.Encoding.UTF8.GetString(selectedIcs).Contains("PRTS")) throw new Exception("Custom game export leaked unselected games");
             gameSelect.SelectedValue = "all"; Render(); SaveRender("combined.png");

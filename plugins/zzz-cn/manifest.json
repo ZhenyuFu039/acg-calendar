@@ -1,0 +1,16 @@
+{
+  "api_version": 1,
+  "kind": "local-json",
+  "enabled": true,
+  "game": {
+    "id": "zzz-cn",
+    "name": "绝区零",
+    "short_name": "绝区零",
+    "server": "国服",
+    "timezone": "Asia/Shanghai",
+    "source_label": "绝区零官网公告；BWIKI 仅补充完全匹配的头图",
+    "color": "#DF781A",
+    "icon": "assets/app-icon.png"
+  },
+  "source": {"type": "zzz-official", "rules": "rules.json"}
+}

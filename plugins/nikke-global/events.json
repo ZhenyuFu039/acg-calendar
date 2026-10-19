@@ -1,0 +1,1011 @@
+{
+  "schema_version": 1,
+  "versions": [
+    {
+      "id": "notice-723266",
+      "name": "10月8日更新及近期活动",
+      "source_url": "https://www.gamekee.com/nikke/723266.html",
+      "maintenance": {
+        "start": "2026-10-08T02:00:00Z",
+        "planned_end": "2026-10-08T06:00:00Z",
+        "source_text": "预计维护时间：2026年10月8日10:00:00～14:00:00（北京时间）",
+        "source_line": 7
+      },
+      "events": [
+        {
+          "id": "notice-723266-maintenance",
+          "title": "版本更新维护",
+          "category": "maintenance",
+          "subtype": "预计维护",
+          "start": {
+            "at": "2026-10-08T02:00:00Z",
+            "state": "exact",
+            "raw": "预计维护时间：2026年10月8日10:00:00～14:00:00（北京时间）"
+          },
+          "end": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "预计维护时间：2026年10月8日10:00:00～14:00:00（北京时间）"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "evidence": {
+            "basis": "notice",
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "line": 7,
+            "time_text": "预计维护时间：2026年10月8日10:00:00～14:00:00（北京时间）"
+          },
+          "warnings": [
+            "维护结束为预计时间，可在详情中确认实际开服"
+          ]
+        },
+        {
+          "id": "notice-723266-1.1-1",
+          "title": "SSR妮姬【贝洛塔：南瓜女巫】",
+          "category": "gacha",
+          "subtype": "特殊招募",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*特殊招募开放时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "minute"
+          },
+          "end": {
+            "at": "2026-10-28T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*特殊招募开放时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 22,
+            "time_text": "*特殊招募开放时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "section": "1.1",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_1920/h_1080/4408/2026/9/5/64812307muvfr6ez.png",
+          "image_match": "same_notice_section",
+          "artwork": {
+            "file": "assets/7f8ef95a6f1535f4fc3c5804bb455e3c.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "calendar-7888",
+          "title": "【支线】LITTLE WITCH TRICK",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "minute"
+          },
+          "end": {
+            "at": "2026-10-28T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "为了尽情享受万圣节庆典，贝洛塔干劲十足地着手准备。就在她兴致勃勃地恶作剧、享受庆典没多久，不知从何时起，奇怪的传闻开始四处流传⋯⋯\n\n挑战关卡时间：*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服",
+            "GameKee 活动卡片与公告开始时间不同，采用公告；原卡片时间 2026-10-07T16:00:00Z",
+            "GameKee 活动卡片与公告结束时间不同，采用公告；原卡片时间 2026-10-28T15:59:00Z"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 60,
+            "time_text": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "section": "4.1",
+            "basis": "notice",
+            "source_offset": "UTC+09:00",
+            "calendar_id": 7888,
+            "merged_events": [
+              {
+                "id": "notice-723266-4.1-challenge-1",
+                "title": "全新剧情活动：LITTLE WITCH TRICK · 挑战关卡",
+                "start": {
+                  "at": "2026-10-08T06:00:00Z",
+                  "state": "estimated",
+                  "reference": "maintenance_end",
+                  "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+                  "precision": "minute"
+                },
+                "end": {
+                  "at": "2026-10-28T14:59:59Z",
+                  "state": "exact",
+                  "reference": null,
+                  "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+                  "precision": "second"
+                },
+                "evidence": {
+                  "notice_id": "723266",
+                  "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+                  "notice_updated_at": 1791445445,
+                  "line": 65,
+                  "time_text": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+                  "section": "4.1-challenge",
+                  "basis": "notice",
+                  "source_offset": "UTC+09:00"
+                }
+              }
+            ]
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_488/h_162/4408/2026/9/8/92087378muza9q1f.jpg",
+          "image_match": "exact_calendar_activity",
+          "artwork": {
+            "file": "assets/a6aca1be970a12d11286553a2f0d5145.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "notice-723266-4.1-shop",
+          "parent_id": "calendar-7888",
+          "title": "全新剧情活动：LITTLE WITCH TRICK · 奖励兑换",
+          "category": "exchange",
+          "subtype": "活动商店",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": null,
+            "raw": "公告未单列兑换开始时刻，暂按主活动开始展示",
+            "precision": "minute"
+          },
+          "end": {
+            "at": "2026-10-28T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*活动商店的道具兑换将于2026年10月28日23:59:59（UTC+9）结束。",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "warnings": [
+            "公告未单列兑换开始时刻，暂按主活动开始展示"
+          ],
+          "evidence": {
+            "basis": "notice",
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "line": 62,
+            "time_text": "*活动商店的道具兑换将于2026年10月28日23:59:59（UTC+9）结束。"
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_488/h_162/4408/2026/9/8/92087378muza9q1f.jpg",
+          "image_match": "same_activity_parent",
+          "artwork": {
+            "file": "assets/a6aca1be970a12d11286553a2f0d5145.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "notice-723266-4.2-1",
+          "title": "档案馆- ABSOLUTE",
+          "category": "update",
+          "subtype": "玩法更新",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*开放时间：2026年10月8日更新维护结束后",
+            "precision": "minute"
+          },
+          "end": {
+            "at": null,
+            "state": "unknown",
+            "raw": "",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "point",
+          "description": "",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 71,
+            "time_text": "*开放时间：2026年10月8日更新维护结束后",
+            "section": "4.2",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "notice-723266-4.3-1",
+          "title": "故事时间线- LITTLE WITCH TRICK",
+          "category": "update",
+          "subtype": "玩法更新",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*开放时间：2026年10月8日更新维护结束后",
+            "precision": "minute"
+          },
+          "end": {
+            "at": null,
+            "state": "unknown",
+            "raw": "",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "point",
+          "description": "",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 76,
+            "time_text": "*开放时间：2026年10月8日更新维护结束后",
+            "section": "4.3",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "calendar-7890",
+          "title": "【签到】DAILY TRICK（14日）",
+          "category": "event",
+          "subtype": "限时签到",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "minute"
+          },
+          "end": {
+            "at": "2026-10-28T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "活动期间内的任14天中，每日登入即可获得奖励，累计登入14天即可获得高级招募券、养成材料在内的全部奖励！",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服",
+            "GameKee 活动卡片与公告开始时间不同，采用公告；原卡片时间 2026-10-07T16:00:00Z",
+            "GameKee 活动卡片与公告结束时间不同，采用公告；原卡片时间 2026-10-27T16:00:00Z"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 80,
+            "time_text": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "section": "4.4",
+            "basis": "notice",
+            "source_offset": "UTC+09:00",
+            "calendar_id": 7890
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_493/h_163/4408/2026/9/8/73687495muzahov2.jpg",
+          "image_match": "exact_calendar_activity",
+          "artwork": {
+            "file": "assets/f05fab83aa5ae69eb020b7f6b6efc77a.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "calendar-7889",
+          "title": "【上线即领】Cinderella Special",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年12月3日4:59:59（UTC+9）",
+            "precision": "minute"
+          },
+          "end": {
+            "at": "2026-12-02T19:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年12月3日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "活动期间内登入游戏，即可获得人气投票第1名的灰姑娘限定时装【水晶女仆】、主题曲【Beautiful Me】和人气投票Top 5的【灰姑娘、莉贝雷利奥、小美人鱼、阿尔卡娜：命运伴侣、白雪公主：重型武装】限定边框。",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服",
+            "GameKee 活动卡片与公告开始时间不同，采用公告；原卡片时间 2026-10-07T16:00:00Z",
+            "GameKee 活动卡片与公告结束时间不同，采用公告；原卡片时间 2026-12-02T16:00:00Z"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 85,
+            "time_text": "*活动时间：2026年10月8日更新维护结束后～2026年12月3日4:59:59（UTC+9）",
+            "section": "4.5",
+            "basis": "notice",
+            "source_offset": "UTC+09:00",
+            "calendar_id": 7889
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_486/h_162/4408/2026/9/8/89513992muzagq20.jpg",
+          "image_match": "exact_calendar_activity",
+          "artwork": {
+            "file": "assets/e1989cc43fda0fba764d3fd86d4334ff.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "calendar-7887",
+          "title": "【剧情】MOST BEAUTIFUL MAID",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "minute"
+          },
+          "end": {
+            "at": "2026-10-28T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "结束噬屿之旅准备返程时，\n灰姑娘对行李中发现的女仆装产生了兴趣。\n在王子殿下的指导下，她开始学习「女仆该有的样子」……",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服",
+            "GameKee 活动卡片与公告开始时间不同，采用公告；原卡片时间 2026-10-07T16:00:00Z"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 93,
+            "time_text": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "section": "4.6",
+            "basis": "notice",
+            "source_offset": "UTC+09:00",
+            "calendar_id": 7887
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_490/h_162/4408/2026/9/8/69022535muza8j8o.jpg",
+          "image_match": "exact_calendar_activity",
+          "artwork": {
+            "file": "assets/129060bccd1faf04bfdf56e5435e1776.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "notice-723266-4.7-1",
+          "title": "番外篇- GINGERBREAD HOUSE",
+          "category": "update",
+          "subtype": "玩法更新",
+          "start": {
+            "at": null,
+            "state": "unknown",
+            "raw": "",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": null,
+            "state": "unknown",
+            "raw": "",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "point",
+          "description": "",
+          "warnings": [],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 1,
+            "time_text": "公告未给出开放时刻",
+            "section": "4.7",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_1920/h_1080/4408/2026/9/6/96915907muvfsrk9.png",
+          "image_match": "same_notice_section",
+          "artwork": {
+            "file": "assets/19e57c211494e1751b6ff21ba065c674.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "notice-723266-4.8-1",
+          "title": "FULL BURST DAY活动 · 第 1 期",
+          "category": "event",
+          "subtype": "限时玩法",
+          "start": {
+            "at": "2026-10-16T20:00:00Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "2026年10月17日5:00:00～2026年10月19日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "end": {
+            "at": "2026-10-18T19:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "2026年10月17日5:00:00～2026年10月19日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 104,
+            "time_text": "2026年10月17日5:00:00～2026年10月19日4:59:59（UTC+9）",
+            "section": "4.8",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "notice-723266-4.8-2",
+          "title": "FULL BURST DAY活动 · 第 2 期",
+          "category": "event",
+          "subtype": "限时玩法",
+          "start": {
+            "at": "2026-10-23T20:00:00Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "2026年10月24日5:00:00～2026年10月26日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "end": {
+            "at": "2026-10-25T19:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "2026年10月24日5:00:00～2026年10月26日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 105,
+            "time_text": "2026年10月24日5:00:00～2026年10月26日4:59:59（UTC+9）",
+            "section": "4.8",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "notice-723266-5-1",
+          "title": "冠军竞技场（Beta赛季40）",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-10-07T15:00:00Z",
+            "state": "estimated",
+            "reference": null,
+            "raw": "*Beta赛季40开放时间：2026年10月8日",
+            "precision": "day"
+          },
+          "end": {
+            "at": null,
+            "state": "unknown",
+            "raw": "",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 109,
+            "time_text": "*Beta赛季40开放时间：2026年10月8日",
+            "section": "5",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "notice-723266-6-1",
+          "title": "联盟突袭",
+          "category": "event",
+          "subtype": "限时玩法",
+          "start": {
+            "at": "2026-10-08T20:00:00Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*开放时间：2026年10月9日5:00:00～2026年10月15日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "end": {
+            "at": "2026-10-14T19:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*开放时间：2026年10月9日5:00:00～2026年10月15日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 117,
+            "time_text": "*开放时间：2026年10月9日5:00:00～2026年10月15日4:59:59（UTC+9）",
+            "section": "6",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "notice-723266-7-1",
+          "title": "协同作战 · 神罚",
+          "category": "event",
+          "subtype": "限时玩法",
+          "start": {
+            "at": "2026-10-09T03:00:00Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "【神罚】：2026年10月9日12:00:00～2026年10月11日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "end": {
+            "at": "2026-10-11T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "【神罚】：2026年10月9日12:00:00～2026年10月11日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 124,
+            "time_text": "【神罚】：2026年10月9日12:00:00～2026年10月11日23:59:59（UTC+9）",
+            "section": "7",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "notice-723266-7-2",
+          "title": "协同作战 · 尼希利斯塔",
+          "category": "event",
+          "subtype": "限时玩法",
+          "start": {
+            "at": "2026-10-23T03:00:00Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "【尼希利斯塔】：2026年10月23日12:00:00～2026年10月25日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "end": {
+            "at": "2026-10-25T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "【尼希利斯塔】：2026年10月23日12:00:00～2026年10月25日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 125,
+            "time_text": "【尼希利斯塔】：2026年10月23日12:00:00～2026年10月25日23:59:59（UTC+9）",
+            "section": "7",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "notice-723266-8-1",
+          "title": "单人突击",
+          "category": "event",
+          "subtype": "限时玩法",
+          "start": {
+            "at": "2026-10-15T03:00:00Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*开放时间：2026年10月15日12:00:00～2026年10月22日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "end": {
+            "at": "2026-10-21T19:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*开放时间：2026年10月15日12:00:00～2026年10月22日4:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "",
+          "warnings": [],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 130,
+            "time_text": "*开放时间：2026年10月15日12:00:00～2026年10月22日4:59:59（UTC+9）",
+            "section": "8",
+            "basis": "notice",
+            "source_offset": "UTC+09:00"
+          }
+        },
+        {
+          "id": "calendar-7886",
+          "title": "【活动PASS】OCCULTIST PASS（蕾贝儿）",
+          "category": "event",
+          "subtype": "活动通行证（含付费）",
+          "start": {
+            "at": "2026-10-08T06:00:00Z",
+            "state": "estimated",
+            "reference": "maintenance_end",
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "minute"
+          },
+          "end": {
+            "at": "2026-10-28T14:59:59Z",
+            "state": "exact",
+            "reference": null,
+            "raw": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "precision": "second"
+          },
+          "source_url": "https://www.gamekee.com/nikke/723266.html",
+          "time_kind": "interval",
+          "description": "含全语音的【蕾贝儿- 神秘学者】可在OCCULTIST PASS中获得。",
+          "warnings": [
+            "开始为维护预计结束或仅日期值；不代表已确认开服",
+            "GameKee 活动卡片与公告开始时间不同，采用公告；原卡片时间 2026-10-07T16:00:00Z",
+            "GameKee 活动卡片与公告结束时间不同，采用公告；原卡片时间 2026-10-27T16:00:00Z"
+          ],
+          "evidence": {
+            "notice_id": "723266",
+            "notice_title": "10月8日版本更新公告  贝洛塔喜提SSR万圣节造型！灰姑娘冠军皮正式发放",
+            "notice_updated_at": 1791445445,
+            "line": 145,
+            "time_text": "*活动时间：2026年10月8日更新维护结束后～2026年10月28日23:59:59（UTC+9）",
+            "section": "11.1",
+            "basis": "notice",
+            "source_offset": "UTC+09:00",
+            "calendar_id": 7886
+          },
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_494/h_159/4408/2026/9/8/36897348muza84uo.jpg",
+          "image_match": "exact_calendar_activity",
+          "artwork": {
+            "file": "assets/11f293a90ac6d2f398cf5de80114e0c6.png",
+            "source_url": "https://www.gamekee.com/nikke/723266.html"
+          }
+        },
+        {
+          "id": "calendar-7829",
+          "title": "【支线】COIN RUSH SHOWDOWN",
+          "category": "event",
+          "subtype": "社区日历记录",
+          "start": {
+            "at": "2026-09-16T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee begin_at；公告尚未核对",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-07T21:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee end_at；公告尚未核对",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/721420.html",
+          "description": "方舟首次举办三大企业博览会。\n\n指挥官与毛病一大堆的【C计画部队】一起参加大逃杀，却陷入了一场意想不到的阴谋之中……\n\nEntertainment、Technology与Tactical融合的COIN RUSH SHOWDOWN！ Bring It On！",
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_463/h_149/4408/2026/8/17/42773578mu5egozn.jpg",
+          "image_match": "exact_calendar_activity",
+          "warnings": [
+            "仅社区活动卡片时间，公告未核对；不触发精确截止提醒"
+          ],
+          "evidence": {
+            "basis": "calendar_only",
+            "calendar_id": 7829,
+            "time_text": "begin_at=1789574400; end_at=1791406800"
+          },
+          "artwork": {
+            "file": "assets/40ca49c65f3f73f6b5e1b035f10dee59.png",
+            "source_url": "https://www.gamekee.com/nikke/721420.html"
+          }
+        },
+        {
+          "id": "calendar-7639",
+          "title": "【限时通关】Trail Marker",
+          "category": "event",
+          "subtype": "社区日历记录",
+          "start": {
+            "at": "2026-08-12T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee begin_at；公告尚未核对",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-07T20:59:00Z",
+            "state": "estimated",
+            "raw": "GameKee end_at；公告尚未核对",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/716193.html",
+          "description": "限时通关主线47 48章",
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_456/h_153/4408/2026/7/13/20216072msqzknnb.jpg",
+          "image_match": "exact_calendar_activity",
+          "warnings": [
+            "仅社区活动卡片时间，公告未核对；不触发精确截止提醒"
+          ],
+          "evidence": {
+            "basis": "calendar_only",
+            "calendar_id": 7639,
+            "time_text": "begin_at=1786550400; end_at=1791406740"
+          },
+          "artwork": {
+            "file": "assets/113a92b7f4d48139aa7da4342980340f.png",
+            "source_url": "https://www.gamekee.com/nikke/716193.html"
+          }
+        },
+        {
+          "id": "calendar-7827",
+          "title": "【转盘】KILLER BUNNY",
+          "category": "event",
+          "subtype": "社区日历记录",
+          "start": {
+            "at": "2026-09-16T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee begin_at；公告尚未核对",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-07T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee end_at；公告尚未核对",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/721020.html",
+          "description": "【舒格- 杀手兔女郎】可透过时装抽取获得，获得时装的同时可一并获得全语音、爆裂技能过场动画、站立姿势、SD特殊动作。",
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_467/h_155/4408/2026/8/17/92876543mu5ecr0g.jpg",
+          "image_match": "exact_calendar_activity",
+          "warnings": [
+            "仅社区活动卡片时间，公告未核对；不触发精确截止提醒"
+          ],
+          "evidence": {
+            "basis": "calendar_only",
+            "calendar_id": 7827,
+            "time_text": "begin_at=1789574400; end_at=1791388800"
+          },
+          "artwork": {
+            "file": "assets/ab9392022fe9732ee56ab7a09aa86843.png",
+            "source_url": "https://www.gamekee.com/nikke/721020.html"
+          }
+        },
+        {
+          "id": "calendar-7828",
+          "title": "【活动PASS】LET'S DRINK PASS",
+          "category": "event",
+          "subtype": "社区日历记录",
+          "start": {
+            "at": "2026-09-16T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee begin_at；公告尚未核对",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-07T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee end_at；公告尚未核对",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/721020.html",
+          "description": "包含全语音的【玛娜- 醉酒兔女郎】可在LET'S DRINK PASS中获得。关于LET'S DRINK PASS的说明，可在下文新商品中查看。",
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_463/h_150/4408/2026/8/17/53398145mu5ef3wd.jpg",
+          "image_match": "exact_calendar_activity",
+          "warnings": [
+            "仅社区活动卡片时间，公告未核对；不触发精确截止提醒"
+          ],
+          "evidence": {
+            "basis": "calendar_only",
+            "calendar_id": 7828,
+            "time_text": "begin_at=1789574400; end_at=1791388800"
+          },
+          "artwork": {
+            "file": "assets/150d09f1d57e4ad4bdf534010a8ea25d.png",
+            "source_url": "https://www.gamekee.com/nikke/721020.html"
+          }
+        },
+        {
+          "id": "calendar-7777",
+          "title": "【支线】 GREAT VILLAIN UNION",
+          "category": "event",
+          "subtype": "社区日历记录",
+          "start": {
+            "at": "2026-09-02T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee begin_at；公告尚未核对",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-16T19:59:00Z",
+            "state": "estimated",
+            "raw": "GameKee end_at；公告尚未核对",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/719378.html",
+          "description": "德雷克升级配套剧情活动",
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_471/h_157/4408/2026/8/10/22115959mtuzaxpk.jpg",
+          "image_match": "exact_calendar_activity",
+          "warnings": [
+            "仅社区活动卡片时间，公告未核对；不触发精确截止提醒"
+          ],
+          "evidence": {
+            "basis": "calendar_only",
+            "calendar_id": 7777,
+            "time_text": "begin_at=1788364800; end_at=1789588740"
+          },
+          "artwork": {
+            "file": "assets/dbb76a6d9c7f6ddc92b469ffcc500060.png",
+            "source_url": "https://www.gamekee.com/nikke/719378.html"
+          }
+        },
+        {
+          "id": "calendar-7778",
+          "title": "【签到】DAILY LOGIN",
+          "category": "event",
+          "subtype": "社区日历记录",
+          "start": {
+            "at": "2026-09-02T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee begin_at；公告尚未核对",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-16T16:00:00Z",
+            "state": "estimated",
+            "raw": "GameKee end_at；公告尚未核对",
+            "reference": null
+          },
+          "source_url": "https://www.gamekee.com/nikke/719378.html",
+          "description": "德雷克7日签到活动",
+          "image_url": "//cdnimg-v2.gamekee.com/wiki2.0/pro/1253/images/w_473/h_154/4408/2026/8/10/57796680mtuzgiz8.jpg",
+          "image_match": "exact_calendar_activity",
+          "warnings": [
+            "仅社区活动卡片时间，公告未核对；不触发精确截止提醒"
+          ],
+          "evidence": {
+            "basis": "calendar_only",
+            "calendar_id": 7778,
+            "time_text": "begin_at=1788364800; end_at=1789574400"
+          },
+          "artwork": {
+            "file": "assets/8e9f72da8abf2bd6e13553a9109b45cb.png",
+            "source_url": "https://www.gamekee.com/nikke/719378.html"
+          }
+        }
+      ],
+      "source": {
+        "calendar_url": "https://www.gamekee.com/nikke/huodong/19",
+        "fetched_at": "2026-10-19T19:41:20Z"
+      },
+      "analysis": {
+        "strategy": "gamekee_calendar_and_notice_sections",
+        "ai_used": false,
+        "calendar_rows": 12,
+        "matched_cards": 5,
+        "notice_events": 18,
+        "conflicts": [
+          {
+            "calendar_id": 7887,
+            "role": "start",
+            "calendar_at": "2026-10-07T16:00:00Z",
+            "notice_at": "2026-10-08T06:00:00Z"
+          },
+          {
+            "calendar_id": 7888,
+            "role": "start",
+            "calendar_at": "2026-10-07T16:00:00Z",
+            "notice_at": "2026-10-08T06:00:00Z"
+          },
+          {
+            "calendar_id": 7888,
+            "role": "end",
+            "calendar_at": "2026-10-28T15:59:00Z",
+            "notice_at": "2026-10-28T14:59:59Z"
+          },
+          {
+            "calendar_id": 7889,
+            "role": "start",
+            "calendar_at": "2026-10-07T16:00:00Z",
+            "notice_at": "2026-10-08T06:00:00Z"
+          },
+          {
+            "calendar_id": 7889,
+            "role": "end",
+            "calendar_at": "2026-12-02T16:00:00Z",
+            "notice_at": "2026-12-02T19:59:59Z"
+          },
+          {
+            "calendar_id": 7890,
+            "role": "start",
+            "calendar_at": "2026-10-07T16:00:00Z",
+            "notice_at": "2026-10-08T06:00:00Z"
+          },
+          {
+            "calendar_id": 7890,
+            "role": "end",
+            "calendar_at": "2026-10-27T16:00:00Z",
+            "notice_at": "2026-10-28T14:59:59Z"
+          },
+          {
+            "calendar_id": 7886,
+            "role": "start",
+            "calendar_at": "2026-10-07T16:00:00Z",
+            "notice_at": "2026-10-08T06:00:00Z"
+          },
+          {
+            "calendar_id": 7886,
+            "role": "end",
+            "calendar_at": "2026-10-27T16:00:00Z",
+            "notice_at": "2026-10-28T14:59:59Z"
+          }
+        ],
+        "artwork": {
+          "matched": 14,
+          "download_errors": 0
+        }
+      },
+      "warnings": [
+        "公告 723752 读取失败（HTTPError）；仅卡片条目保留为预计",
+        "公告 721420 读取失败（HTTPError）；仅卡片条目保留为预计"
+      ]
+    }
+  ]
+}

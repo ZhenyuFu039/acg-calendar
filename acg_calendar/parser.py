@@ -11,11 +11,26 @@ from html.parser import HTMLParser
 import json
 from pathlib import Path
 import re
+from zoneinfo import ZoneInfo
 
 from .rewards import summarize_rewards
 
 ROOT = Path(__file__).resolve().parents[1]
 UTC = dt.timezone.utc
+
+
+def maintenance_start_estimate(raw, year, zone, hour=10):
+    """A dated maintenance deadline may use the user's provisional server hour."""
+    if not isinstance(raw, str) or '维护' not in raw or re.search(r'维护(?:结束)?后', raw):
+        return None
+    match = re.search(r'(?:(?P<year>20\d{2})年)?(?P<month>\d{1,2})月(?P<day>\d{1,2})日', raw)
+    if not match:
+        return None
+    try:
+        value = dt.datetime(int(match['year'] or year), int(match['month']), int(match['day']), hour, tzinfo=zone)
+    except ValueError:
+        return None
+    return {'at': iso(value), 'state': 'estimated', 'raw': raw, 'precision': 'minute', 'reference': 'maintenance_start_fallback'}
 
 
 def iso(value: dt.datetime | None) -> str | None:
@@ -101,6 +116,10 @@ class AnnouncementParser:
         dates = self.dates(text, year)
         if dates:
             return dates[0]
+        if role == "end":
+            assumed = maintenance_start_estimate(text, year, self.zone)
+            if assumed:
+                return assumed
         if any(marker in text for marker in time_rules["next_maintenance_markers"]):
             return self.unknown("next_maintenance_start", text)
         if any(marker in text for marker in time_rules["maintenance_end_markers"]):
@@ -256,6 +275,19 @@ def resolve_versions(versions: list[dict], local_state: dict) -> list[dict]:
                     endpoint.update(at=confirmed, state="confirmed")
                 if endpoint.get("reference") == "next_maintenance_start" and next_start:
                     endpoint.update(at=next_start, state="exact")
+                if role == "end" and endpoint.get("state") == "unknown" and endpoint.get("raw"):
+                    start = stamp(event["start"].get("at"))
+                    if start:
+                        zone = ZoneInfo(version.get("timezone", "Asia/Shanghai"))
+                        assumed = maintenance_start_estimate(endpoint["raw"], start.astimezone(zone).year, zone)
+                        if assumed:
+                            endpoint.update(assumed)
+                if endpoint.get("reference") == "maintenance_start_fallback" and endpoint.get("at"):
+                    zone = ZoneInfo(version.get("timezone", "Asia/Shanghai"))
+                    target = stamp(endpoint["at"]).astimezone(zone).date()
+                    known = next((v["maintenance"]["start"] for v in ordered if v.get("game") == version.get("game") and v["maintenance"].get("start") and stamp(v["maintenance"]["start"]).astimezone(zone).date() == target), None)
+                    if known:
+                        endpoint.update(at=known, state="exact")
                 if overrides.get(role + "_override"):
                     endpoint.update(at=overrides[role + "_override"], state="manual", reference="manual")
             event["completed"] = bool(overrides.get("completed"))

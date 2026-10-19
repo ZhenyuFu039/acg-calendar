@@ -1,0 +1,766 @@
+{
+  "schema_version": 1,
+  "versions": [
+    {
+      "id": "recent-cn-activities",
+      "name": "国服近期活动",
+      "source_url": "https://wiki.biligame.com/blhx/%E6%B8%B8%E6%88%8F%E6%B4%BB%E5%8A%A8%E8%A1%A8",
+      "events": [
+        {
+          "id": "page-230749-section-1",
+          "title": "严厉女仆不严厉",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-10-15T07:00:00Z",
+            "state": "estimated",
+            "raw": "10月15日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-11-05T02:00:00Z",
+            "state": "estimated",
+            "raw": "11月5日维护",
+            "precision": "minute",
+            "reference": "maintenance_start_fallback"
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B410%E6%9C%8815%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：1.开启限时活动「严厉女仆不严厉」，活动时间10月15日维护后~11月5日维护\n英文 Wiki 仅补充已核对头图，不采用其外服时间。图内日期/文案可能属于外服。",
+          "evidence": {
+            "page_title": "2026年10月15日10:00港区改建",
+            "revision_id": 418072,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B410%E6%9C%8815%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=418072",
+            "line": 12,
+            "time_text": "1.开启限时活动「严厉女仆不严厉」，活动时间10月15日维护后~11月5日维护",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准",
+            "截止暂按该维护日国服时间 10:00（预计），具体活动情况请参考游戏官方时间；不触发精确截止提醒"
+          ],
+          "image_url": "https://azurlane.netojuu.com/images/1/1c/The_Strict_Maid_Isn%27t_So_Strict_Event_Banner_EN.jpg",
+          "image_source": "https://azurlane.koumakan.jp/wiki/The_Strict_Maid_Isn%E2%80%99t_So_Strict",
+          "image_match": "verified_cn_en_alias",
+          "artwork": {
+            "file": "assets/400447f06d1e72ee537575994d41f2f2.jpg",
+            "source_url": "https://azurlane.koumakan.jp/wiki/The_Strict_Maid_Isn%E2%80%99t_So_Strict"
+          }
+        },
+        {
+          "id": "page-230592-section-1",
+          "title": "自选轻量复刻",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-10-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "10月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-15T02:00:00Z",
+            "state": "exact",
+            "raw": "10月15日维护",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B410%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：1. 开启限时活动「自选轻量复刻」，活动时间10月8日维护后~10月15日维护",
+          "evidence": {
+            "page_title": "2026年10月8日10:00港区改建",
+            "revision_id": 417122,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B410%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=417122",
+            "line": 14,
+            "time_text": "1. 开启限时活动「自选轻量复刻」，活动时间10月8日维护后~10月15日维护",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "image_url": "https://patchwiki.biligame.com/images/blhx/a/a4/8yq98tavcux0rzbfoxp564wlz51v3dm.png",
+          "image_source": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E8%87%AA%E9%80%89%E8%BD%BB%E9%87%8F%E5%A4%8D%E5%88%BB%E7%95%8C%E9%9D%A2.png",
+          "image_match": "exact_cn_activity",
+          "artwork": {
+            "file": "assets/f687644ce68adb7c409e0694876a5534.png",
+            "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E8%87%AA%E9%80%89%E8%BD%BB%E9%87%8F%E5%A4%8D%E5%88%BB%E7%95%8C%E9%9D%A2.png"
+          }
+        },
+        {
+          "id": "page-230187-section-6",
+          "title": "世界巡游 · 第三十一期",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-30T16:00:00Z",
+            "state": "exact",
+            "raw": "10月1日 00:00",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-11-30T15:59:00Z",
+            "state": "exact",
+            "raw": "11月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%8824%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：6.开启新一期「世界巡游」活动，活动时间10月1日 00:00~11月30日23:59",
+          "evidence": {
+            "page_title": "2026年9月24日10:00港区改建",
+            "revision_id": 415901,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%8824%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=415901",
+            "line": 45,
+            "time_text": "6.开启新一期「世界巡游」活动，活动时间10月1日 00:00~11月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [],
+          "image_url": "https://patchwiki.biligame.com/images/blhx/2/2e/6dn98wi6r35jka0sap6nqr7gdzsggtr.png",
+          "image_source": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E4%B8%96%E7%95%8C%E5%B7%A1%E6%B8%B820261001.png",
+          "image_match": "exact_cn_activity",
+          "artwork": {
+            "file": "assets/9d2226350353a81988c5e543f14a8389.png",
+            "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E4%B8%96%E7%95%8C%E5%B7%A1%E6%B8%B820261001.png"
+          }
+        },
+        {
+          "id": "page-230187-section-9",
+          "title": "限界挑战：天秤座",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-30T16:00:00Z",
+            "state": "exact",
+            "raw": "10月1日00:00",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-31T15:59:00Z",
+            "state": "exact",
+            "raw": "10月31日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%8824%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：9.开启限时复刻活动「限界挑战：天秤座」，活动时间10月1日00:00~10月31日23:59",
+          "evidence": {
+            "page_title": "2026年9月24日10:00港区改建",
+            "revision_id": 415901,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%8824%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=415901",
+            "line": 71,
+            "time_text": "9.开启限时复刻活动「限界挑战：天秤座」，活动时间10月1日00:00~10月31日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [],
+          "image_url": "https://patchwiki.biligame.com/images/blhx/2/21/cs9aqw1rmnrj9ink6pe8snina6dr4oz.jpg",
+          "image_source": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%A4%A9%E7%A7%A4%E5%BA%A7%E9%99%90%E7%95%8C%E5%AF%B9%E6%89%8B.jpg",
+          "image_match": "exact_cn_activity",
+          "artwork": {
+            "file": "assets/001911fdec2e9134c6485d366beb2339.png",
+            "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%A4%A9%E7%A7%A4%E5%BA%A7%E9%99%90%E7%95%8C%E5%AF%B9%E6%89%8B.jpg"
+          }
+        },
+        {
+          "id": "page-228604-section-1",
+          "title": "幽影迷城",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：1.开启限时大型活动「幽影迷城」，活动时间9月8日维护后~9月30日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 15,
+            "time_text": "1.开启限时大型活动「幽影迷城」，活动时间9月8日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "image_url": "https://patchwiki.biligame.com/images/blhx/1/1b/oou92llr22z10bry4qe4q1y1v1x7xks.jpg",
+          "image_source": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg",
+          "image_match": "exact_cn_activity",
+          "artwork": {
+            "file": "assets/01c4dbfdb7a57ddfe831773e429eea98.jpg",
+            "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg"
+          }
+        },
+        {
+          "id": "page-228604-section-1-shop",
+          "title": "幽影迷城 · 活动商店",
+          "category": "exchange",
+          "subtype": "奖励兑换",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-07T15:59:00Z",
+            "state": "exact",
+            "raw": "10月7日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：兑换开放时间：9月8日维护后~10月7日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 71,
+            "time_text": "兑换开放时间：9月8日维护后~10月7日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "parent_id": "page-228604-section-1",
+          "image_url": "https://patchwiki.biligame.com/images/blhx/1/1b/oou92llr22z10bry4qe4q1y1v1x7xks.jpg",
+          "image_source": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg",
+          "image_match": "exact_cn_activity",
+          "artwork": {
+            "file": "assets/01c4dbfdb7a57ddfe831773e429eea98.jpg",
+            "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg"
+          }
+        },
+        {
+          "id": "page-228604-section-1-claim",
+          "title": "幽影迷城 · 累计奖励领取",
+          "category": "exchange",
+          "subtype": "奖励领取",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-07T15:59:00Z",
+            "state": "exact",
+            "raw": "10月7日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：※奖励领取界面将保留至10月7日23:59；",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 99,
+            "time_text": "※奖励领取界面将保留至10月7日23:59；",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "parent_id": "page-228604-section-1",
+          "image_url": "https://patchwiki.biligame.com/images/blhx/1/1b/oou92llr22z10bry4qe4q1y1v1x7xks.jpg",
+          "image_source": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg",
+          "image_match": "exact_cn_activity",
+          "artwork": {
+            "file": "assets/01c4dbfdb7a57ddfe831773e429eea98.jpg",
+            "source_url": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6%3A%E5%B9%BD%E5%BD%B1%E8%BF%B7%E5%9F%8E%E5%A4%B4%E5%9B%BE.jpg"
+          }
+        },
+        {
+          "id": "page-228604-section-2",
+          "title": "异常的日常进行中",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：2.开启限时活动「异常的日常进行中」，活动时间9月8日维护后~9月30日23:59\n英文 Wiki 仅补充已核对头图，不采用其外服时间。图内日期/文案可能属于外服。",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 112,
+            "time_text": "2.开启限时活动「异常的日常进行中」，活动时间9月8日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "image_url": "https://azurlane.netojuu.com/images/9/9a/A_Slightly_Paranormal_State_of_Affairs_Event_Banner_EN.jpg",
+          "image_source": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+          "image_match": "verified_cn_en_alias",
+          "artwork": {
+            "file": "assets/f64d8d544bbf4190f02950ed6fc8dc18.jpg",
+            "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal"
+          }
+        },
+        {
+          "id": "page-228604-section-3",
+          "title": "幽影收容协议",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：3.开启限时活动「幽影收容协议」，活动时间9月8日维护后~9月30日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 143,
+            "time_text": "3.开启限时活动「幽影收容协议」，活动时间9月8日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ]
+        },
+        {
+          "id": "page-228604-section-4",
+          "title": "特别庆典再开",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：4.开启限时活动「特别庆典再开」，活动时间9月8日维护后~9月30日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 150,
+            "time_text": "4.开启限时活动「特别庆典再开」，活动时间9月8日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ]
+        },
+        {
+          "id": "page-228604-section-5",
+          "title": "特别纪念签到",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：5.开启限时活动「特别纪念签到」，活动时间9月8日维护后~9月30日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 159,
+            "time_text": "5.开启限时活动「特别纪念签到」，活动时间9月8日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ]
+        },
+        {
+          "id": "page-228604-section-10",
+          "title": "限定祈愿建造",
+          "category": "gacha",
+          "subtype": "限时建造",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：10.开启限时活动「限定祈愿建造」，活动时间9月8日维护后~9月30日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 316,
+            "time_text": "10.开启限时活动「限定祈愿建造」，活动时间9月8日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ]
+        },
+        {
+          "id": "page-228604-section-11",
+          "title": "司令部动员指令",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：11.开启限时活动「司令部动员指令」，活动时间9月8日维护后~9月30日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 331,
+            "time_text": "11.开启限时活动「司令部动员指令」，活动时间9月8日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ]
+        },
+        {
+          "id": "page-228604-section-12",
+          "title": "新人指挥官双倍经验活动",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-08T08:00:00Z",
+            "state": "estimated",
+            "raw": "9月8日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-31T15:59:00Z",
+            "state": "exact",
+            "raw": "10月31日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：12.开启限时活动「新人指挥官双倍经验活动」，活动时间9月8日维护后~10月31日23:59",
+          "evidence": {
+            "page_title": "2026年9月8日10:00港区改建",
+            "revision_id": 413404,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%888%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=413404",
+            "line": 346,
+            "time_text": "12.开启限时活动「新人指挥官双倍经验活动」，活动时间9月8日维护后~10月31日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ]
+        },
+        {
+          "id": "page-228290-section-1",
+          "title": "作战准备：新纪元都市NO.7",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-04T07:00:00Z",
+            "state": "estimated",
+            "raw": "9月4日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-10-07T15:59:00Z",
+            "state": "exact",
+            "raw": "10月7日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：1.开启限时活动「作战准备：新纪元都市NO.7」，活动时间9月4日维护后~10月7日23:59，共分为2个阶段\n英文 Wiki 仅补充已核对头图，不采用其外服时间。图内日期/文案可能属于外服。",
+          "evidence": {
+            "page_title": "2026年9月4日10:00港区改建",
+            "revision_id": 412677,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=412677",
+            "line": 13,
+            "time_text": "1.开启限时活动「作战准备：新纪元都市NO.7」，活动时间9月4日维护后~10月7日23:59，共分为2个阶段",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "image_url": "https://azurlane.netojuu.com/images/0/0a/Call_to_Arms_New_Era_City_No._7_Event_Banner_EN.jpg",
+          "image_source": "https://azurlane.koumakan.jp/wiki/Call_to_Arms:_New_Era_City_No._7",
+          "image_match": "verified_cn_en_alias",
+          "artwork": {
+            "file": "assets/c56f7f44c4282d1df1b7efc7705e941a.jpg",
+            "source_url": "https://azurlane.koumakan.jp/wiki/Call_to_Arms:_New_Era_City_No._7"
+          }
+        },
+        {
+          "id": "page-228290-section-2",
+          "title": "闪耀的“魔法”",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-04T07:00:00Z",
+            "state": "estimated",
+            "raw": "9月4日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：2.开启限时活动「闪耀的“魔法”」，活动时间9月4日维护后~9月30日23:59\n英文 Wiki 仅补充已核对头图，不采用其外服时间。图内日期/文案可能属于外服。",
+          "evidence": {
+            "page_title": "2026年9月4日10:00港区改建",
+            "revision_id": 412677,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=412677",
+            "line": 20,
+            "time_text": "2.开启限时活动「闪耀的“魔法”」，活动时间9月4日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "image_url": "https://azurlane.netojuu.com/images/3/34/%C3%89clat_Magique_Event_Banner_EN.jpg",
+          "image_source": "https://azurlane.koumakan.jp/wiki/%C3%89clat_Magique",
+          "image_match": "verified_cn_en_alias",
+          "artwork": {
+            "file": "assets/1492e9e751708bd431e56d295909cb83.jpg",
+            "source_url": "https://azurlane.koumakan.jp/wiki/%C3%89clat_Magique"
+          }
+        },
+        {
+          "id": "page-228290-section-3",
+          "title": "信标·META · 萨拉托加·META",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-04T07:00:00Z",
+            "state": "estimated",
+            "raw": "9月4日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-12-10T02:00:00Z",
+            "state": "estimated",
+            "raw": "12月10日维护",
+            "precision": "minute",
+            "reference": "maintenance_start_fallback"
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：3.「信标·META」限时开放「萨拉托加·META」挑战，开放时间9月4日维护后~12月10日维护",
+          "evidence": {
+            "page_title": "2026年9月4日10:00港区改建",
+            "revision_id": 412677,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=412677",
+            "line": 23,
+            "time_text": "3.「信标·META」限时开放「萨拉托加·META」挑战，开放时间9月4日维护后~12月10日维护",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准",
+            "截止暂按该维护日国服时间 10:00（预计），具体活动情况请参考游戏官方时间；不触发精确截止提醒"
+          ]
+        },
+        {
+          "id": "page-228290-section-5",
+          "title": "Fight！都市求职大作战！",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-04T07:00:00Z",
+            "state": "estimated",
+            "raw": "9月4日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：5.开启限时活动「Fight！都市求职大作战！」，活动时间9月4日维护后~9月30日23:59\n英文 Wiki 仅补充已核对头图，不采用其外服时间。图内日期/文案可能属于外服。",
+          "evidence": {
+            "page_title": "2026年9月4日10:00港区改建",
+            "revision_id": 412677,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=412677",
+            "line": 30,
+            "time_text": "5.开启限时活动「Fight！都市求职大作战！」，活动时间9月4日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "image_url": "https://azurlane.netojuu.com/images/2/2d/Fight_On%21_The_Ultimate_Job-Hunting_Operation%21_Event_Banner_EN.jpg",
+          "image_source": "https://azurlane.koumakan.jp/wiki/Fight_On!_The_Ultimate_Job-Hunting_Operation!",
+          "image_match": "verified_cn_en_alias",
+          "artwork": {
+            "file": "assets/4a558a2f0c24d4ce60b0b2f396989a2e.jpg",
+            "source_url": "https://azurlane.koumakan.jp/wiki/Fight_On!_The_Ultimate_Job-Hunting_Operation!"
+          }
+        },
+        {
+          "id": "page-228290-section-6",
+          "title": "蓝图补完计划 · 那不勒斯",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-04T07:00:00Z",
+            "state": "estimated",
+            "raw": "9月4日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-30T15:59:00Z",
+            "state": "exact",
+            "raw": "9月30日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：6.「科研」系统开启蓝图补完计划「那不勒斯」，活动时间9月4日维护后~9月30日23:59\n英文 Wiki 仅补充已核对头图，不采用其外服时间。图内日期/文案可能属于外服。",
+          "evidence": {
+            "page_title": "2026年9月4日10:00港区改建",
+            "revision_id": 412677,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=412677",
+            "line": 34,
+            "time_text": "6.「科研」系统开启蓝图补完计划「那不勒斯」，活动时间9月4日维护后~9月30日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ],
+          "image_url": "https://azurlane.netojuu.com/images/6/6f/PR7_Catchup_Napoli_Event_Banner_EN.jpg",
+          "image_source": "https://azurlane.koumakan.jp/wiki/Blueprint_Completion_Plan#Napoli",
+          "image_match": "verified_cn_en_alias",
+          "artwork": {
+            "file": "assets/420aaf1da16aab9783bd8ffa5418e096.jpg",
+            "source_url": "https://azurlane.koumakan.jp/wiki/Blueprint_Completion_Plan#Napoli"
+          }
+        },
+        {
+          "id": "page-228290-section-7",
+          "title": "限时兵装训练",
+          "category": "event",
+          "subtype": "国服限时活动",
+          "start": {
+            "at": "2026-09-04T07:00:00Z",
+            "state": "estimated",
+            "raw": "9月4日维护后",
+            "precision": "minute",
+            "reference": null
+          },
+          "end": {
+            "at": "2026-09-10T15:59:00Z",
+            "state": "exact",
+            "raw": "9月10日23:59",
+            "precision": "minute",
+            "reference": null
+          },
+          "source_url": "https://wiki.biligame.com/blhx/2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA",
+          "description": "国服公告时间：P.S.：还开启了限时兵装训练活动，活动时间9月4日维护后~9月10日23:59",
+          "evidence": {
+            "page_title": "2026年9月4日10:00港区改建",
+            "revision_id": 412677,
+            "revision_url": "https://wiki.biligame.com/blhx/index.php?title=2026%E5%B9%B49%E6%9C%884%E6%97%A510%3A00%E6%B8%AF%E5%8C%BA%E6%94%B9%E5%BB%BA&oldid=412677",
+            "line": 39,
+            "time_text": "P.S.：还开启了限时兵装训练活动，活动时间9月4日维护后~9月10日23:59",
+            "timezone": "Asia/Shanghai"
+          },
+          "warnings": [
+            "开始为公告预计维护结束，实际开服请以游戏通知为准"
+          ]
+        }
+      ],
+      "analysis": {
+        "strategy": "bwiki_cn_bulletins_with_verified_wiki_artwork",
+        "ai_used": false,
+        "event_count": 20,
+        "announcements": 6,
+        "fetched_at": "2026-10-19T21:29:23Z",
+        "timezone": "Asia/Shanghai",
+        "english_dates_used": false,
+        "artwork_count": 12
+      }
+    }
+  ]
+}

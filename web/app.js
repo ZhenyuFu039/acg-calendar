@@ -77,7 +77,7 @@
   }
   function gameIcon(game) {
     const info=W.game(game), path=info?.icon;
-    return path && /^\/assets\/[a-zA-Z0-9_.-]+$/.test(path) ? `<img class="game-icon" src="${esc(path)}" alt="${esc(info.name)}" decoding="async">` : `<span class="game-icon game-monogram-fallback" aria-label="${esc(info?.name||game)}">${esc(info?.monogram||'?')}</span>`;
+    return path && /^(?:\/assets\/[a-zA-Z0-9_.-]+|\/api\/artwork\/[a-f0-9]{32}\.(?:png|jpg|webp))$/.test(path) ? `<img class="game-icon" src="${esc(path)}" alt="${esc(info.name)}" decoding="async">` : `<span class="game-icon game-monogram-fallback" aria-label="${esc(info?.name||game)}">${esc(info?.monogram||'?')}</span>`;
   }
 
   function accent(event) {
@@ -112,7 +112,7 @@
     const other=r.other_mentions.map(c=>`<li><strong>${esc(c.reason)}</strong> · ${c.amount===null?'数量未明确':rewardNumber(c.amount)}<details><summary>原文</summary><p>${esc(c.text)}</p><a href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">官方公告 ↗</a></details></li>`).join('');
     const conflicts=r.conflicts.map(c=>`<li>${esc(c.title)}：公告 ${rewardNumber(c.announcement)} / 导览 ${rewardNumber(c.briefing)}，采用公告数量。</li>`).join('');
     $('#reward-content').innerHTML=`<div class="reward-dialog-total">${rewardIcon}<strong>${rewardNumber(r.verified_total)}</strong><span>已核实小计</span></div><p class="help-text">${esc(r.scope)}<br>统计活动可获得总量，非账号未领取余额。公告未列明数量的条目不按零计算；导览数量为 1 的展示占位不计数。</p>${rows}${conflicts?'<h3>来源数量差异</h3><ul class="reward-sources">'+conflicts+'</ul>':''}<h3>公告未列明数量 · ${r.unlisted.length} 项</h3><p class="help-text">${r.unlisted.map(e=>esc(e.title)).join('；')||'无'}。未列明不代表奖励为零。</p>${other?'<h3>未纳入活动小计</h3><ul class="reward-sources">'+other+'</ul>':''}`;
-    $('#reward-dialog').showModal();
+    openDialog('#reward-dialog');
   }
   function filteredEvents() {
     const query=($('#event-search')?.value||'').trim().toLocaleLowerCase();
@@ -330,7 +330,15 @@
   }
   function openDialog(selector) {
     const dialog=$(selector);
+    addOfficialTimeNotice(dialog);
     if(!dialog.open) dialog.showModal();
+  }
+  function addOfficialTimeNotice(dialog) {
+    const body=dialog.querySelector('.dialog-body');
+    if(body&&!body.querySelector('.dialog-official-time-notice')) {
+      const note=document.createElement('p');note.className='official-time-notice dialog-official-time-notice';
+      note.textContent='具体活动情况请参考游戏官方时间';body.prepend(note);
+    }
   }
   function openEvent(id) {
     const event=allEvents().find(e=>e.id===id);
@@ -359,6 +367,26 @@
     $('#detail-content').innerHTML=`<div class="dialog-header"><div><div class="eyebrow">${esc(event.version_name)} / ${esc(cat.name)}</div><h2 id="detail-title">${esc(cleanTitle(event))}</h2><div class="detail-meta"><span class="tag">${esc(status(event))}</span><span class="tag neutral">${esc(event.subtype)}</span>${event.has_overrides?'<span class="tag warning">已手动校正</span>':''}</div></div><button class="icon-button" type="button" data-close aria-label="关闭活动详情">×</button></div><div class="dialog-body">${artwork(event,'detail-hero')}<div class="help-text">你的时间 · ${esc(zone())}</div><div class="detail-time-grid"><div><div class="detail-time-label">开始</div>${endpointDetail(event.start,'start',event)}</div><div><div class="detail-time-label">${event.time_kind==='point'?'类型':'结束'}</div>${endpointDetail(event.end,'end',event)}</div></div><div class="detail-countdown"><span>${countLabel}</span><strong>${esc(countValue)}</strong></div><div class="help-text">来源时区（${esc(serverZone)}）：${event.start.at?esc(format(event.start.at,{timeZone:serverZone,year:true})):'开始待定'} → ${event.end.at?esc(format(event.end.at,{timeZone:serverZone,year:true})):event.time_kind==='point'?'更新节点':'结束待定'}</div>${phases}${rewardDetail(event)}${event.description?'<p class="detail-description">'+esc(event.description)+'</p>':''}${requirements}${event.warnings.length?'<p class="form-error">'+esc(event.warnings.join('；'))+'</p>':''}<div class="detail-actions"><button id="toggle-completed" class="button ${event.completed?'':'button-primary'}" type="button" aria-pressed="${event.completed}">${event.completed?'已完成 · 撤销':'标记已完成'}</button><button id="toggle-starred" class="button" type="button" aria-pressed="${event.starred}">${event.starred?'★ 已收藏':'☆ 收藏置顶'}</button><button id="open-event-reminders" class="button" type="button">提醒设置</button></div><label class="field-label" for="event-reminder">这个活动的提醒</label><select id="event-reminder"><option value="follow">跟随全局设置</option><option value="off">不提醒</option><option value="4320">结束前 3 天</option><option value="1440">结束前 24 小时</option><option value="60">结束前 1 小时</option>${chosen==='custom'?'<option value="custom">自定义提前量（保留）</option>':''}</select>${maintenance}<details class="source-box"><summary>查看公告原文与解析依据</summary><p class="help-text">${esc(event.source.time_label)}：${esc(event.source.time_text)}<br>标准化正文第 ${event.source.line} 行 · 规则解析，未调用 AI</p><pre>${esc(event.source.block_text)}</pre></details><a class="source-link" href="${esc(event.source.url)}" target="_blank" rel="noopener noreferrer">阅读官方公告 ↗</a><details class="edit-section"><summary>手动校正与备注</summary><p class="help-text">以下校正日期均使用 UTC。手动校正独立保存，同步公告不会覆盖。留空会恢复对应的公告时间。</p><form id="event-edit-form"><div class="edit-fields"><label>开始时间<input id="edit-start" type="datetime-local" value="${sourceInput(event.start.at)}" data-initial="${sourceInput(event.start.at)}"></label><label>结束时间<input id="edit-end" type="datetime-local" value="${sourceInput(event.end.at)}" data-initial="${sourceInput(event.end.at)}"></label></div><label class="field-label" for="edit-notes">我的备注</label><textarea id="edit-notes" maxlength="2000" placeholder="例如：周末完成剧情，兑换留到最后一天">${esc(event.notes)}</textarea><div class="edit-actions"><button class="button button-primary" type="submit">保存校正</button><button id="reset-event-times" class="text-button" type="button">恢复公告时间</button></div><div id="edit-error" class="form-error" role="alert" hidden></div></form></details></div>`;
     $('#event-reminder').value=chosen;
     if(event.source.kind==='local_json') $('#detail-content .source-link').textContent='阅读插件标注来源 ↗';
+    if(event.source.kind==='zzz_official') {
+      const evidence=event.source.evidence||{}, wiki=evidence.wiki;
+      const panel=document.createElement('section');panel.className='wiki-evidence';
+      panel.innerHTML=`<strong>绝区零官网 · 国服时间</strong><p>${esc(evidence.official_title)}<br>按公告正文活动时间解析；维护预计完成时间保留预计标记。</p><a href="${esc(evidence.maintenance_url)}" target="_blank" rel="noopener noreferrer">对应版本维护公告 ↗</a>${wiki?` · <a href="${esc(wiki.revision_url)}" target="_blank" rel="noopener noreferrer">BWIKI 头图依据 · 修订 ${esc(wiki.revision)}</a> · <a href="${esc(wiki.license.url)}" target="_blank" rel="noopener noreferrer">${esc(wiki.license.name)}</a>`:''}`;
+      $('#detail-content .source-link').after(panel);
+    }
+    if(event.source.kind==='azurlane_wiki') {
+      $('#detail-content .source-link').textContent='阅读 BWIKI 国服公告 ↗';
+      $('#detail-content .source-box summary').textContent='查看国服时间与 Wiki 修订依据';
+      const panel=document.createElement('section');panel.className='wiki-evidence';
+      panel.innerHTML=`<strong>BWIKI · 碧蓝航线国服</strong><p>国服公告决定起止时间；英文 Wiki 仅补充已核对的活动头图。已知维护日期、尚无明确时刻的截止暂按当天国服时间 10:00，并标为预计。</p><a href="${esc(event.source.evidence?.revision_url||event.source.url)}" target="_blank" rel="noopener noreferrer">查看公告固定修订 ↗</a>${event.artwork?.source_url?`<br><a href="${esc(event.artwork.source_url)}" target="_blank" rel="noopener noreferrer">查看头图出处 ↗</a>`:''}`;
+      $('#detail-content .source-link').after(panel);
+    }
+    if(event.source.kind==='gamekee') {
+      $('#detail-content .source-link').textContent='阅读 GameKee 来源公告 ↗';
+      $('#detail-content .source-box summary').textContent='查看 GameKee 时间依据与原始记录';
+      const panel=document.createElement('section');panel.className='wiki-evidence';
+      panel.innerHTML=`<strong>GameKee · ${esc(W.game(event.game)?.server||'')}</strong><p>${event.source.evidence?.basis==='notice'?'按公告段落解析；公告明确时间优先于日历卡片，维护后开放仍为预计。':'仅有社区日历时间，公告尚未核对；不触发精确截止提醒。'}<br>社区整理与转载资料，当前未标为官方网站来源。</p><a href="${esc(event.source.calendar_url)}" target="_blank" rel="noopener noreferrer">查看来源活动日历 ↗</a>`;
+      $('#detail-content .source-link').after(panel);
+    }
     if(event.source.kind==='community_wiki') {
       $('#detail-content .source-box summary').textContent='查看 PRTS 原文与解析依据';
       const link=$('#detail-content .source-link');link.textContent='阅读 PRTS 活动页面 ↗';
@@ -379,6 +407,7 @@
       panel.innerHTML=`<strong>官方版本导览 · ${esc(source.title)}</strong><p>国服时间依据：${esc(start)} → ${esc(end)}</p><p>${source.match==='parent_activity'?'关联到同一玩法的素材，当前阶段时间沿用更新公告。':source.conflicts.length?'两份官方来源的时间存在差异，当前保留版本更新公告时间。':'已与版本更新公告核对；维护相关时间仍保留待确认标记。'}</p><a class="source-link" href="${esc(source.news_url)}" target="_blank" rel="noopener noreferrer">阅读导览上线公告 ↗</a> <a class="source-link" href="${esc(source.source_url)}" target="_blank" rel="noopener noreferrer">打开官方导览（入口随版本更新）↗</a>`;
       $('#detail-content .source-link').after(panel);
     }
+    addOfficialTimeNotice($('#detail-dialog'));
   }
   function openAgenda(day) {
     const events=filteredEvents().filter(e=>overlaps(e,day,day+1)).sort((a,b)=>Date.parse(a.start.at)-Date.parse(b.start.at));

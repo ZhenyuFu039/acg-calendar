@@ -40,6 +40,8 @@ public sealed partial class CalendarWindow
         SaveRender("bubble-settings.png");
         collapseSidebar.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
         showAll = false; selected = null; Render();
+        // Prior game switches can retain a scroll offset; sample a visible card.
+        cardScroll.ScrollToTop();
         await Dispatcher.InvokeAsync(() => { }, DispatcherPriority.Render);
         var capture = CaptureRender();
         if (Alpha(capture, new Point(0, 0)) != 0) throw new Exception("Bubble mode has an opaque window background");

@@ -1,14 +1,36 @@
 # 游时 · Playtime
 
-当前版本：**V0.0.5** · [更新记录](CHANGELOG.md) · [待完成功能](TODO.md) · [架构说明](docs/architecture.md) · [插件接口](docs/plugins.md)
+当前版本：**V0.0.7** · [更新记录](CHANGELOG.md) · [待完成功能](TODO.md) · [架构说明](docs/architecture.md) · [插件接口](docs/plugins.md)
 
-本地运行的游戏活动日历 Demo，支持 **明日方舟：终末地国服**与 **明日方舟国服**。终末地读取官方公告和版本导览，明日方舟读取用户指定的 PRTS 社区 Wiki；不依赖 AI API、游戏账号或云端数据库。
+本地运行的游戏活动日历 Demo，现支持下列五款游戏与区服；不依赖 AI API、游戏账号或云端数据库。
+
+| 游戏 | 区服 | 来源与接入方式 |
+| --- | --- | --- |
+| 明日方舟：终末地 | 国服 | 内置；官网更新公告与版本导览 |
+| 明日方舟 | 国服 | 内置；PRTS 活动信息，官网补充头图 |
+| 胜利女神：NIKKE | 国际服 | `nikke-global`；GameKee 活动日历与公告 |
+| 碧蓝航线 | 国服 | `azurlane-cn`；BWIKI 公告，英文 Wiki 已核对头图 |
+| 绝区零 | 国服 | `zzz-cn`；官网公告及头图，BWIKI 精确匹配补图 |
+
+源码用户将所需插件安装到 `data/plugins/` 后重启；V0.0.7 Windows 包已提供三个插件。可自选任意游戏组合查看整体时间线。完整来源致谢、非商业用途与免责声明见 [开发文档](docs/development.md)。
+
+当前源码另提供 [NIKKE 国际服插件](plugins/nikke-global/README.md)：读取用户指定的 GameKee 外服日历与更新公告，提供 Logo、头图、公告时间优先规则及离线活动 JSON。将完整插件目录安装到 `data/plugins/` 后重启启用；V0.0.7 已包含所需采集引擎和本地插件图片支持。
+
+[碧蓝航线国服插件](plugins/azurlane-cn/README.md)通过 BWIKI 活动表发现国服公告，使用英文 Azur Lane Wiki 专题补充已核对头图，时间统一以国服公告为准；当前真实快照含 20 条活动、12 条带图。支持相同的安装方式、游戏组合、时区和提醒。
+
+[绝区零国服插件](plugins/zzz-cn/README.md)优先读取官网中文公告正文与独立活动图片，BWIKI 仅在名称和精确区间完全匹配时补图；当前快照覆盖 3.2、3.3 两个版本，共 25 条记录、23 条官方头图。“版本更新后”按对应维护公告计算并保留预计状态，不以新闻发布时间或商城下架日期推算。支持相同的本地安装、组合时间线与提醒。
 
 左侧“日历游戏”可选择单款、全部游戏，或展开“自选游戏组合”勾选任意游戏。各游戏共用日期轴，保留区服与来源；后台提醒覆盖全部已安装游戏，不受页面筛选影响。网页与桌面端都从适配器注册表生成游戏选项，支持本地 JSON 数据插件。活动详情可收藏置顶；网页侧栏支持排序、分组与隐藏未开放活动，桌面端使用同一排序结果。[明日方舟与 Wiki 数据源说明](docs/wiki-sources.md)。
 
-![明日方舟国服日历](docs/arknights-calendar.png)
+## V0.0.7 当前页面
 
-![终末地活动日历](docs/demo-preview.png)
+五游戏组合时间轴：
+
+![五游戏组合时间轴](docs/screenshots/v0.0.7-timeline.png)
+
+活动详情与独立头图：
+
+![活动详情](docs/screenshots/v0.0.7-detail.png)
 
 ## 启动
 
@@ -16,7 +38,7 @@ Windows 桌面版：双击项目根目录的 **`Playtime.cmd`**，或运行 `./s
 
 桌面构建位于 `dist/desktop/build-*/Playtime.exe`，启动器自动选择最新构建；桌面端需要 .NET 10 Desktop Runtime 和 Python 3.11+。从源码首次构建需要 .NET 10 SDK，启动脚本会自动编译。详细操作、构建和系统日历边界见 [Windows 桌面版](docs/windows-desktop.md)。
 
-![桌面挂件](docs/desktop-widget.png)
+![桌面端侧栏与活动卡片](docs/screenshots/v0.0.7-desktop.png)
 
 以下为原有网页模式的启动方式：
 
@@ -88,6 +110,7 @@ python app.py --no-desktop
 
 - **“本版本更新后”**：关联本次维护的预计结束时间，标为“预计 / 待核实”。在“查看维护时间”中记录实际开服时刻后，相关条目一起更新。
 - **“版本更新维护前”**：尚无下一次维护公告时保持待定；本地数据库收到后续版本的维护开始时间后自动关联。
+- **已给出维护日期、未给具体时刻的截止**：按用户指定暂定为该日区服时间 10:00，并标为预计；明确维护公告优先。没有维护日期仍保持待定。所有活动详情和页面右上角提示“具体活动情况请参考游戏官方时间”。
 - **“于 3 次特许寻访后结束”**：保留周期条件，暂不按版本长度推算日期。
 - **“活动内容更新时间”**：保存为该活动的阶段节点。
 - **兑换商店**：独立条目，避免与活动本身的截止日期混用。
@@ -155,6 +178,9 @@ python -m unittest discover -s tests -p "test_*.py" -v
 node tests/e2e.cjs
 node tests/e2e-multigame.cjs
 node tests/e2e-architecture.cjs
+node tests/e2e-nikke.cjs
+node tests/e2e-azurlane.cjs
+node tests/e2e-zzz.cjs
 ```
 
 如 Python 或 Playwright 不在默认路径，可设置 `CALENDAR_PYTHON` 和 `PLAYWRIGHT_MODULE`。也可通过 `CALENDAR_TEST_URL` 指向已有的**测试实例**；此时测试会修改该实例的个人状态。
@@ -169,4 +195,4 @@ node tests/e2e-architecture.cjs
 
 网站改版或公告格式变化时，需要更新对应规则或解析器。遇到无法识别的结构会保留现有数据，并显示同步失败；单个活动的歧义可先通过手动校正解决。
 
-代码采用 [MIT License](LICENSE)。官方公告样例、游戏名称与公告内容的权利归原权利人所有，参见 [NOTICE](NOTICE.md)。本项目与鹰角网络无隶属关系。
+本项目以个人非商业学习、研究与本地时间规划为目的。源码采用 [MIT License](LICENSE)；此用途声明不修改 MIT，也不授予第三方内容的商业使用权。游戏公告、图片、商标与 Wiki 内容须遵守各自来源许可，参见 [NOTICE](NOTICE.md) 和 [网站致谢、非商业用途与免责声明](docs/development.md)。具体活动情况请参考游戏官方时间。

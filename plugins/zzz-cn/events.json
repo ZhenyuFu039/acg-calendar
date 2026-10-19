@@ -1,0 +1,886 @@
+{
+  "schema_version": 1,
+  "versions": [
+    {
+      "id": "version-3.2",
+      "name": "3.2版本",
+      "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166000",
+      "maintenance": {
+        "version": "3.2",
+        "start": {
+          "at": "2026-09-08T22:00:00Z",
+          "state": "exact",
+          "raw": "2026/09/09 06:00"
+        },
+        "url": "https://zenless.hoyoverse.com/zh-cn/news/166000",
+        "title": "3.2版本「她与她的隐秘往事」更新公告",
+        "ready": {
+          "at": "2026-09-09T03:00:00Z",
+          "state": "estimated",
+          "raw": "维护预计5小时"
+        },
+        "end": {
+          "at": "2026-10-20T22:00:00Z",
+          "state": "exact",
+          "raw": "2026/10/21 06:00"
+        }
+      },
+      "events": [
+        {
+          "id": "official-166664-event",
+          "title": "「数据悬赏-实战模拟」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-10-13T20:00:00Z",
+            "state": "exact",
+            "raw": "2026/10/14 04:00"
+          },
+          "end": {
+            "at": "2026-10-18T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/19 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166664",
+          "description": "【活动时间】\n2026/10/14 04:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）\n【参与条件】\n在主线第一章「猫的失物」中解锁「实战模拟室」后即可参与。\n【活动说明】\n• 「数据悬赏-实战模拟」活动期间，绳匠进入「实战模拟室」，选择任意怪物卡并成功通过挑战，即可获得双倍奖励！\n• 活动期间，每日可增益5张怪物卡，增益效果将在每日04:00（服务器时间）重置。",
+          "warnings": [],
+          "evidence": {
+            "official_title": "「数据悬赏-实战模拟」活动说明",
+            "official_id": 166664,
+            "published_at": "2026-10-12 12:00:00",
+            "time_text": "2026/10/14 04:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166664/4ef65b738ac15e2deb365868ae70c8ab_2983461591411398929.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166664",
+          "artwork": {
+            "file": "assets/ee2ed356c4b7f517b8bb2220f48ee221.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166664"
+          }
+        },
+        {
+          "id": "official-166498-event",
+          "title": "「跛脚乌鸦奇探录」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-10-03T02:00:00Z",
+            "state": "exact",
+            "raw": "2026/10/03 10:00"
+          },
+          "end": {
+            "at": "2026-10-18T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/19 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166498",
+          "description": "【活动时间】\n2026/10/03 10:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）\n【参与条件】\n绳网等级≥20级，完成主线第一章·幕间后即可参与。\n【玩法说明】\n• 活动期间，绳匠将会与侦探社的科洛和阿跛一起，调查罗斯凯利法「萝卜」走私案，挖掘其背后的真相。\n• 活动包含「秘密接头」、「物流卧底」、「口岸排查」、「布控缉拿」、「针脚与真相」共5个委托事件，完成前一委托事件并达到指定时间后，即可解锁下一事件。\n• 完成活动委托，即可获得[菲林]、[邦布券]和各类养成材料奖励。",
+          "warnings": [],
+          "evidence": {
+            "official_title": "「跛脚乌鸦奇探录」活动说明",
+            "official_id": 166498,
+            "published_at": "2026-10-01 12:00:00",
+            "time_text": "2026/10/03 10:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166498/801579a8589b04bef42c4d475bc6ba81_9070677666140127897.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166498",
+          "artwork": {
+            "file": "assets/b09ed9b0c35c96233ce269ecfce930dd.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166498"
+          }
+        },
+        {
+          "id": "official-166476-event",
+          "title": "「锵锵！球仔成长日记」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-30T02:00:00Z",
+            "state": "exact",
+            "raw": "2026/09/30 10:00"
+          },
+          "end": {
+            "at": "2026-10-18T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/19 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166476",
+          "description": "【活动时间】\n2026/09/30 10:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）\n【参与条件】\n绳网等级≥20级，完成主线第一章·幕间后即可参与。\n【活动说明】\n•活动期间，绳匠将获赠一台名为「球仔进化论」 的游戏机，开启专属球仔养成计划；\n• 绳匠每日登录可获得2个[食物]，每日消耗30电量可获得1个[食物]，每日共计可获得3个[食物]。\n• 完成活动期间的限时奖励任务，即可获得[菲林]、称号[被选召的饲养员]和各类养成材料奖励。\n※ 完全体宠物将会保留到后续系列活动中，活动期间未完全养成的宠物将不会保留养成进度。",
+          "warnings": [],
+          "evidence": {
+            "official_title": "「锵锵！球仔成长日记」活动说明",
+            "official_id": 166476,
+            "published_at": "2026-09-28 12:30:00",
+            "time_text": "2026/09/30 10:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166476/3cb9766cf1ffc6f694c9257033575df5_4878917223056569186.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166476",
+          "artwork": {
+            "file": "assets/80e37050c5b0cf5fb170e33ed1460630.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166476"
+          }
+        },
+        {
+          "id": "official-166475-33d930864cd2",
+          "title": "「烬夜安眠」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-30T04:00:00Z",
+            "state": "exact",
+            "raw": "2026-09-30 12:00"
+          },
+          "end": {
+            "at": "2026-10-20T06:59:00Z",
+            "state": "exact",
+            "raw": "2026-10-20 14:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "description": "活动期间，限定S级代理人[洛克茜(风·击破)]以及默认A级代理人[可琳(物理·强攻)]、[比利(物理·强攻)]的调频获取概率将大幅提升！",
+          "warnings": [],
+          "evidence": {
+            "official_title": "3.2版本限时频段（下期）",
+            "official_id": 166475,
+            "published_at": "2026-09-28 12:15:00",
+            "time_text": "2026-09-30 12:00（服务器时间） ~ 2026-10-20 14:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166475/b061da78d4178b1765b0c8a8be006d05_6116310887377728409.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "artwork": {
+            "file": "assets/926bc9f634c9f488b21abaf47008d991.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475"
+          }
+        },
+        {
+          "id": "official-166475-c3e185425894",
+          "title": "「绯月银棺」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-30T04:00:00Z",
+            "state": "exact",
+            "raw": "2026-09-30 12:00"
+          },
+          "end": {
+            "at": "2026-10-20T06:59:00Z",
+            "state": "exact",
+            "raw": "2026-10-20 14:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "description": "活动期间，限定S级音擎[绯月银棺(击破)]以及默认A级音擎[家政员(强攻)]、[仿制星徽引擎(强攻)]的调频获取概率将大幅提升！",
+          "warnings": [],
+          "evidence": {
+            "official_title": "3.2版本限时频段（下期）",
+            "official_id": 166475,
+            "published_at": "2026-09-28 12:15:00",
+            "time_text": "2026-09-30 12:00（服务器时间） ~ 2026-10-20 14:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166475/3daed0c2e3b5576d400c9dbf3a8ab016_5444750547111332328.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "artwork": {
+            "file": "assets/0c70f245c61d7605c0bd6505a23da571.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475"
+          }
+        },
+        {
+          "id": "official-166475-4f59e9afe0e0",
+          "title": "「冷雨将尽之夜」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-30T04:00:00Z",
+            "state": "exact",
+            "raw": "2026-09-30 12:00"
+          },
+          "end": {
+            "at": "2026-10-20T06:59:00Z",
+            "state": "exact",
+            "raw": "2026-10-20 14:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "description": "活动期间，限定S级代理人[普罗米娅(冰·异常)]以及默认A级代理人[可琳(物理·强攻)]、[比利(物理·强攻)]的调频获取概率将大幅提升！",
+          "warnings": [],
+          "evidence": {
+            "official_title": "3.2版本限时频段（下期）",
+            "official_id": 166475,
+            "published_at": "2026-09-28 12:15:00",
+            "time_text": "2026-09-30 12:00（服务器时间） ~ 2026-10-20 14:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166475/746deae85c5ef4833ef661bae9db9da5_4361942052368190514.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "artwork": {
+            "file": "assets/b156961a404ad4134ed1aedd83409650.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475"
+          }
+        },
+        {
+          "id": "official-166475-ea38c0f2e147",
+          "title": "「朔月裁霜」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-30T04:00:00Z",
+            "state": "exact",
+            "raw": "2026-09-30 12:00"
+          },
+          "end": {
+            "at": "2026-10-20T06:59:00Z",
+            "state": "exact",
+            "raw": "2026-10-20 14:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "description": "活动期间，限定S级音擎[朔月裁霜(异常)]以及默认A级音擎[家政员(强攻)]、[仿制星徽引擎(强攻)]的调频获取概率将大幅提升！",
+          "warnings": [],
+          "evidence": {
+            "official_title": "3.2版本限时频段（下期）",
+            "official_id": 166475,
+            "published_at": "2026-09-28 12:15:00",
+            "time_text": "2026-09-30 12:00（服务器时间） ~ 2026-10-20 14:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166475/b0dfd6f25e2462fad1d71866d802493b_568320171008509828.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166475",
+          "artwork": {
+            "file": "assets/a9418727696f745e30f636202a8b5ef1.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166475"
+          }
+        },
+        {
+          "id": "official-166192-event",
+          "title": "「先遣赏金-区域巡防」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-22T20:00:00Z",
+            "state": "exact",
+            "raw": "2026/09/23 04:00"
+          },
+          "end": {
+            "at": "2026-09-27T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/09/28 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166192",
+          "description": "【活动时间】\n2026/09/23 04:00（服务器时间）~2026/09/28 03:59（服务器时间）\n【参与条件】\n绳网等级≥21级并完成绳网声望晋升任务「绳之道I」，且解锁「区域巡防」后即可参与。\n【活动说明】\n• 「先遣赏金-区域巡防」活动期间，绳匠进入「区域巡防」，挑战并通过任意关卡即可获得双倍奖励！\n• 活动期间，每日可增益2场挑战，增益效果将在每日04:00（服务器时间）重置。",
+          "warnings": [],
+          "evidence": {
+            "official_title": "「先遣赏金-区域巡防」活动说明",
+            "official_id": 166192,
+            "published_at": "2026-09-21 12:30:00",
+            "time_text": "2026/09/23 04:00（服务器时间）~2026/09/28 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166192/6f8c907de7aae2e6b1eb157b78701694_1851576465282802275.png",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166192",
+          "artwork": {
+            "file": "assets/eafc1228f472a510e91aeb741d66ce88.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166192"
+          }
+        },
+        {
+          "id": "official-166191-event",
+          "title": "「惊喜放映企划」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-23T02:00:00Z",
+            "state": "exact",
+            "raw": "2026/09/23 10:00"
+          },
+          "end": {
+            "at": "2026-10-19T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/20 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166191",
+          "description": "【活动时间】\n2026/09/23 10:00（服务器时间） ~ 2026/10/20 03:59（服务器时间）\n【参与条件】\n绳网等级≥5级，完成主线序章「兔与绳」并解锁「活动」功能后即可参与。\n【活动说明】\n• 「惊喜放映企划」活动期间，累计登录可获得「妄想天使」限定时装自选（可在时装[南宫羽·心动应援中]、时装[爱芮·萌力加载中]、时装[千夏·梦想营业中]任选其一）、活动专属头像[伊埃斯的新头像]、[菲林]等奖励！\n※每件时装绳匠仅能领取一次，不可重复领取；尚未拥有[千夏]、[爱芮]和[南宫羽]的绳匠依然可以领取时装，获得后可在代理人的「穿搭」界面中查看时装。\n• 绳匠满足累计登录条件后，需在「惊喜放映企划」活动页面领取对应奖励。\n• 所有奖励领取后，活动页面将于次日04:00（服务器时间）关闭。",
+          "warnings": [],
+          "evidence": {
+            "official_title": "「惊喜放映企划」活动说明",
+            "official_id": 166191,
+            "published_at": "2026-09-21 12:15:00",
+            "time_text": "2026/09/23 10:00（服务器时间） ~ 2026/10/20 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166191/dbd577e176f642f0b6c72d9019d32858_6607487750046539829.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166191",
+          "artwork": {
+            "file": "assets/96e9e961b8eaaff0b5d4ddbb88efcbfa.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166191"
+          }
+        },
+        {
+          "id": "official-166073-event",
+          "title": "「虚境逐影争锋」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-16T02:00:00Z",
+            "state": "exact",
+            "raw": "2026/09/16 10:00"
+          },
+          "end": {
+            "at": "2026-10-04T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/05 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166073",
+          "description": "【活动时间】\n2026/09/16 10:00（服务器时间） ~ 2026/10/05 03:59（服务器时间）\n【参与条件】\n绳网等级≥20级，完成主线第一章·幕间后即可参与。\n【活动说明】\n• 活动期间，绳匠可以前往光映广场，与南宫羽对话了解情况，并前往HIA俱乐部寻找莱娅，参与全新的VR挑战关卡。\n• 活动期间，将开放6个主题的「联合」关卡，以及3个「特战」关卡。\n• 活动期间，每日将会开放1个新的主题关卡；「特战」关卡也将随着活动进程推进，逐步开放。\n• 在「联合」关卡中，存在对应的「增益效果」机制；在「特战」关卡中，存在对应的「战术加持」机制；绳匠可以合理利用「增益效果」和「战术加持」，获得更高评价。\n• 在「联合」关卡中，绳匠可以选择关卡中提供的试用代理人与邦布参与挑战；而在「特战」关卡中，绳匠仅可使用关卡中提供的试用代理人参与挑战。\n• 「特战」关卡将使用全新的关卡得分机制。绳匠操作代理人在局内造成伤害和使用特定技巧将获得对应的分数；一定时间内，绳匠操作代理人[克拉蕾]连续使用各种技巧，将会累积技巧连击，技巧连击将给分数带来额外的倍率加成；技巧连击状态中，如果长时间未使用技巧，将失去技巧连击状态和倍率加成。\n• 「特战」关卡的局内得分由绳匠的「伤害得分」、「技巧得分」和关卡耗时对应的「时间系数」共同组成。\n• 完成活动挑战任务，可获得[调律校音器]、[菲林]等奖励。",
+          "warnings": [],
+          "evidence": {
+            "official_title": "「虚境逐影争锋」活动说明",
+            "official_id": 166073,
+            "published_at": "2026-09-14 12:00:00",
+            "time_text": "2026/09/16 10:00（服务器时间） ~ 2026/10/05 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166073/51f1b0217f31ff7a907456cc87ce02b0_6274669480959476184.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166073",
+          "artwork": {
+            "file": "assets/39084a3a15c7c7e620f73fd49c1becf2.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166073"
+          }
+        },
+        {
+          "id": "official-165998-event",
+          "title": "「『弹球勇者』哐哐当！」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-10T02:00:00Z",
+            "state": "exact",
+            "raw": "2026/09/10 10:00"
+          },
+          "end": {
+            "at": "2026-10-18T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/19 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165998",
+          "description": "【活动时间】\n2026/09/10 10:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）\n【参与条件】\n绳网等级≥20级，完成主线第一章·幕间后即可参与。\n【活动说明】\n• 活动开启后，绳匠可以前往「布衣客」和咔叽布对话，了解他的研究成果「弹球机」，和弹球勇者共同追求「美学」的真谛！\n• 活动期间，将逐步开放4个主题的「任务模式」；绳匠可使用不同的弹球，利用弹球桌的特殊机制，释放弹球的专属技能，击败敌人，保护基地，赢得胜利。\n• 完成「任务模式」关卡后，还将解锁对应的「挑战模式」关卡，绳匠可在战斗过程中获得专属词条加成，强化能力，击败强敌！\n• 推进活动委托、完成活动关卡，即可获得活动专属绳匠配饰「喵呜礼帽」、「格纹童话」、「银月之饰」&「星愿秘语」、「白夜信使」&「冒险手札」；还可获得[「仓鼠笼」访问器]、[菲林]和各类养成材料奖励。\n※推荐完成主线第三季·第二章「漫长的告别」后参与该活动，以获得最佳体验。",
+          "warnings": [],
+          "evidence": {
+            "official_title": "「『弹球勇者』哐哐当！」活动说明",
+            "official_id": 165998,
+            "published_at": "2026-09-08 13:30:00",
+            "time_text": "2026/09/10 10:00（服务器时间） ~ 2026/10/19 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165998/4c65637cd1f6e8aa5c4e5720cbe4592f_3277214264560457878.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165998",
+          "artwork": {
+            "file": "assets/d077d8f58756aeb03d556e96f47841cb.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165998"
+          }
+        },
+        {
+          "id": "official-165997-event",
+          "title": "「全新放送」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-10-19T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/20 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165997",
+          "description": "【活动时间】\n3.2版本更新后 ~ 2026/10/20 03:59（服务器时间）\n【参与条件】\n绳网等级≥5级，完成主线序章「兔与绳」并解锁「活动」功能后即可参与。\n【活动说明】\n• 「全新放送」活动期间，累计登录7天即可获得[加密母带]*10！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "「全新放送」活动说明",
+            "official_id": 165997,
+            "published_at": "2026-09-08 13:15:00",
+            "time_text": "3.2版本更新后 ~ 2026/10/20 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165997/a483db66252b82d2c4cc0a9cc7e512b7_2795724419658687491.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165997",
+          "artwork": {
+            "file": "assets/619e22261938a7ef5d1c93bfae86addd.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165997"
+          }
+        },
+        {
+          "id": "official-165996-event",
+          "title": "「潜能预演·烈火重锤」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-10-20T22:00:00Z",
+            "state": "exact",
+            "raw": "3.2版本结束"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165996",
+          "description": "【活动时间】\n3.2版本更新后 ~ 3.2版本结束\n【参与条件】\n在主线第一章中解锁「丽都周纪」后即可参与。\n【活动说明】\n• 活动期间，绳匠可使用指定队伍阵容，重复体验代理人激发潜能前的试玩关卡「磨合练习」与激发潜能后的试玩关卡「潜能预演」。\n• 试玩关卡中，队伍阵容和代理人的音擎驱动盘搭配无法修改。\n【活动奖励】\n• 首次达成「潜能预演」关卡挑战后，可以在关卡结算界面自动领取潜能试玩关卡奖励；各潜能试玩关卡奖励在活动期间仅可领取1次。",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "「潜能预演·烈火重锤」活动说明",
+            "official_id": 165996,
+            "published_at": "2026-09-08 13:00:00",
+            "time_text": "3.2版本更新后 ~ 3.2版本结束",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165996/7ab0befdc2280187aed2262d8964895c_413410959240847985.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165996",
+          "artwork": {
+            "file": "assets/f24fdddb8a7f04b5e00756f62a53b55f.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165996"
+          }
+        },
+        {
+          "id": "official-165995-event",
+          "title": "3.2版本「丽都城募」说明",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-10-18T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/10/19 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165995",
+          "description": "亲爱的绳匠：\n活动期间，绳匠可以在「丽都城募」中，通过提升城募等级获取丰厚奖励！\n解锁「成长计划」，更可立即获得[菲林]*680与专属头像[风浪的起点]。解锁「典藏计划」，还可额外立即获得[菲林]*208、「导览套件」、[音擎主控芯片]、[谐振核心仪]与[以太电池]奖励！\n解锁「成长计划」或「典藏计划」后通过提升城募等级还可获得专属名片[回归海洋之前]、[音擎主控芯片]、[谐振核心仪]、[「仓鼠笼」访问器]、养成材料等奖励！其中养成材料奖励绳匠可自选类型进行获取。\n【活动时间】\n3.2版本更新后 ~ 2026/10/19 03:59（服务器时间）\n※ 2026/10/19 02:59（服务器时间）将关闭本次活动中「成长计划」「典藏计划」「计划升级」的购买，购买关闭后绳匠仍可完成成长任务并领取奖励，请绳匠留意可购买时间和活动时间。\n【参与条件】\n在主线第一章「猫的失物」中解锁「实战模拟室」后即可参与。\n【活动说明】\n• 每期「丽都城募」开启后，「基础方案」将自动解锁。绳匠可以通过完成「成长任务」获取城募经验，提高城募等级，获取更多奖励。\n• 已解锁「成长计划」的绳匠，如有需要，可通过购买「计划升级」升级至「典藏计划」。\n• 「丽都城募」的奖励中也将新增适配[锋御]代理人的音擎。解锁「成长计划」或「典藏计划」并提升城募等级至30级后，在领取[伟大建设者凭证]后，即可在包含A级音擎「血髓秘匣」在内的7件音擎中任选其一获取。[伟大建设者凭证]属于当期限时奖励，不会保留至下一期丽都城募，超期未使用将自动失效。\n• 详细规则请前往游戏内「丽都城募」查看。",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.2版本「丽都城募」说明",
+            "official_id": 165995,
+            "published_at": "2026-09-08 12:45:00",
+            "time_text": "3.2版本更新后 ~ 2026/10/19 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165995/7db55f3df8174b969308fc38f7fa172c_5572579325041711623.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165995",
+          "artwork": {
+            "file": "assets/b4e8cfa93ee14374542b9b08d6e2939e.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165995"
+          }
+        },
+        {
+          "id": "official-165980-event",
+          "title": "「天使应援大作战」",
+          "category": "event",
+          "subtype": "活动",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-11-29T19:59:00Z",
+            "state": "exact",
+            "raw": "2026/11/30 03:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165980",
+          "description": "【活动时间】\n3.2版本更新后~2026/11/30 03:59（服务器时间）\n【参与条件】\n绳网等级≥20级，完成主线第一章·幕间后即可参与。\n【活动说明】\n• 活动包含三条限时任务，任务将在3.2~3.3版本内陆续解锁。\n• 绳匠完成对应限时任务可获取「妄想天使」限定时装自选（可在时装[南宫羽·心动应援中]、时装[爱芮·萌力加载中]、时装[千夏·梦想营业中]任选其一）。\n※每件时装绳匠仅能领取一次，不可重复领取；尚未拥有[南宫羽]、[爱芮]和[千夏]的绳匠依然可以领取时装，获得后可在代理人的「穿搭」界面中查看时装。\n• 限时任务完成后，绳匠需在「天使应援大作战」活动时间内领取奖励，超时未领的奖励将不会补发。\n• 所有奖励领取后，活动页面将于次日04:00（服务器时间）关闭。",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "「天使应援大作战」活动说明",
+            "official_id": 165980,
+            "published_at": "2026-09-07 12:45:00",
+            "time_text": "3.2版本更新后~2026/11/30 03:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165980/1f7f32e382c983b8b9d31ae235f5122e_8554226401478252542.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165980",
+          "artwork": {
+            "file": "assets/143b12ca92063313d240d7ebe7d2c902.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165980"
+          }
+        },
+        {
+          "id": "official-165979-3dbb147b9e4f",
+          "title": "「红月初升」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-09-30T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/09/30 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "description": "活动期间，限定S级代理人[克拉蕾(电·锋御)]以及默认A级代理人[安东(电·强攻)]、[妮可(以太·支援)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.2版本限时频段（上期）",
+            "official_id": 165979,
+            "published_at": "2026-09-07 12:30:00",
+            "time_text": "3.2版本更新后 ~ 2026/09/30 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165979/395f773ac9a2c8254117353dc165be13_2227742013580931583.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "artwork": {
+            "file": "assets/508f63b57bbf34950da0b3d35e2355d6.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979"
+          }
+        },
+        {
+          "id": "official-165979-7abb6f345a2d",
+          "title": "「猩红渴望」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-09-30T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/09/30 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "description": "活动期间，限定S级音擎[猩红渴望(锋御)]以及默认A级音擎[旋钻机-赤轴(强攻)]、[聚宝箱(支援)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.2版本限时频段（上期）",
+            "official_id": 165979,
+            "published_at": "2026-09-07 12:30:00",
+            "time_text": "3.2版本更新后 ~ 2026/09/30 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165979/d931008c778675058191bcbd9869450a_3094678160876321613.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "artwork": {
+            "file": "assets/133ceb136873b565d6aaaa1e0ee3fa7b.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979"
+          }
+        },
+        {
+          "id": "official-165979-0de68833459a",
+          "title": "「视线定格公理」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-09-30T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/09/30 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "description": "活动期间，限定S级代理人[南宫羽(以太·击破)]以及默认A级代理人[安东(电·强攻)]、[妮可(以太·支援)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.2版本限时频段（上期）",
+            "official_id": 165979,
+            "published_at": "2026-09-07 12:30:00",
+            "time_text": "3.2版本更新后 ~ 2026/09/30 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165979/d520531eb601147602b5a130b34bef8d_733589008669851368.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "artwork": {
+            "file": "assets/12b2a17d4054605a89cf6d28f9aad3b4.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979"
+          }
+        },
+        {
+          "id": "official-165979-aacb51a59e8c",
+          "title": "「霓虹妄想」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.2版本更新后"
+          },
+          "end": {
+            "at": "2026-09-30T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/09/30 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "description": "活动期间，限定S级音擎[霓虹妄想(击破)]以及默认A级音擎[旋钻机-赤轴(强攻)]、[聚宝箱(支援)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.2版本限时频段（上期）",
+            "official_id": 165979,
+            "published_at": "2026-09-07 12:30:00",
+            "time_text": "3.2版本更新后 ~ 2026/09/30 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/165979/108a2ca840012ae1d72adb8801904267_8330373858123895539.jpg",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/165979",
+          "artwork": {
+            "file": "assets/337ea11b60a911efee64b1496ba86541.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/165979"
+          }
+        },
+        {
+          "id": "maintenance-3.2",
+          "title": "3.2版本更新维护",
+          "category": "maintenance",
+          "subtype": "版本维护",
+          "start": {
+            "at": "2026-09-08T22:00:00Z",
+            "state": "exact",
+            "raw": "2026/09/09 06:00"
+          },
+          "end": {
+            "at": "2026-09-09T03:00:00Z",
+            "state": "estimated",
+            "raw": "维护预计5小时"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166000",
+          "description": "维护结束为官方预计时间，实际完成时间以游戏公告为准。",
+          "warnings": [
+            "预计维护结束时间，不生成精确结束提醒。"
+          ],
+          "evidence": {
+            "official_title": "3.2版本「她与她的隐秘往事」更新公告",
+            "time_text": "2026/09/09 06:00 开始；维护预计5小时",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166000"
+          }
+        }
+      ],
+      "analysis": {
+        "strategy": "official-cn-announcement-windows-with-exact-wiki-artwork",
+        "ai_used": false,
+        "fetched_at": "2026-10-19T22:59:00Z",
+        "wiki_revision": 15423,
+        "wiki_latest_end": "2026-09-13T19:59:00Z",
+        "event_count": 20,
+        "wiki_matched": 0,
+        "artwork_count": 19
+      }
+    },
+    {
+      "id": "version-3.3",
+      "name": "3.3版本",
+      "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166925",
+      "maintenance": {
+        "version": "3.3",
+        "start": {
+          "at": "2026-10-20T22:00:00Z",
+          "state": "exact",
+          "raw": "2026/10/21 06:00"
+        },
+        "url": "https://zenless.hoyoverse.com/zh-cn/news/166925",
+        "title": "3.3版本「重返天空的旅程」预下载开启&更新通知",
+        "ready": {
+          "at": "2026-10-21T03:00:00Z",
+          "state": "estimated",
+          "raw": "维护预计5小时"
+        }
+      },
+      "events": [
+        {
+          "id": "official-166926-d57f496b4449",
+          "title": "「倾掷浮生」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-10-21T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.3版本更新后"
+          },
+          "end": {
+            "at": "2026-11-11T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/11/11 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "description": "活动期间，限定S级代理人[菲欧妮(火·异常)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.3版本限时频段（上期）",
+            "official_id": 166926,
+            "published_at": "2026-10-19 14:00:00",
+            "time_text": "3.3版本更新后 ~ 2026/11/11 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166925"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166926/0ac74b4a333bdb0b737ccf821e4abe12_6574585210894306035.png",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "artwork": {
+            "file": "assets/e987b1bac13ad778cc4f9bf207043dac.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926"
+          }
+        },
+        {
+          "id": "official-166926-8ce690f026e3",
+          "title": "「涅槃初翎」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-10-21T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.3版本更新后"
+          },
+          "end": {
+            "at": "2026-11-11T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/11/11 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "description": "活动期间，限定S级音擎[涅槃初翎(异常)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.3版本限时频段（上期）",
+            "official_id": 166926,
+            "published_at": "2026-10-19 14:00:00",
+            "time_text": "3.3版本更新后 ~ 2026/11/11 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166925"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166926/ece24b10a9ed38d8b6eb77de5df0c422_171170479266812721.png",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "artwork": {
+            "file": "assets/57a627c1f05499d3900bdc4f5c30d198.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926"
+          }
+        },
+        {
+          "id": "official-166926-4b9fdfaecb3e",
+          "title": "「凛风吟仪」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-10-21T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.3版本更新后"
+          },
+          "end": {
+            "at": "2026-11-11T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/11/11 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "description": "活动期间，限定S级代理人[维琳娜(风·异常)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.3版本限时频段（上期）",
+            "official_id": 166926,
+            "published_at": "2026-10-19 14:00:00",
+            "time_text": "3.3版本更新后 ~ 2026/11/11 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166925"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166926/34f6f6f85808093cdf68531efc084f78_9049835767135528162.png",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "artwork": {
+            "file": "assets/b6901898f7d7a40fe998f25320402d16.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926"
+          }
+        },
+        {
+          "id": "official-166926-32fb4e2d0a91",
+          "title": "「琳琅鎏心」",
+          "category": "gacha",
+          "subtype": "调频",
+          "start": {
+            "at": "2026-10-21T03:00:00Z",
+            "state": "estimated",
+            "raw": "3.3版本更新后"
+          },
+          "end": {
+            "at": "2026-11-11T03:59:00Z",
+            "state": "exact",
+            "raw": "2026/11/11 11:59"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "description": "活动期间，限定S级音擎[琳琅鎏心(异常)]的调频获取概率将大幅提升！",
+          "warnings": [
+            "版本更新后按官方预计维护结束时间显示；实际开服时间请参考游戏公告。"
+          ],
+          "evidence": {
+            "official_title": "3.3版本限时频段（上期）",
+            "official_id": 166926,
+            "published_at": "2026-10-19 14:00:00",
+            "time_text": "3.3版本更新后 ~ 2026/11/11 11:59（服务器时间）",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166925"
+          },
+          "image_url": "https://fastcdn.hoyoverse.com/content-v2/nap/166926/3fcfe58f471741216c65d042fb22bba4_5660764495669788320.png",
+          "image_source": "https://zenless.hoyoverse.com/zh-cn/news/166926",
+          "artwork": {
+            "file": "assets/eb5b2dcead5e9d45c302101e7fbe5951.jpg",
+            "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166926"
+          }
+        },
+        {
+          "id": "maintenance-3.3",
+          "title": "3.3版本更新维护",
+          "category": "maintenance",
+          "subtype": "版本维护",
+          "start": {
+            "at": "2026-10-20T22:00:00Z",
+            "state": "exact",
+            "raw": "2026/10/21 06:00"
+          },
+          "end": {
+            "at": "2026-10-21T03:00:00Z",
+            "state": "estimated",
+            "raw": "维护预计5小时"
+          },
+          "source_url": "https://zenless.hoyoverse.com/zh-cn/news/166925",
+          "description": "维护结束为官方预计时间，实际完成时间以游戏公告为准。",
+          "warnings": [
+            "预计维护结束时间，不生成精确结束提醒。"
+          ],
+          "evidence": {
+            "official_title": "3.3版本「重返天空的旅程」预下载开启&更新通知",
+            "time_text": "2026/10/21 06:00 开始；维护预计5小时",
+            "maintenance_url": "https://zenless.hoyoverse.com/zh-cn/news/166925"
+          }
+        }
+      ],
+      "analysis": {
+        "strategy": "official-cn-announcement-windows-with-exact-wiki-artwork",
+        "ai_used": false,
+        "fetched_at": "2026-10-19T22:59:00Z",
+        "wiki_revision": 15423,
+        "wiki_latest_end": "2026-09-13T19:59:00Z",
+        "event_count": 5,
+        "wiki_matched": 0,
+        "artwork_count": 4
+      }
+    }
+  ]
+}

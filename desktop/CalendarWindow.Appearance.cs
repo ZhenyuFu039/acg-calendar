@@ -40,14 +40,17 @@ public sealed partial class CalendarWindow
         var layout = new Grid();
         foreach (var height in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto })
             layout.RowDefinitions.Add(new RowDefinition { Height = height });
-        var title = new DockPanel { Margin = new Thickness(0, 0, 0, 12) }; heading = title;
+        var titleArea = new StackPanel { Margin = new Thickness(0, 0, 0, 12) }; heading = titleArea;
+        var title = new DockPanel();
         var close = Button("×", () => Hide()); close.ToolTip = "收起到系统托盘，提醒继续运行";
         DockPanel.SetDock(close, Dock.Right); title.Children.Add(close);
         title.Children.Add(new Image { Source = Icon, Width = 33, Height = 33, Margin = new Thickness(0, 1, 9, 0), VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false });
         var brand = new StackPanel(); brand.Children.Add(Text("游时  PLAYTIME", 18, true));
         clock.FontSize = 10; clock.Foreground = Muted; clock.Margin = new Thickness(0, 4, 0, 0); brand.Children.Add(clock);
         brand.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) ToggleMode(); else DragMove(); };
-        title.Children.Add(brand); layout.Children.Add(title);
+        title.Children.Add(brand); titleArea.Children.Add(title);
+        var officialTimeNotice = Text("具体活动情况请参考游戏官方时间", 10); officialTimeNotice.Foreground = Muted; officialTimeNotice.TextAlignment = TextAlignment.Right; officialTimeNotice.Margin = new Thickness(0, 7, 0, 0);
+        titleArea.Children.Add(officialTimeNotice); layout.Children.Add(titleArea);
         var summary = new StackPanel { Margin = new Thickness(0, 0, 0, 12) }; summaryPanel = summary;
         subtitle.FontSize = 16; subtitle.FontWeight = FontWeights.SemiBold; subtitle.Text = "正在启动本地日历…"; summary.Children.Add(subtitle);
         rewardHeader.Orientation = Orientation.Horizontal; rewardHeader.Margin = new Thickness(0, 5, 0, 0);
