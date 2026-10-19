@@ -54,9 +54,10 @@ def names(title):
 
 
 class ArtworkCache:
-    def __init__(self, data_dir: Path, downloader=download):
+    def __init__(self, data_dir: Path, downloader=download, validator=official_image):
         self.directory = data_dir / "artwork"
         self.downloader = downloader
+        self.validator = validator
 
     def path(self, key):
         if not re.fullmatch(r"[a-f0-9]{32}\.(?:jpg|png|webp)", key):
@@ -65,7 +66,7 @@ class ArtworkCache:
         return path if path.is_file() else None
 
     def cache(self, url):
-        if not official_image(url):
+        if not self.validator(url):
             return None
         digest = hashlib.sha256(url.encode()).hexdigest()[:32]
         for suffix in ("jpg", "png", "webp"):

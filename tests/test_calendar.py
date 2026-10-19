@@ -282,7 +282,7 @@ class HttpTests(TempStoreTest):
     def test_state_and_export_have_real_structured_entries(self):
         status, state = self.request("/api/state")
         self.assertEqual(status, 200)
-        self.assertEqual(len(state["events"]), 24)
+        self.assertEqual(len([e for e in state["events"] if e["game"] == "endfield-cn"]), 24)
         status, exported = self.request("/api/export")
         self.assertEqual(status, 200)
         self.assertNotIn("csrf_token", exported)

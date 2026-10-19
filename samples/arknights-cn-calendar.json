@@ -1,0 +1,804 @@
+{
+  "schema_version": 1,
+  "ruleset_version": "0.1.0",
+  "id": "arknights-cn-activities",
+  "name": "近期活动 · PRTS",
+  "game": "arknights-cn",
+  "timezone": "Asia/Shanghai",
+  "source": {
+    "cid": "prts",
+    "url": "https://prts.wiki/w/%E6%B4%BB%E5%8A%A8%E4%B8%80%E8%A7%88",
+    "title": "PRTS 活动一览",
+    "kind": "community_wiki",
+    "label": "PRTS 社区 Wiki",
+    "license": {
+      "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+      "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+    },
+    "published_at": null,
+    "fetched_at": "2026-10-19T02:46:53Z",
+    "origin": "snapshot"
+  },
+  "maintenance": {
+    "start": null,
+    "planned_end": null,
+    "actual_end": null
+  },
+  "events": [
+    {
+      "id": "0faf282d27cc56489d21",
+      "version_id": "arknights-cn-activities",
+      "title": "矢量突破 #3",
+      "parent_title": null,
+      "section": "矢量突破",
+      "category": "event",
+      "subtype": "矢量突破",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-29T08:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-29 16:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-19T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-20 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡2-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E7%9F%A2%E9%87%8F%E7%AA%81%E7%A0%B4/03",
+        "title": "矢量突破/03",
+        "page_id": 96813,
+        "revision_id": 441842,
+        "revision_url": "https://prts.wiki/index.php?title=%E7%9F%A2%E9%87%8F%E7%AA%81%E7%A0%B4%2F03&oldid=441842",
+        "revised_at": "2026-10-18T18:26:07Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-29 16:00 → 2026-10-20 03:59",
+        "block_text": "{{活动信息\n|类型=矢量突破\n|名称=矢量突破#3「拟生态」\n|名称缩短=矢量突破 #3\n|副标题=VECTOR BREAKTHROUGH #3: TOUCH\n|活动开始时间=2026-09-29 16:00\n|活动结束时间=2026-10-20 03:59\n|兑换结束时间=2026-10-23 03:59\n|标题图文件名=活动预告 矢量突破03 01.JPG\n|官网链接=1455\n|公告=矢量突破/03/活动公告\n|参加条件关卡=[[2-10|主线关卡2-10]]\n|限时寻访1=[[寻访模拟/定向甄选08|定向甄选08]]\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "矢量突破/03",
+        "image_title": "活动预告 矢量突破03 01.JPG",
+        "announcement": "矢量突破/03/活动公告",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "88e1b7332d9217b41a32",
+      "version_id": "arknights-cn-activities",
+      "title": "矢量突破 #3 · 奖励兑换",
+      "parent_title": "矢量突破 #3",
+      "section": "矢量突破",
+      "category": "exchange",
+      "subtype": "矢量突破",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-29T08:00:00Z",
+        "state": "estimated",
+        "reference": "activity_start",
+        "raw": "兑换开始未单列，暂按活动开始展示",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-22T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-23 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡2-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E7%9F%A2%E9%87%8F%E7%AA%81%E7%A0%B4/03",
+        "title": "矢量突破/03",
+        "page_id": 96813,
+        "revision_id": 441842,
+        "revision_url": "https://prts.wiki/index.php?title=%E7%9F%A2%E9%87%8F%E7%AA%81%E7%A0%B4%2F03&oldid=441842",
+        "revised_at": "2026-10-18T18:26:07Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-29 16:00 → 2026-10-20 03:59",
+        "block_text": "{{活动信息\n|类型=矢量突破\n|名称=矢量突破#3「拟生态」\n|名称缩短=矢量突破 #3\n|副标题=VECTOR BREAKTHROUGH #3: TOUCH\n|活动开始时间=2026-09-29 16:00\n|活动结束时间=2026-10-20 03:59\n|兑换结束时间=2026-10-23 03:59\n|标题图文件名=活动预告 矢量突破03 01.JPG\n|官网链接=1455\n|公告=矢量突破/03/活动公告\n|参加条件关卡=[[2-10|主线关卡2-10]]\n|限时寻访1=[[寻访模拟/定向甄选08|定向甄选08]]\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "矢量突破/03",
+        "image_title": "活动预告 矢量突破03 01.JPG",
+        "announcement": "矢量突破/03/活动公告",
+        "role": "exchange"
+      }
+    },
+    {
+      "id": "630fe631ad47378bf71d",
+      "version_id": "arknights-cn-activities",
+      "title": "昨日海",
+      "parent_title": null,
+      "section": "支线故事",
+      "category": "event",
+      "subtype": "支线故事",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-10-09T04:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-09 12:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-22T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-23 03:59",
+        "precision": "minute"
+      },
+      "phases": [
+        {
+          "at": "2026-10-09T04:00:00Z",
+          "state": "exact",
+          "reference": null,
+          "raw": "◆「雷亚-伊比利亚」开启时间：10月09日 12:00 - 10月23日 03:59",
+          "precision": "minute",
+          "title": "雷亚-伊比利亚开放",
+          "source_line": 19,
+          "source_url": "https://prts.wiki/w/%E6%98%A8%E6%97%A5%E6%B5%B7/%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A"
+        },
+        {
+          "at": "2026-10-16T08:00:00Z",
+          "state": "exact",
+          "reference": null,
+          "raw": "◆「“我们的伊比利亚”」开启时间：10月16日 16:00 - 10月23日 03:59",
+          "precision": "minute",
+          "title": "“我们的伊比利亚”开放",
+          "source_line": 21,
+          "source_url": "https://prts.wiki/w/%E6%98%A8%E6%97%A5%E6%B5%B7/%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A"
+        }
+      ],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡1-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E6%98%A8%E6%97%A5%E6%B5%B7",
+        "title": "昨日海",
+        "page_id": 97799,
+        "revision_id": 441781,
+        "revision_url": "https://prts.wiki/index.php?title=%E6%98%A8%E6%97%A5%E6%B5%B7&oldid=441781",
+        "revised_at": "2026-10-18T08:32:02Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-10-09 12:00 → 2026-10-23 03:59",
+        "block_text": "{{活动信息\n|类型=支线故事\n|名称=SideStory「昨日海」\n|名称缩短=昨日海\n|副标题=YET ANOTHER WAVE\n|活动开始时间=2026-10-09 12:00\n|活动结束时间=2026-10-23 03:59\n|兑换结束时间=2026-10-30 03:59\n|标题图文件名=活动预告 昨日海 01.jpg\n|官网链接=5101\n|公告=昨日海/活动公告\n|参加条件关卡=[[1-10|主线关卡1-10]]\n|限时寻访1=[[寻访模拟/海渊巡游|海渊巡游]]\n|引用=yes\n|理智本消耗=21\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "昨日海",
+        "image_title": "活动预告 昨日海 01.jpg",
+        "announcement": "昨日海/活动公告",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "95c338a8b55fbfe64a17",
+      "version_id": "arknights-cn-activities",
+      "title": "昨日海 · 奖励兑换",
+      "parent_title": "昨日海",
+      "section": "支线故事",
+      "category": "exchange",
+      "subtype": "支线故事",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-10-09T04:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-09 12:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-29T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-30 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡1-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E6%98%A8%E6%97%A5%E6%B5%B7/%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A",
+        "title": "昨日海/活动公告",
+        "page_id": 97798,
+        "revision_id": 433389,
+        "revision_url": "https://prts.wiki/index.php?title=%E6%98%A8%E6%97%A5%E6%B5%B7%2F%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A&oldid=433389",
+        "revised_at": "2026-10-18T08:32:02Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 35,
+        "time_label": "全新SideStory「昨日海」，活动关卡开启",
+        "time_text": "开放时间：10月09日 12:00 - 10月30日 03:59",
+        "block_text": "'''开放时间：'''10月09日 12:00 - 10月30日 03:59"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "昨日海",
+        "image_title": "活动预告 昨日海 01.jpg",
+        "announcement": "昨日海/活动公告",
+        "role": "exchange"
+      }
+    },
+    {
+      "id": "10c69b5795e271b2f6e7",
+      "version_id": "arknights-cn-activities",
+      "title": "恒远津梁",
+      "parent_title": null,
+      "section": "合作活动",
+      "category": "event",
+      "subtype": "合作活动",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-10-16T08:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-16 16:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-29T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-30 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [],
+      "source": {
+        "url": "https://prts.wiki/w/%E6%81%92%E8%BF%9C%E6%B4%A5%E6%A2%81",
+        "title": "恒远津梁",
+        "page_id": 98478,
+        "revision_id": 441812,
+        "revision_url": "https://prts.wiki/index.php?title=%E6%81%92%E8%BF%9C%E6%B4%A5%E6%A2%81&oldid=441812",
+        "revised_at": "2026-10-18T12:49:01Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 4,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-10-16 16:00 → 2026-10-30 03:59",
+        "block_text": "{{活动信息\n|类型=合作活动\n|隐藏=是\n|名称=恒远津梁\n|名称缩短=恒远津梁\n|活动开始时间=2026-10-16 16:00\n|活动结束时间=2026-10-30 03:59\n|标题图文件名=活动预告 恒远津梁 01.JPG\n|官网链接=1454\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "恒远津梁",
+        "image_title": "活动预告 恒远津梁 01.JPG",
+        "announcement": "",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "324db2e136274ff84652",
+      "version_id": "arknights-cn-activities",
+      "title": "月行水上",
+      "parent_title": null,
+      "section": "支线故事",
+      "category": "event",
+      "subtype": "支线故事",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-04T04:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-04 12:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-09-17T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-18 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡1-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E6%9C%88%E8%A1%8C%E6%B0%B4%E4%B8%8A",
+        "title": "月行水上",
+        "page_id": 95834,
+        "revision_id": 440192,
+        "revision_url": "https://prts.wiki/index.php?title=%E6%9C%88%E8%A1%8C%E6%B0%B4%E4%B8%8A&oldid=440192",
+        "revised_at": "2026-10-09T17:17:09Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 3,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-04 12:00 → 2026-09-18 03:59",
+        "block_text": "{{活动信息\n|类型=支线故事\n|名称=SideStory「月行水上」\n|名称缩短=月行水上\n|活动开始时间=2026-09-04 12:00\n|活动结束时间=2026-09-18 03:59\n|兑换结束时间=2026-09-25 03:59\n|标题图文件名=活动预告 月行水上 01.jpg\n|官网链接=9681\n|公告=月行水上/活动公告\n|参加条件关卡=[[1-10|主线关卡1-10]]\n|限时寻访1=[[石白深蓝之夜]]\n|引用=yes\n|理智本消耗=21\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "月行水上",
+        "image_title": "活动预告 月行水上 01.jpg",
+        "announcement": "月行水上/活动公告",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "3814bf640ac8ad485d59",
+      "version_id": "arknights-cn-activities",
+      "title": "月行水上 · 奖励兑换",
+      "parent_title": "月行水上",
+      "section": "支线故事",
+      "category": "exchange",
+      "subtype": "支线故事",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-04T04:00:00Z",
+        "state": "estimated",
+        "reference": "activity_start",
+        "raw": "兑换开始未单列，暂按活动开始展示",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-09-24T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-25 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡1-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E6%9C%88%E8%A1%8C%E6%B0%B4%E4%B8%8A",
+        "title": "月行水上",
+        "page_id": 95834,
+        "revision_id": 440192,
+        "revision_url": "https://prts.wiki/index.php?title=%E6%9C%88%E8%A1%8C%E6%B0%B4%E4%B8%8A&oldid=440192",
+        "revised_at": "2026-10-09T17:17:09Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 3,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-04 12:00 → 2026-09-18 03:59",
+        "block_text": "{{活动信息\n|类型=支线故事\n|名称=SideStory「月行水上」\n|名称缩短=月行水上\n|活动开始时间=2026-09-04 12:00\n|活动结束时间=2026-09-18 03:59\n|兑换结束时间=2026-09-25 03:59\n|标题图文件名=活动预告 月行水上 01.jpg\n|官网链接=9681\n|公告=月行水上/活动公告\n|参加条件关卡=[[1-10|主线关卡1-10]]\n|限时寻访1=[[石白深蓝之夜]]\n|引用=yes\n|理智本消耗=21\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "月行水上",
+        "image_title": "活动预告 月行水上 01.jpg",
+        "announcement": "月行水上/活动公告",
+        "role": "exchange"
+      }
+    },
+    {
+      "id": "23ab4ef62f930970b563",
+      "version_id": "arknights-cn-activities",
+      "title": "此夜同行",
+      "parent_title": null,
+      "section": "登录活动",
+      "category": "event",
+      "subtype": "签到",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-04T04:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-04 12:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-09-17T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-18 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [],
+      "source": {
+        "url": "https://prts.wiki/w/%E6%AD%A4%E5%A4%9C%E5%90%8C%E8%A1%8C",
+        "title": "此夜同行",
+        "page_id": 95871,
+        "revision_id": 422987,
+        "revision_url": "https://prts.wiki/index.php?title=%E6%AD%A4%E5%A4%9C%E5%90%8C%E8%A1%8C&oldid=422987",
+        "revised_at": "2026-08-29T17:29:57Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-04 12:00 → 2026-09-18 03:59",
+        "block_text": "{{活动信息\n|类型=登录活动\n|名称=此夜同行\n|名称缩短=此夜同行\n|副标题=TOGETHER THROUGH THE NIGHT\n|活动开始时间=2026-09-04 12:00\n|活动结束时间=2026-09-18 03:59\n|标题图文件名=活动预告 月行水上 05.jpg\n|官网链接=9681\n|公告=月行水上/活动公告#【明日方舟 × 女神异闻录３ Reload】，签到活动开启\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "此夜同行",
+        "image_title": "活动预告 月行水上 05.jpg",
+        "announcement": "月行水上/活动公告",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "5db1327f79f306f529f8",
+      "version_id": "arknights-cn-activities",
+      "title": "逐影集趣",
+      "parent_title": null,
+      "section": "其他活动",
+      "category": "event",
+      "subtype": "其他活动",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-20T08:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-20 16:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-09-29T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-30 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡1-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E9%80%90%E5%BD%B1%E9%9B%86%E8%B6%A3",
+        "title": "逐影集趣",
+        "page_id": 96639,
+        "revision_id": 431438,
+        "revision_url": "https://prts.wiki/index.php?title=%E9%80%90%E5%BD%B1%E9%9B%86%E8%B6%A3&oldid=431438",
+        "revised_at": "2026-10-01T04:11:04Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-20 16:00 → 2026-09-30 03:59",
+        "block_text": "{{活动信息\n|类型=其他活动\n|名称=逐影集趣\n|名称缩短=逐影集趣\n|副标题=DOLLY'S PLAYGROUND\n|活动开始时间=2026-09-20 16:00\n|活动结束时间=2026-09-30 03:59\n|兑换结束时间=2026-10-03 03:59\n|标题图文件名=活动预告 逐影集趣 01.JPG\n|官网链接=2819\n|公告=逐影集趣/活动公告\n|参加条件关卡=[[1-10|主线关卡1-10]]\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "逐影集趣",
+        "image_title": "活动预告 逐影集趣 01.JPG",
+        "announcement": "逐影集趣/活动公告",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "50b05dd37f58b82a9273",
+      "version_id": "arknights-cn-activities",
+      "title": "逐影集趣 · 奖励兑换",
+      "parent_title": "逐影集趣",
+      "section": "其他活动",
+      "category": "exchange",
+      "subtype": "其他活动",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-20T08:00:00Z",
+        "state": "estimated",
+        "reference": "activity_start",
+        "raw": "兑换开始未单列，暂按活动开始展示",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-02T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-03 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [
+        "主线关卡1-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E9%80%90%E5%BD%B1%E9%9B%86%E8%B6%A3",
+        "title": "逐影集趣",
+        "page_id": 96639,
+        "revision_id": 431438,
+        "revision_url": "https://prts.wiki/index.php?title=%E9%80%90%E5%BD%B1%E9%9B%86%E8%B6%A3&oldid=431438",
+        "revised_at": "2026-10-01T04:11:04Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-20 16:00 → 2026-09-30 03:59",
+        "block_text": "{{活动信息\n|类型=其他活动\n|名称=逐影集趣\n|名称缩短=逐影集趣\n|副标题=DOLLY'S PLAYGROUND\n|活动开始时间=2026-09-20 16:00\n|活动结束时间=2026-09-30 03:59\n|兑换结束时间=2026-10-03 03:59\n|标题图文件名=活动预告 逐影集趣 01.JPG\n|官网链接=2819\n|公告=逐影集趣/活动公告\n|参加条件关卡=[[1-10|主线关卡1-10]]\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "逐影集趣",
+        "image_title": "活动预告 逐影集趣 01.JPG",
+        "announcement": "逐影集趣/活动公告",
+        "role": "exchange"
+      }
+    },
+    {
+      "id": "2090f383932790f397e9",
+      "version_id": "arknights-cn-activities",
+      "title": "锦枫映月",
+      "parent_title": null,
+      "section": "登录活动",
+      "category": "event",
+      "subtype": "签到",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-22T20:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-23 04:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-09-29T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-30 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [],
+      "source": {
+        "url": "https://prts.wiki/w/%E9%94%A6%E6%9E%AB%E6%98%A0%E6%9C%88",
+        "title": "锦枫映月",
+        "page_id": 96650,
+        "revision_id": 428167,
+        "revision_url": "https://prts.wiki/index.php?title=%E9%94%A6%E6%9E%AB%E6%98%A0%E6%9C%88&oldid=428167",
+        "revised_at": "2026-09-16T17:33:02Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-23 04:00 → 2026-09-30 03:59",
+        "block_text": "{{活动信息\n|类型=登录活动\n|名称=锦枫映月签到活动\n|名称缩短=锦枫映月\n|活动开始时间=2026-09-23 04:00\n|活动结束时间=2026-09-30 03:59\n|标题图文件名=活动预告 逐影集趣 03.jpg\n|官网链接=2819\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "锦枫映月",
+        "image_title": "活动预告 逐影集趣 03.jpg",
+        "announcement": "",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "0759494e8f0975843d96",
+      "version_id": "arknights-cn-activities",
+      "title": "稳态测定",
+      "parent_title": null,
+      "section": "登录活动",
+      "category": "event",
+      "subtype": "签到",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-27T20:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-28 04:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-07T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-08 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "PRTS 国服活动时间；关卡开放与奖励兑换分别列出。",
+      "requirements": [],
+      "source": {
+        "url": "https://prts.wiki/w/%E7%A8%B3%E6%80%81%E6%B5%8B%E5%AE%9A",
+        "title": "稳态测定",
+        "page_id": 96653,
+        "revision_id": 428194,
+        "revision_url": "https://prts.wiki/index.php?title=%E7%A8%B3%E6%80%81%E6%B5%8B%E5%AE%9A&oldid=428194",
+        "revised_at": "2026-09-17T17:37:28Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 1,
+        "time_label": "活动信息模板 · 国服",
+        "time_text": "2026-09-28 04:00 → 2026-10-08 03:59",
+        "block_text": "{{活动信息\n|类型=登录活动\n|名称=稳态测定签到活动\n|名称缩短=稳态测定\n|活动开始时间=2026-09-28 04:00\n|活动结束时间=2026-10-08 03:59\n|标题图文件名=活动预告 逐影集趣 07.JPG\n|官网链接=2819\n|公告=逐影集趣/活动公告\n}}"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "稳态测定",
+        "image_title": "活动预告 逐影集趣 07.JPG",
+        "announcement": "逐影集趣/活动公告",
+        "role": "activity"
+      }
+    },
+    {
+      "id": "4b43f5431b1ac2e8cefd",
+      "version_id": "arknights-cn-activities",
+      "title": "定向甄选 · 寻访",
+      "parent_title": "矢量突破 #3",
+      "section": "矢量突破",
+      "category": "gacha",
+      "subtype": "寻访",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-09-29T08:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-09-29 16:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-12T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-13 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "从 PRTS 所转载活动公告提取的独立寻访时间。",
+      "requirements": [
+        "主线关卡2-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E7%9F%A2%E9%87%8F%E7%AA%81%E7%A0%B4/03/%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A",
+        "title": "矢量突破/03/活动公告",
+        "page_id": 96812,
+        "revision_id": 429018,
+        "revision_url": "https://prts.wiki/index.php?title=%E7%9F%A2%E9%87%8F%E7%AA%81%E7%A0%B4%2F03%2F%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A&oldid=429018",
+        "revised_at": "2026-10-18T18:26:07Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 33,
+        "time_label": "【定向甄选】限时寻访开启",
+        "time_text": "活动时间：09月29日 16:00 - 10月13日 03:59",
+        "block_text": "'''活动时间：'''09月29日 16:00 - 10月13日 03:59"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "矢量突破/03",
+        "image_title": "",
+        "announcement": "矢量突破/03/活动公告",
+        "role": "gacha"
+      }
+    },
+    {
+      "id": "cc98a288f90498870fec",
+      "version_id": "arknights-cn-activities",
+      "title": "海渊巡游 · 寻访",
+      "parent_title": "昨日海",
+      "section": "支线故事",
+      "category": "gacha",
+      "subtype": "寻访",
+      "time_kind": "interval",
+      "start": {
+        "at": "2026-10-09T04:00:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-09 12:00",
+        "precision": "minute"
+      },
+      "end": {
+        "at": "2026-10-22T19:59:00Z",
+        "state": "exact",
+        "reference": null,
+        "raw": "2026-10-23 03:59",
+        "precision": "minute"
+      },
+      "phases": [],
+      "description": "从 PRTS 所转载活动公告提取的独立寻访时间。",
+      "requirements": [
+        "主线关卡1-10"
+      ],
+      "source": {
+        "url": "https://prts.wiki/w/%E6%98%A8%E6%97%A5%E6%B5%B7/%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A",
+        "title": "昨日海/活动公告",
+        "page_id": 97798,
+        "revision_id": 433389,
+        "revision_url": "https://prts.wiki/index.php?title=%E6%98%A8%E6%97%A5%E6%B5%B7%2F%E6%B4%BB%E5%8A%A8%E5%85%AC%E5%91%8A&oldid=433389",
+        "revised_at": "2026-10-18T08:32:02Z",
+        "kind": "community_wiki",
+        "label": "PRTS 社区 Wiki",
+        "license": {
+          "name": "CC BY-NC-SA 4.0（Wiki 编辑内容；游戏素材另属原权利人）",
+          "url": "https://creativecommons.org/licenses/by-nc-sa/4.0/"
+        },
+        "line": 47,
+        "time_label": "【海渊巡游】限时寻访开启",
+        "time_text": "活动时间：10月09日 12:00 - 10月23日 03:59",
+        "block_text": "'''活动时间：'''10月09日 12:00 - 10月23日 03:59"
+      },
+      "warnings": [],
+      "prts": {
+        "page": "昨日海",
+        "image_title": "",
+        "announcement": "昨日海/活动公告",
+        "role": "gacha"
+      }
+    }
+  ],
+  "warnings": [],
+  "analysis": {
+    "strategy": "prts_activity_templates",
+    "ai_used": false,
+    "event_count": 14
+  }
+}

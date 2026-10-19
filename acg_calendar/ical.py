@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 
 from acg_calendar.parser import stamp
+from acg_calendar.games import game_name
 
 TRUSTED = {"exact", "manual", "confirmed"}
 
@@ -26,7 +27,9 @@ def fold(line):
 def calendar_bytes(versions, settings, now=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     utc = lambda value: stamp(value).astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Playtime//Game Calendar//ZH", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:游时 · 终末地国服"]
+    identities = {version.get("game", "endfield-cn") for version in versions}
+    label = game_name(next(iter(identities))) + "国服" if len(identities) == 1 else "全部游戏"
+    lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Playtime//Game Calendar//ZH", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:" + text("游时 · " + label)]
     skipped = 0
     for version in versions:
         for event in version["events"]:
@@ -41,10 +44,12 @@ def calendar_bytes(versions, settings, now=None):
             lines += ["BEGIN:VEVENT", "UID:" + event["id"] + "@playtime.local", "DTSTAMP:" + now.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"), "DTSTART:" + utc(start["at"])]
             if not point:
                 lines.append("DTEND:" + utc(end["at"]))
-            description = "终末地国服 · " + version["name"] + "\n" + event.get("description", "")
+            description = game_name(version.get("game", "endfield-cn")) + "国服 · " + version["name"] + "\n" + event.get("description", "")
             if event.get("notes"):
                 description += "\n备注：" + event["notes"]
-            description += "\n公告：" + event["source"]["url"] + "\n本文件为导出快照，时间变更需重新导入。"
+            description += "\n来源：" + event["source"]["url"] + "\n本文件为导出快照，时间变更需重新导入。"
+            if event["source"].get("kind") == "community_wiki":
+                description += "\nPRTS 社区 Wiki · 修订 " + str(event["source"].get("revision_id")) + "\n" + event["source"]["revision_url"] + "\n" + event["source"]["license"]["name"]
             if event.get("briefing"):
                 description += "\n官方版本导览：" + event["briefing"]["source_url"]
             lines += ["SUMMARY:" + text(event["title"]), "DESCRIPTION:" + text(description), "URL:" + event["source"]["url"], "STATUS:CONFIRMED", "TRANSP:TRANSPARENT"]

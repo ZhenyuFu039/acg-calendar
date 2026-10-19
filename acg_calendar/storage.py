@@ -9,6 +9,7 @@ import sqlite3
 import threading
 
 DEFAULT_SETTINGS = {
+    "active_game": "endfield-cn",
     "timezone": "auto", "view": "timeline", "reminders_enabled": True,
     "reminder_offsets": [1440, 60], "native_notifications": False,
     "sync_interval_minutes": 180, "hide_completed": False,

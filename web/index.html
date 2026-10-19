@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7f1">
-  <meta name="description" content="本地运行的终末地活动日历：版本公告解析、时间轴、时区换算和截止提醒。">
-  <title>游时 · 终末地活动日历</title>
+  <meta name="description" content="本地运行的游戏活动日历：明日方舟与终末地排期、时间轴、时区换算和截止提醒。">
+  <title>游时 · 游戏活动日历</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
   <script src="/app.js" defer></script>
@@ -19,12 +19,13 @@
   <div class="app-layout">
     <aside class="sidebar" aria-label="日历筛选">
       <div class="sidebar-label">我的游戏</div>
-      <div class="game-card"><div class="game-monogram" aria-hidden="true">EF<span>CN</span></div><div><strong>明日方舟：终末地</strong><span>国服 · UTC+8</span></div></div>
+      <label class="field-label" for="game-select">日历游戏</label><select id="game-select" aria-label="选择游戏"><option value="endfield-cn">明日方舟：终末地</option><option value="arknights-cn">明日方舟</option><option value="all">全部游戏 · 对照排期</option></select>
+      <div class="game-card"><div class="game-monogram" aria-hidden="true">EF<span>CN</span></div><div><strong id="game-name">明日方舟：终末地</strong><span id="game-source-note">国服 · UTC+8</span></div></div>
       <label class="field-label version-label" for="version-select">版本</label><select id="version-select" aria-label="选择版本"><option>加载中…</option></select>
       <div class="sidebar-section"><div class="sidebar-label">活动类型</div><div id="category-filters"></div></div>
       <div class="sidebar-section sidebar-options"><label class="check-row"><input id="hide-completed" type="checkbox"><span>隐藏已完成</span></label><label class="check-row"><input id="include-pending" type="checkbox" checked><span>显示截止待定</span></label></div>
-      <div class="sidebar-note"><span class="tiny-label">时间标记</span><span><i class="legend-solid"></i>公告明确时间</span><span><i class="legend-estimate"></i>预计 / 待核实</span><span><i class="legend-unknown"></i>结束尚未公布</span></div>
-      <div class="sidebar-bottom"><button id="rules-button" class="sidebar-action" type="button"><span aria-hidden="true">{ }</span> 公告解析 JSON <span aria-hidden="true">↗</span></button><button id="settings-button" class="sidebar-action" type="button"><span aria-hidden="true">⚙</span> 日历与提醒设置</button><p>源自官方公告 · 无 AI 调用<br><span id="app-version">DEMO</span></p></div>
+      <div class="sidebar-note"><span class="tiny-label">时间标记</span><span><i class="legend-solid"></i>来源明确时间</span><span><i class="legend-estimate"></i>预计 / 待核实</span><span><i class="legend-unknown"></i>结束尚未公布</span></div>
+      <div class="sidebar-bottom"><button id="rules-button" class="sidebar-action" type="button"><span aria-hidden="true">{ }</span> 日历解析 JSON <span aria-hidden="true">↗</span></button><button id="settings-button" class="sidebar-action" type="button"><span aria-hidden="true">⚙</span> 日历与提醒设置</button><p><span id="source-caption">官方公告与版本导览 · 无 AI 调用</span><br><span id="app-version">DEMO</span></p></div>
     </aside>
     <main id="main-content" class="main-content">
       <div class="page-heading"><div><div class="eyebrow">ENDFIELD / ACTIVITY CALENDAR</div><h1>把活动排进日历<span class="heading-dot">.</span></h1><p id="version-summary">正在读取本地活动数据…</p></div><div class="heading-controls"><label class="timezone-label" for="timezone-select">显示时区<select id="timezone-select"><option value="auto">跟随系统</option><option value="America/New_York">纽约</option><option value="Asia/Shanghai">北京 / 服务器</option><option value="Asia/Tokyo">东京</option><option value="Europe/London">伦敦</option><option value="UTC">UTC</option></select></label><div id="zone-offset" class="timezone-offset"></div></div></div>
@@ -45,7 +46,7 @@
   </div>
   <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
   <dialog id="reminder-dialog" class="settings-dialog" aria-labelledby="reminder-title"><div class="dialog-header"><div><div class="eyebrow">NOTIFICATIONS</div><h2 id="reminder-title">提醒与收件箱</h2></div><button class="icon-button" type="button" data-close aria-label="关闭提醒">×</button></div><div class="dialog-body"><div id="reminder-settings"></div><div class="inbox-header"><h3>最近提醒</h3><button id="read-notifications" class="text-button" type="button">全部标为已读</button></div><div id="notification-list"></div></div></dialog>
-  <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title"><div class="dialog-header"><div><div class="eyebrow">SOURCE → RULES → CALENDAR</div><h2 id="rules-title">公告解析 JSON</h2></div><button class="icon-button" type="button" data-close aria-label="关闭规则">×</button></div><div class="dialog-body"><p class="help-text">按章节识别独立活动，再关联维护时间。每个条目保留原文和时间依据。</p><div class="rules-tabs" role="group" aria-label="JSON 内容"><button id="show-config" class="button" type="button" aria-pressed="true">规则配置</button><button id="show-analysis" class="button" type="button" aria-pressed="false">版本解析结果</button><button id="download-rules" class="button button-small" type="button">下载 JSON</button></div><pre id="rules-json"></pre></div></dialog>
+  <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title"><div class="dialog-header"><div><div class="eyebrow">SOURCE → RULES → CALENDAR</div><h2 id="rules-title">日历解析 JSON</h2></div><button class="icon-button" type="button" data-close aria-label="关闭规则">×</button></div><div class="dialog-body"><p class="help-text">按章节识别独立活动，再关联维护时间。每个条目保留原文和时间依据。</p><div class="rules-tabs" role="group" aria-label="JSON 内容"><button id="show-config" class="button" type="button" aria-pressed="true">规则配置</button><button id="show-analysis" class="button" type="button" aria-pressed="false">版本解析结果</button><button id="download-rules" class="button button-small" type="button">下载 JSON</button></div><pre id="rules-json"></pre></div></dialog>
   <dialog id="agenda-dialog" class="agenda-dialog" aria-labelledby="agenda-title"><div class="dialog-header"><h2 id="agenda-title">当日活动</h2><button class="icon-button" type="button" data-close aria-label="关闭当日日程">×</button></div><div id="agenda-content" class="dialog-body"></div></dialog>
   <dialog id="reward-dialog" aria-labelledby="reward-title"><div class="dialog-header"><div><div class="eyebrow">OROBERYL / OFFICIAL SOURCES</div><h2 id="reward-title">版本奖励明细</h2></div><button class="icon-button" type="button" data-close aria-label="关闭奖励明细">×</button></div><div id="reward-content" class="dialog-body"></div></dialog>
   <div id="toast" class="toast" role="status" hidden></div>

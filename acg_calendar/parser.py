@@ -242,12 +242,12 @@ class AnnouncementParser:
 def resolve_versions(versions: list[dict], local_state: dict) -> list[dict]:
     """Resolve references on copies so refreshes never overwrite user corrections."""
     result = json.loads(json.dumps(versions))
-    ordered = sorted(result, key=lambda version: version["maintenance"].get("start") or "")
+    ordered = sorted(result, key=lambda version: (version.get("game", "endfield-cn"), version["maintenance"].get("start") or ""))
     for index, version in enumerate(ordered):
         maintenance = version["maintenance"]
         confirmed = local_state.get("version:" + version["id"], {}).get("actual_end")
         maintenance["actual_end"] = confirmed
-        next_start = ordered[index + 1]["maintenance"].get("start") if index + 1 < len(ordered) else None
+        next_start = ordered[index + 1]["maintenance"].get("start") if index + 1 < len(ordered) and ordered[index + 1].get("game") == version.get("game") else None
         for event in version["events"]:
             overrides = local_state.get(event["id"], {})
             for role in ("start", "end"):

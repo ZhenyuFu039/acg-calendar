@@ -142,7 +142,7 @@ class RewardUpgradeTests(TempStoreTest):
         (source / (v['id'] + '.txt')).write_text('incomplete cached response', encoding='utf-8')
         app = Application(self.directory, auto_sync=False, desktop=False)
         state = app.state()
-        self.assertEqual(len(state['events']), 24)
+        self.assertEqual(len([e for e in state['events'] if e['game'] == 'endfield-cn']), 24)
         self.assertEqual(state['versions'][0]['reward_summary']['verified_total'], 11000)
 
     def test_legacy_snapshot_gets_rewards_without_losing_personal_state(self):

@@ -11,11 +11,15 @@
   };
   const endpointLabels = {exact:'公告明确', estimated:'预计 / 待核实', confirmed:'开服已确认', manual:'手动校正', unknown:'待定'};
   const referenceLabels = {next_maintenance_start:'下次版本维护前，具体时间未公布', recruitment_cycles:'按寻访次数结束，具体日期未公布', maintenance_end:'随本版本维护结束开放', unpublished:'公告未给出结束时间', invalid_interval:'时间顺序异常，请核对'};
-  const S = {data:null, version:null, view:'timeline', days:14, fit:false, anchor:null, selected:null, categories:new Set(['event','gacha','exchange','update','maintenance']), includePending:true, rules:null, rulesTab:'config', seenNotices:new Set(), initialized:false, pollTimer:null, toastTimer:null};
+  const S = {data:null, game:null, version:null, view:'timeline', days:14, fit:false, anchor:null, selected:null, categories:new Set(['event','gacha','exchange','update','maintenance']), includePending:true, rules:null, rulesTab:'config', seenNotices:new Set(), initialized:false, pollTimer:null, toastTimer:null};
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const now = () => Date.now();
   const allEvents = () => S.data?.events || [];
-  const activeVersion = () => S.data?.versions.find(version => version.id === S.version);
+  const activeVersion = () => S.game==='all'?{id:'all',name:'全部游戏',source:{origin:'combined'},maintenance:{start:null}}:S.data?.versions.find(version => version.id === S.version);
+  const scopeEvents = () => allEvents().filter(e=>S.game==='all'||e.version_id===S.version);
+  const gameInfo = () => S.data?.games.find(g=>g.id===S.game);
+  const gameLabel = event => event.game==='arknights-cn'?'明日方舟':'终末地';
+  const syncState = () => S.game==='all'?{running:Object.values(S.data.sync_by_game).some(s=>s.running),error:Object.values(S.data.sync_by_game).map(s=>s.error).filter(Boolean).join('；')}:S.data.sync_by_game[S.game]||S.data.sync;
   function zone() {
     const candidate = S.data?.settings.timezone;
     const value = candidate && candidate !== 'auto' ? candidate : Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -76,6 +80,7 @@
   const rewardIcon = '<img class="reward-icon" src="/assets/oroberyl.png" alt="嵌晶玉" width="26" height="26">';
   const rewardNumber = value => Number(value).toLocaleString('zh-CN');
   function rewardBadge(event) {
+    if(event.game==='arknights-cn') return '<span class="reward-unlisted" title="明日方舟奖励单独统计，不使用终末地嵌晶玉">—</span>';
     const r=event.reward;
     if(!r || r.state==='excluded') return '<span class="reward-unlisted">单列</span>';
     if(r.amount===null) return '<span class="reward-unlisted" title="公告未列明嵌晶玉数量，未计入已核实小计；不表示为零">未列明</span>';
@@ -104,7 +109,7 @@
   }
   function filteredEvents() {
     const query=($('#event-search')?.value||'').trim().toLocaleLowerCase();
-    return allEvents().filter(event => event.version_id===S.version && S.categories.has(event.category) && !event.ignored && (!S.data.settings.hide_completed || !event.completed) && (S.includePending || event.time_kind==='point' || event.end.at) && (!query||(event.title+' '+event.subtype+' '+event.section).toLocaleLowerCase().includes(query)));
+    return scopeEvents().filter(event => S.categories.has(event.category) && !event.ignored && (!S.data.settings.hide_completed || !event.completed) && (S.includePending || event.time_kind==='point' || event.end.at) && (!query||(event.title+' '+event.subtype+' '+event.section+' '+(event.game_name||'')).toLocaleLowerCase().includes(query)));
   }
   function range() {
     if(S.view==='timeline') return [S.anchor,S.anchor+S.days];
@@ -137,7 +142,9 @@
   function applyState(data) {
     const first=!S.initialized;
     S.data=data;
-    if(!data.versions.some(version=>version.id===S.version)) S.version=data.versions[0]?.id;
+    if(!S.game) { const requested=new URLSearchParams(location.search).get('game'); S.game=requested==='all'||data.games.some(g=>g.id===requested)?requested:data.settings.active_game||'endfield-cn'; }
+    if(S.game==='all') S.version='all';
+    else if(!data.versions.some(version=>version.id===S.version&&version.game===S.game)) S.version=data.versions.find(v=>v.game===S.game)?.id;
     if(first) {
       S.view=data.settings.view;S.anchor=Math.floor(civil(now()));
       data.notifications.forEach(notice=>S.seenNotices.add(notice.id));
@@ -154,13 +161,24 @@
   function render() {
     const version=activeVersion();
     if(!version) return;
-    const options=S.data.versions.map(v=>`<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
+    const options=S.game==='all'?'<option value="all">全部游戏 · 各自来源</option>':S.data.versions.filter(v=>v.game===S.game).map(v=>`<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
     if($('#version-select').innerHTML!==options) $('#version-select').innerHTML=options;
     $('#version-select').value=S.version;
+    $('#game-select').value=S.game;
+    $('#version-select').disabled=S.game==='all';
+    $('#game-name').textContent=gameInfo()?.name||'全部游戏';
+    $('#game-source-note').textContent=gameInfo()?.source_label||'国服对照 · UTC+8';
+    $('#source-caption').textContent=(gameInfo()?.source_label||'各自来源')+' · 无 AI 调用';
+    $('.game-monogram').innerHTML=esc(gameInfo()?.monogram||'ALL')+'<span>CN</span>';
+    $('.version-label').textContent=S.game==='endfield-cn'?'版本':'日历范围';
+    $('.page-heading .eyebrow').textContent=(S.game==='endfield-cn'?'ENDFIELD':S.game==='arknights-cn'?'ARKNIGHTS':'MY GAMES')+' / ACTIVITY CALENDAR';
+    document.body.dataset.game=S.game;
+    $('#maintenance-button').hidden=S.game==='arknights-cn';
+    $('a[href^="/api/calendar.ics"]').href='/api/calendar.ics?game='+S.game;
     $('#timezone-select').value=S.data.settings.timezone;
     $('#hide-completed').checked=S.data.settings.hide_completed;
-    $('#version-summary').textContent=`「${version.name}」版本 · ${allEvents().filter(e=>e.version_id===S.version).length} 个独立条目 · 官方公告规则解析`;
-    for(const id of Object.keys(categories)) $(`[data-count="${id}"]`).textContent=allEvents().filter(e=>e.version_id===S.version && e.category===id).length;
+    $('#version-summary').textContent=S.game==='all'?`两款游戏对照排期 · ${scopeEvents().length} 个独立条目 · 提醒覆盖全部游戏`:`${S.game==='endfield-cn'?'「'+version.name+'」版本':'明日方舟国服 · 近期活动'} · ${scopeEvents().length} 个独立条目 · ${gameInfo().source_label}`;
+    for(const id of Object.keys(categories)) $(`[data-count="${id}"]`).textContent=scopeEvents().filter(e=>e.category===id).length;
     $('#timeline-view').setAttribute('aria-pressed',S.view==='timeline');
     $('#month-view').setAttribute('aria-pressed',S.view==='month');
     $('#list-view').setAttribute('aria-pressed',S.view==='list');
@@ -173,7 +191,7 @@
     $('#period-title').textContent=S.view==='month'?`${date.getUTCFullYear()} 年 ${date.getUTCMonth()+1} 月`:`${shortDay(lo,true)} — ${shortDay(hi-1,serialDate(hi-1).getUTCFullYear()!==date.getUTCFullYear())}`;
     const filtered=filteredEvents(), shown=S.view==='list'?filtered:filtered.filter(event=>overlaps(event,lo,hi));
     const pending=filtered.filter(e=>!e.end.at&&e.time_kind!=='point').length;
-    const total=allEvents().filter(e=>e.version_id===S.version).length;
+    const total=scopeEvents().length;
     $('#visible-summary').textContent=S.view==='list'?`本版本共 ${total} 项 · 当前显示 ${shown.length} 项`:`日期范围内 ${shown.length} / 筛选后 ${filtered.length} 项 · 本版本 ${total} 项`;
     $('#catalog-count').textContent=`${S.view==='list'?'全部列表不受日期范围限制':S.fit?'版本时间轴总览':'范围外活动可在“全部活动”查看'}${pending?' · '+pending+' 项截止待定':''}`;
     if(S.view==='list') $('#period-title').textContent=`「${version.name}」全部活动`;
@@ -186,15 +204,20 @@
     $('#unscheduled').innerHTML=unscheduled.length?`<h3>时间待核对 · ${unscheduled.length} 项</h3>${unscheduled.map(e=>`<button type="button" data-event="${e.id}">${esc(cleanTitle(e))}</button>`).join('')}`:'';
     const unread=S.data.notifications.filter(n=>!n.read).length;
     $('#unread-count').textContent=unread;$('#unread-count').hidden=!unread;
-    const sync=S.data.sync;
+    const sync=syncState();
     $('#sync-button').disabled=sync.running;
     $('#sync-button').classList.toggle('syncing',Boolean(sync.running));
-    $('#sync-button').lastChild.textContent=sync.running?'同步中…':'同步公告';
-    $('#sync-status').textContent=sync.last_success?`最近同步 ${format(sync.last_success,{year:true})} · 数据保存在本机`:`官网快照 ${format(version.source.fetched_at,{year:true})} · 数据保存在本机`;
+    $('#sync-button').lastChild.textContent=sync.running?'同步中…':'同步资料';
+    $('#sync-status').textContent=S.game==='all'?'各来源独立同步 · 数据保存在本机':sync.last_success?`最近同步 ${format(sync.last_success,{year:true})} · 数据保存在本机`:`${gameInfo().source_label}快照 ${format(version.source.fetched_at,{year:true})} · 数据保存在本机`;
     renderClock();
   }
   function renderSourceStatus(version) {
-    const sync=S.data.sync, target=$('#source-status');
+    const sync=syncState(), target=$('#source-status');
+    if(S.game!=='endfield-cn') {
+      const label=S.game==='all'?'终末地：官方公告与导览；明日方舟：PRTS 社区 Wiki':'PRTS 社区 Wiki（非官方公告） · 国服 UTC+8 · 保留页面修订号'+(version.warnings?.length?' · '+version.warnings.length+' 项采集提示':'');
+      target.innerHTML=`<span class="status-point"></span><span>${esc(label+(sync.running?' · 同步中':sync.error?' · 同步失败，保留缓存':S.game==='arknights-cn'&&version.source.origin==='snapshot'?' · 当前为内置快照':''))}</span>`;
+      target.classList.toggle('warning',Boolean(sync.error||version.warnings?.length));target.title=sync.error||(version.warnings||[]).join('；');return;
+    }
     let message;
     if(sync.running) message='正在读取官方公告，现有日历仍可使用。';
     else if(sync.error) message=`联网同步失败，继续使用本地${version.source.origin==='snapshot'?'官网快照':'缓存'}。可稍后重试。`;
@@ -202,6 +225,7 @@
     else message=`已连接官方公告 · ${format(version.source.fetched_at,{year:true})} 采集 · 预计开服时间有独立标记`;
     if(version.briefing) message+=` · 官方导览已关联 ${version.briefing.matched_events} 项${version.briefing.conflicts?' · '+version.briefing.conflicts+' 处时间需核对':''}`;
     if(S.data.briefing_previews?.length) message+=` · 已缓存 ${S.data.briefing_previews.length} 份新版本导览，等待对应更新公告`;
+    if(S.data.source_checks?.skland?.status==='device_validation_required') message+=' · 森空岛接口需设备校验，未参与排期';
     target.innerHTML=`<span class="status-point"></span><span>${esc(message)}</span>`;
     target.classList.toggle('warning',Boolean(sync.error));
     target.title=sync.error||'';
@@ -225,7 +249,7 @@
     const cat=categories[event.category];
     const tooltip=`${cleanTitle(event)} · ${format(event.start.at,{year:true})} → ${event.end.at?format(event.end.at,{year:true}):referenceLabels[event.end.reference]||'截止待定'} · ${status(event)}`;
     if(isPoint&&!month) return `<button type="button" class="point-marker" style="--category:${cat.color};--bar-left:${left}%" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}"></button>`;
-    const label=month?cleanTitle(event):(start<lo?'← ':'')+format(event.start.at,{dateOnly:true})+(event.start.state==='estimated'?' 预计':'')+(event.end.at?' → '+format(event.end.at,{dateOnly:true}):' → 待定')+(end>hi?' →':'');
+    const label=month?(S.game==='all'?gameLabel(event)+' · ':'')+cleanTitle(event):(start<lo?'← ':'')+format(event.start.at,{dateOnly:true})+(event.start.state==='estimated'?' 预计':'')+(event.end.at?' → '+format(event.end.at,{dateOnly:true}):' → 待定')+(end>hi?' →':'');
     const image=month?'':artwork(event,'bar-art');
     return `<button type="button" class="event-bar ${image?'has-art':''} ${!event.end.at&&!isPoint?'open-end':''} ${event.start.state==='estimated'?'estimated-start':''} ${end>hi?'clipped-end':''} ${event.completed?'completed':''}" style="--category:${cat.color};--event-accent:${accent(event)};--bar-left:${left}%;--bar-width:${width}%;--progress:${progress}%;--bar-top:${top}px" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}">${image}<span class="bar-label">${esc(label)}</span></button>`;
   }
@@ -245,17 +269,17 @@
       return `<div class="timeline-group" style="--category:${definition.color}"><span class="category-dot"></span>${definition.name}<span class="group-count">${String(group.length).padStart(2,'0')}</span></div>`+group.map(event=>{
         const markers=event.phases.filter(p=>p.at&&civil(p.at)>=lo&&civil(p.at)<hi).map(p=>`<button type="button" class="phase-mark" style="left:${(civil(p.at)-lo)/days*100}%" data-event="${event.id}" aria-label="${esc(event.title+' · '+p.title+' '+format(p.at,{year:true}))}" title="${esc(p.title+' '+format(p.at))}"></button>`).join('');
         const deadline=event.time_kind==='point'?`<strong>${esc(format(event.start.at))}</strong><span>更新节点</span>`:event.end.at?`<strong>${esc(format(event.end.at))}</strong><span>${event.end.state==='estimated'?'预计结束':esc(countdown(event.end.at))}</span>`:`<strong class="pending-label">截止待定</strong><span>${event.end.reference==='recruitment_cycles'?'按寻访次数结束':'等待后续公告'}</span>`;
-        return `<div class="timeline-row ${event.completed?'completed':''}" style="--event-accent:${accent(event)}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="event-avatar ${event.artwork?'with-image':''}" style="--event-accent:${accent(event)}">${artwork(event,'avatar-art')}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="event-name-text"><strong>${esc(cleanTitle(event))}</strong><small>${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button><button type="button" class="reward-cell" data-event="${event.id}" aria-label="${esc(cleanTitle(event))}的嵌晶玉奖励">${rewardBadge(event)}</button></div>`;
+        return `<div class="timeline-row ${event.completed?'completed':''}" style="--event-accent:${accent(event)}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="event-avatar ${event.artwork?'with-image':''}" style="--event-accent:${accent(event)}">${artwork(event,'avatar-art')}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="event-name-text"><strong>${esc(cleanTitle(event))}</strong><small>${S.game==='all'?esc(gameLabel(event))+' · ':''}${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button><button type="button" class="reward-cell" data-event="${event.id}" aria-label="${esc(cleanTitle(event))}的嵌晶玉奖励">${rewardBadge(event)}</button></div>`;
       }).join('');
     }).join('');
-    return `<div class="timeline-scroll"><div class="timeline ${S.fit?'fit-version':''}" style="--days:${days};min-width:${S.fit?Math.max(1000,456+days*10):Math.max(840,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态 · 标题完整显示</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div><div class="timeline-reward-head">嵌晶玉<span>活动总量</span></div></div>${rows}</div></div>`;
+    return `<div class="timeline-scroll"><div class="timeline ${S.game==='arknights-cn'?'arknights-timeline':''} ${S.fit?'fit-version':''}" style="--days:${days};min-width:${S.fit?Math.max(1000,456+days*10):Math.max(840,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态 · 标题完整显示</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div><div class="timeline-reward-head">嵌晶玉<span>${S.game==='all'?'仅终末地':'活动总量'}</span></div></div>${rows}</div></div>`;
   }
   function renderList(events) {
     if(!events.length) return emptyCalendar();
     return '<div class="activity-catalog">'+events.sort((a,b)=>(Date.parse(a.start.at)||Infinity)-(Date.parse(b.start.at)||Infinity)).map(event=>{
       const picture=artwork(event,'catalog-art');
       const end=event.time_kind==='point'?'单次更新':event.end.at?format(event.end.at,{year:true})+(event.end.state==='estimated'?' · 预计':''):'截止待定';
-      return `<button class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="catalog-info"><small>${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':esc(countdown(event.end.at))}</span>${rewardBadge(event)}</span><span class="catalog-arrow" aria-hidden="true">↗</span></button>`;
+      return `<button class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="catalog-info"><small>${S.game==='all'?esc(gameLabel(event))+' · ':''}${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':esc(countdown(event.end.at))}</span>${rewardBadge(event)}</span><span class="catalog-arrow" aria-hidden="true">↗</span></button>`;
     }).join('')+'</div>';
   }
   function renderMonth(events,monthStart,monthEnd) {
@@ -302,7 +326,7 @@
   function endpointDetail(endpoint,role,event) {
     if(role==='end'&&event.time_kind==='point') return '<div class="detail-time-value">更新节点</div><div class="detail-time-state">公告未设活动截止时间</div>';
     const value=endpoint.at?format(endpoint.at,{year:true}):'尚未公布';
-    const basis=endpoint.reference==='briefing_explicit'?'官方版本导览明确':endpoint.state==='unknown'?(referenceLabels[endpoint.reference]||'需要核对公告'):endpointLabels[endpoint.state];
+    const basis=endpoint.reference==='briefing_explicit'?'官方版本导览明确':endpoint.reference==='activity_start'?'兑换开始未单列，暂按活动开始展示':endpoint.state==='unknown'?(referenceLabels[endpoint.reference]||'需要核对来源'):endpoint.state==='exact'&&event.game==='arknights-cn'?'PRTS 国服明确时间':endpointLabels[endpoint.state];
     return `<div class="detail-time-value">${esc(value)}</div><div class="detail-time-state">${esc(basis)}</div>`;
   }
   function renderDetail(event) {
@@ -318,6 +342,13 @@
     const chosen=event.reminder_minutes===null?'follow':event.reminder_minutes.length===0?'off':event.reminder_minutes.length===1?String(event.reminder_minutes[0]):'custom';
     $('#detail-content').innerHTML=`<div class="dialog-header"><div><div class="eyebrow">${esc(event.version_name)} / ${esc(cat.name)}</div><h2 id="detail-title">${esc(cleanTitle(event))}</h2><div class="detail-meta"><span class="tag">${esc(status(event))}</span><span class="tag neutral">${esc(event.subtype)}</span>${event.has_overrides?'<span class="tag warning">已手动校正</span>':''}</div></div><button class="icon-button" type="button" data-close aria-label="关闭活动详情">×</button></div><div class="dialog-body"><div class="help-text">你的时间 · ${esc(zone())}</div><div class="detail-time-grid"><div><div class="detail-time-label">开始</div>${endpointDetail(event.start,'start',event)}</div><div><div class="detail-time-label">${event.time_kind==='point'?'类型':'结束'}</div>${endpointDetail(event.end,'end',event)}</div></div><div class="detail-countdown"><span>${countLabel}</span><strong>${esc(countValue)}</strong></div><div class="help-text">服务器时间（UTC+8）：${event.start.at?esc(format(event.start.at,{timeZone:'Asia/Shanghai',year:true})):'开始待定'} → ${event.end.at?esc(format(event.end.at,{timeZone:'Asia/Shanghai',year:true})):event.time_kind==='point'?'更新节点':'结束待定'}</div>${phases}${rewardDetail(event)}${event.description?'<p class="detail-description">'+esc(event.description)+'</p>':''}${requirements}${event.warnings.length?'<p class="form-error">'+esc(event.warnings.join('；'))+'</p>':''}<div class="detail-actions"><button id="toggle-completed" class="button ${event.completed?'':'button-primary'}" type="button" aria-pressed="${event.completed}">${event.completed?'已完成 · 撤销':'标记已完成'}</button><button id="open-event-reminders" class="button" type="button">提醒设置</button></div><label class="field-label" for="event-reminder">这个活动的提醒</label><select id="event-reminder"><option value="follow">跟随全局设置</option><option value="off">不提醒</option><option value="4320">结束前 3 天</option><option value="1440">结束前 24 小时</option><option value="60">结束前 1 小时</option>${chosen==='custom'?'<option value="custom">自定义提前量（保留）</option>':''}</select>${maintenance}<details class="source-box"><summary>查看公告原文与解析依据</summary><p class="help-text">${esc(event.source.time_label)}：${esc(event.source.time_text)}<br>标准化正文第 ${event.source.line} 行 · 规则解析，未调用 AI</p><pre>${esc(event.source.block_text)}</pre></details><a class="source-link" href="${esc(event.source.url)}" target="_blank" rel="noopener noreferrer">阅读官方公告 ↗</a><details class="edit-section"><summary>手动校正与备注</summary><p class="help-text">以下日期均使用服务器时间（UTC+8）。手动校正独立保存，同步公告不会覆盖。留空会恢复对应的公告时间。</p><form id="event-edit-form"><div class="edit-fields"><label>开始时间<input id="edit-start" type="datetime-local" value="${sourceInput(event.start.at)}" data-initial="${sourceInput(event.start.at)}"></label><label>结束时间<input id="edit-end" type="datetime-local" value="${sourceInput(event.end.at)}" data-initial="${sourceInput(event.end.at)}"></label></div><label class="field-label" for="edit-notes">我的备注</label><textarea id="edit-notes" maxlength="2000" placeholder="例如：周末完成剧情，兑换留到最后一天">${esc(event.notes)}</textarea><div class="edit-actions"><button class="button button-primary" type="submit">保存校正</button><button id="reset-event-times" class="text-button" type="button">恢复公告时间</button></div><div id="edit-error" class="form-error" role="alert" hidden></div></form></details></div>`;
     $('#event-reminder').value=chosen;
+    if(event.source.kind==='community_wiki') {
+      $('#detail-content .source-box summary').textContent='查看 PRTS 原文与解析依据';
+      const link=$('#detail-content .source-link');link.textContent='阅读 PRTS 活动页面 ↗';
+      const panel=document.createElement('section');panel.className='wiki-evidence';
+      panel.innerHTML=`<strong>PRTS 社区 Wiki · 国服</strong><p>页面修订 ${esc(event.source.revision_id)} · ${esc(event.source.revised_at||'')}<br>社区整理资料，具体变更以游戏与官方公告为准。</p><a href="${esc(event.source.revision_url)}" target="_blank" rel="noopener noreferrer">查看本次解析的固定修订 ↗</a> · <a href="${esc(event.source.license.url)}" target="_blank" rel="noopener noreferrer">${esc(event.source.license.name)}</a>`;
+      link.after(panel);
+    }
     if(event.briefing) {
       const source=event.briefing, times=source.cn_time;
       const start=times.startsAfterUpdate?'版本更新维护后':times.openTime||'未明确公布';
@@ -335,14 +366,14 @@
   }
   function openReminders() {
     const settings=S.data.settings;
-    $('#reminder-settings').innerHTML=`<label class="setting-row"><span><strong>开启截止提醒</strong><p>只为截止时间已明确、尚未完成的活动生成提醒。</p></span><input id="reminders-enabled" type="checkbox" ${settings.reminders_enabled?'checked':''}></label><div class="offset-choices" role="group" aria-label="提前多久提醒">${[[4320,'提前 3 天'],[1440,'提前 24 小时'],[60,'提前 1 小时']].map(([n,label])=>`<label><input type="checkbox" data-offset="${n}" ${settings.reminder_offsets.includes(n)?'checked':''}>${label}</label>`).join('')}</div><label class="setting-row"><span><strong>系统桌面提醒</strong><p>${S.data.native_available?'本地程序保持运行时，关闭网页后仍可交给系统通知。':'此环境暂不支持本机通知，可使用应用内或浏览器提醒。'}</p></span><input id="native-notifications" type="checkbox" ${settings.native_notifications?'checked':''} ${S.data.native_available?'':'disabled'}></label><div class="setting-row"><span><strong>自动同步官方公告</strong><p>同步失败时保留上次成功的数据。</p></span><select id="sync-interval"><option value="60">每小时</option><option value="180">每 3 小时</option><option value="360">每 6 小时</option><option value="1440">每天</option></select></div><p class="help-text">电脑关机、休眠或本地程序停止时暂停检查。重新运行后补查提醒窗口；同一活动、截止时间和提前量只提醒一次。浏览器提醒需要网页保持打开。</p><div class="settings-actions"><button id="test-reminder" class="button button-primary" type="button">发送测试提醒</button><button id="browser-notifications" class="button" type="button">${browserEnabled()?'关闭浏览器提醒':'开启浏览器提醒'}</button></div><p id="delivery-result" class="help-text"></p>`;
+    $('#reminder-settings').innerHTML=`<label class="setting-row"><span><strong>开启截止提醒</strong><p>只为截止时间已明确、尚未完成的活动生成提醒。</p></span><input id="reminders-enabled" type="checkbox" ${settings.reminders_enabled?'checked':''}></label><div class="offset-choices" role="group" aria-label="提前多久提醒">${[[4320,'提前 3 天'],[1440,'提前 24 小时'],[60,'提前 1 小时']].map(([n,label])=>`<label><input type="checkbox" data-offset="${n}" ${settings.reminder_offsets.includes(n)?'checked':''}>${label}</label>`).join('')}</div><label class="setting-row"><span><strong>系统桌面提醒</strong><p>${S.data.native_available?'本地程序保持运行时，关闭网页后仍可交给系统通知。':'此环境暂不支持本机通知，可使用应用内或浏览器提醒。'}</p></span><input id="native-notifications" type="checkbox" ${settings.native_notifications?'checked':''} ${S.data.native_available?'':'disabled'}></label><div class="setting-row"><span><strong>自动同步活动资料</strong><p>同步失败时保留上次成功的数据。</p></span><select id="sync-interval"><option value="60">每小时</option><option value="180">每 3 小时</option><option value="360">每 6 小时</option><option value="1440">每天</option></select></div><p class="help-text">电脑关机、休眠或本地程序停止时暂停检查。重新运行后补查提醒窗口；同一活动、截止时间和提前量只提醒一次。浏览器提醒需要网页保持打开。</p><div class="settings-actions"><button id="test-reminder" class="button button-primary" type="button">发送测试提醒</button><button id="browser-notifications" class="button" type="button">${browserEnabled()?'关闭浏览器提醒':'开启浏览器提醒'}</button></div><p id="delivery-result" class="help-text"></p>`;
     const interval=$('#sync-interval');
     if(![...interval.options].some(option=>Number(option.value)===settings.sync_interval_minutes)) interval.add(new Option(`每 ${settings.sync_interval_minutes} 分钟`,settings.sync_interval_minutes));
     interval.value=settings.sync_interval_minutes;
     renderInbox();openDialog('#reminder-dialog');
   }
   function renderInbox() {
-    $('#notification-list').innerHTML=S.data.notifications.length?S.data.notifications.map(notice=>`<div class="notice ${notice.read?'read':''}"><span class="notice-dot"></span><${notice.event_id?'button type="button" data-event="'+esc(notice.event_id)+'"':'div'}><strong>${esc(notice.title)}</strong><p>${esc(notice.message)}${notice.end_at?' · 截止 '+esc(format(notice.end_at,{year:true})):''}</p><small>${esc(format(notice.created_at,{year:true}))}</small></${notice.event_id?'button':'div'}></div>`).join(''):'<div class="empty-state">还没有提醒。可以发送一条测试提醒。</div>';
+    $('#notification-list').innerHTML=S.data.notifications.length?S.data.notifications.map(notice=>`<div class="notice ${notice.read?'read':''}"><span class="notice-dot"></span><${notice.event_id?'button type="button" data-event="'+esc(notice.event_id)+'"':'div'}><strong>${notice.game_name?esc(notice.game_name)+' · ':''}${esc(notice.title)}</strong><p>${esc(notice.message)}${notice.end_at?' · 截止 '+esc(format(notice.end_at,{year:true})):''}</p><small>${esc(format(notice.created_at,{year:true}))}</small></${notice.event_id?'button':'div'}></div>`).join(''):'<div class="empty-state">还没有提醒。可以发送一条测试提醒。</div>';
     const delivery=S.data.desktop_delivery;
     if($('#delivery-result')) $('#delivery-result').textContent=delivery?`${format(delivery.at)} · ${delivery.message}`:'';
   }
@@ -356,17 +387,17 @@
       S.seenNotices.add(notice.id);
       if(!browserEnabled()||notice.read) continue;
       try {
-        const notification=new Notification('游时 · '+notice.title,{body:notice.message+(notice.end_at?' · 截止 '+format(notice.end_at,{year:true}):''),tag:notice.id});
+        const notification=new Notification('游时 · '+(notice.game_name?notice.game_name+' · ':'')+notice.title,{body:notice.message+(notice.end_at?' · 截止 '+format(notice.end_at,{year:true}):''),tag:notice.id});
         notification.onclick=()=>{window.focus();if(notice.event_id) openEvent(notice.event_id);};
       } catch { /* The persistent inbox remains available if the OS blocks delivery. */ }
     }
   }
   async function openRules() {
-    try { S.rules=await api('/api/rules');S.rulesTab='config';renderRules();openDialog('#rules-dialog'); }
+    try { S.rules=await api('/api/rules?game='+S.game);S.rulesTab='config';renderRules();openDialog('#rules-dialog'); }
     catch(error) { toast(error.message,true); }
   }
   function currentJSON() {
-    return S.rulesTab==='config'?S.rules:{...activeVersion(),events:allEvents().filter(e=>e.version_id===S.version)};
+    return S.rulesTab==='config'?S.rules:{...activeVersion(),game:S.game,events:scopeEvents()};
   }
   function renderRules() {
     $('#show-config').setAttribute('aria-pressed',S.rulesTab==='config');
@@ -390,7 +421,7 @@
   async function fitVersion() {
     if(S.fit) {S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));render();return;}
     await showAll('timeline');
-    const events=allEvents().filter(e=>e.version_id===S.version&&!e.invalid_interval);
+    const events=scopeEvents().filter(e=>!e.invalid_interval);
     const starts=events.filter(e=>e.start.at).map(e=>civil(e.start.at));
     const ends=events.flatMap(e=>[e.start.at,e.end.at]).filter(Boolean).map(value=>civil(value));
     if(!starts.length) return;
@@ -431,18 +462,18 @@
       case 'fit-version':await fitVersion();break;
       case 'reset-filters':await showAll();break;
       case 'sync-button':
-        if(await mutate('/api/sync')) toast('正在同步官方公告…');
+        if(await mutate('/api/sync',{game:S.game})) toast('正在同步当前游戏资料…');
         break;
       case 'inbox-button':case 'settings-button':case 'open-event-reminders':openReminders();break;
       case 'rules-button':await openRules();break;
       case 'show-config':S.rulesTab='config';renderRules();break;
       case 'show-analysis':S.rulesTab='analysis';renderRules();break;
-      case 'download-rules':downloadJSON(currentJSON(),S.rulesTab==='config'?'endfield-cn.rules.json':'endfield-version.json');break;
+      case 'download-rules':downloadJSON(currentJSON(),S.rulesTab==='config'?S.game+'.rules.json':S.game==='endfield-cn'?'endfield-version.json':S.game+'-calendar.json');break;
       case 'export-button':
-        try { const data=await api('/api/export');downloadJSON(data,'endfield-calendar.json');toast('已导出规则与活动 JSON'); } catch(error) {toast(error.message,true);}
+        try { const data=await api('/api/export?game='+S.game);downloadJSON(data,S.game+'-calendar.json');toast('已导出规则与活动 JSON'); } catch(error) {toast(error.message,true);}
         break;
       case 'maintenance-button': {
-        const maintenance=allEvents().find(e=>e.version_id===S.version&&e.category==='maintenance');
+        const maintenance=scopeEvents().find(e=>e.category==='maintenance');
         if(maintenance) openEvent(maintenance.id);else toast('这篇公告没有可识别的维护时间');
         break;
       }
@@ -490,6 +521,11 @@
       await mutate('/api/settings',{reminder_offsets:offsets});return;
     }
     switch(target.id) {
+      case 'game-select':
+        S.game=target.value;S.version=null;S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));S.rules=null;
+        $('#event-search').value='';
+        for(const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
+        await mutate('/api/settings',{active_game:S.game});break;
       case 'version-select':S.version=target.value;S.anchor=Math.floor(civil(activeVersion().maintenance.start||now()));render();break;
       case 'timezone-select':await mutate('/api/settings',{timezone:target.value});break;
       case 'range-select':S.fit=false;S.days=Number(target.value);render();break;

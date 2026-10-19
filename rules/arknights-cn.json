@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "ruleset_version": "0.1.0",
+  "game_id": "arknights-cn",
+  "game_name": "明日方舟",
+  "server": "国服",
+  "timezone": "Asia/Shanghai",
+  "source_label": "PRTS 社区 Wiki",
+  "catalog_url": "https://prts.wiki/w/%E6%B4%BB%E5%8A%A8%E4%B8%80%E8%A7%88",
+  "api_url": "https://prts.wiki/api.php",
+  "max_activity_pages": 8,
+  "max_announcement_pages": 6,
+  "max_images": 8,
+  "permanent_types": ["集成战略", "生息演算"],
+  "templates": ["活动信息", "活动信息/info"],
+  "fields": ["活动开始时间", "活动结束时间", "兑换结束时间", "标题图文件名", "公告"],
+  "cn_policy": "cn_field_first_no_foreign_server_fallback",
+  "unknown_policy": "keep_null_no_midnight_inference",
+  "exchange_start_policy": "estimated_from_activity_until_explicit_announcement",
+  "announcement_datetime_pattern": "(?:(?P<year>\\d{4})[年/\\-])?(?P<month>\\d{1,2})[月/\\-](?P<day>\\d{1,2})日?\\s*(?P<hour>\\d{1,2}):(?P<minute>\\d{2})",
+  "copyright": "PRTS 编辑内容遵循其 CC BY-NC-SA 4.0 说明；游戏素材另属原权利人，不适用本项目 MIT 代码许可"
+}

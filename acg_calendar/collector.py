@@ -28,7 +28,7 @@ class Collector:
         self.artwork = ArtworkCache(data_dir)
 
     def seed(self):
-        if self.store.versions():
+        if any(v.get("game") == "endfield-cn" for v in self.store.versions()):
             return
         metadata = json.loads((ROOT / "samples/source.json").read_text(encoding="utf-8"))
         text = (ROOT / "samples/endfield-cn-6094.txt").read_text(encoding="utf-8")

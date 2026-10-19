@@ -23,6 +23,9 @@ from acg_calendar.parser import ROOT, iso, load_rules, resolve_versions, stamp
 from acg_calendar.reminders import ReminderEngine, native_available
 from acg_calendar.storage import Store
 from acg_calendar.rewards import summarize_rewards
+from acg_calendar.arknights import ArknightsCollector
+from acg_calendar.games import GAMES, GAME_IDS, game_name
+from acg_calendar.skland import SklandProbe
 
 
 class Application:
@@ -31,6 +34,10 @@ class Application:
         self.store = Store(data_dir / "calendar.sqlite3")
         self.collector = Collector(self.store, data_dir)
         self.collector.seed()
+        self.arknights = ArknightsCollector(self.store, data_dir)
+        self.arknights.seed()
+        self.collectors = {"endfield-cn": self.collector, "arknights-cn": self.arknights}
+        self.skland = SklandProbe(self.store)
         self.csrf = secrets.token_urlsafe(32)
         self.reminders = ReminderEngine(self.store)
         self.stop = threading.Event()
@@ -41,6 +48,8 @@ class Application:
         versions = self.store.versions()
         reward_rules = load_rules().get("rewards")
         for version in versions:
+            if version.get("game") != "endfield-cn":
+                continue
             # Rebuild legacy local snapshots once from their retained official text.
             if "reward_mentions" not in version:
                 source = self.data_dir / "sources" / (version["id"] + ".txt")
@@ -62,30 +71,41 @@ class Application:
     def state(self):
         versions = sorted(self.versions(), key=lambda v: v["maintenance"].get("start") or "", reverse=True)
         return {
+            "games": GAMES,
             "app_version": __version__, "server_time": iso(dt.datetime.now(dt.timezone.utc)),
             "csrf_token": self.csrf, "settings": self.store.settings(),
             "versions": [{k: v for k, v in version.items() if k != "events"} for version in versions],
-            "events": [{**event, "version_name": version["name"]} for version in versions for event in version["events"]],
+            "events": [{**event, "version_name": version["name"], "game": version["game"], "game_name": game_name(version["game"])} for version in versions for event in version["events"]],
             "sync": self.store.get_meta("sync", {}), "notifications": self.store.notifications(),
             "native_available": self.desktop and native_available(),
             "desktop_delivery": self.store.get_meta("desktop_delivery"),
             "briefing_previews": self.store.get_meta("briefing_previews", []),
+            "sync_by_game": {"endfield-cn": self.store.get_meta("sync", {}), "arknights-cn": self.store.get_meta("sync:arknights-cn", {})},
+            "source_checks": {"skland": self.store.get_meta("source:skland")},
         }
+
+    def scoped_versions(self, game):
+        if game not in GAME_IDS | {"all"}:
+            raise ValueError("不支持的游戏")
+        return [v for v in self.versions() if game == "all" or v["game"] == game]
 
     def start(self):
         def worker():
             if self.auto_sync:
-                self.collector.start(force=True)
+                for collector in self.collectors.values():
+                    collector.start(force=True)
+                threading.Thread(target=self.skland.check, daemon=True, name="skland-availability").start()
             while not self.stop.is_set():
                 try:
                     self.reminders.tick()
                     if self.auto_sync:
                         now = dt.datetime.now(dt.timezone.utc)
-                        sync = self.store.get_meta("sync", {})
-                        last = stamp(sync.get("last_attempt"))
                         interval = self.store.settings()["sync_interval_minutes"] * 60
-                        if not last or (now - last).total_seconds() >= interval:
-                            self.collector.start()
+                        for game, collector in self.collectors.items():
+                            sync = self.store.get_meta("sync" if game == "endfield-cn" else "sync:arknights-cn", {})
+                            last = stamp(sync.get("last_attempt"))
+                            if not last or (now - last).total_seconds() >= interval:
+                                collector.start()
                 except Exception as error:
                     print("[background]", str(error), flush=True)
                 self.stop.wait(15)
@@ -131,9 +151,11 @@ class Application:
         self.reminders.tick()
 
     def update_settings(self, patch):
-        allowed = {"timezone", "view", "reminders_enabled", "reminder_offsets", "native_notifications", "sync_interval_minutes", "hide_completed"}
+        allowed = {"active_game", "timezone", "view", "reminders_enabled", "reminder_offsets", "native_notifications", "sync_interval_minutes", "hide_completed"}
         if set(patch) - allowed:
             raise ValueError("不支持的设置字段")
+        if "active_game" in patch and (not isinstance(patch["active_game"], str) or patch["active_game"] not in GAME_IDS | {"all"}):
+            raise ValueError("不支持的游戏")
         for name in ("reminders_enabled", "native_notifications", "hide_completed"):
             if name in patch and type(patch[name]) is not bool:
                 raise ValueError("开关字段必须为布尔值")
@@ -185,14 +207,18 @@ def handler_for(application):
                 return self.send({"error": "仅允许本机访问"}, 403)
             path = urllib.parse.urlsplit(self.path).path
             try:
+                game = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("game", [application.store.settings()["active_game"]])[0]
+                if game not in GAME_IDS | {"all"}:
+                    raise ValueError("不支持的游戏")
                 if path == "/api/state":
                     return self.send(application.state())
                 if path == "/api/rules":
-                    return self.send(load_rules())
+                    return self.send({"games": {g: load_rules(ROOT / "rules" / (g + ".json")) for g in sorted(GAME_IDS)}} if game == "all" else load_rules(ROOT / "rules" / (game + ".json")))
                 if path == "/api/export":
-                    return self.send({"schema_version": 1, "exported_at": iso(dt.datetime.now(dt.timezone.utc)), "rules": load_rules(), "versions": application.versions()}, filename="endfield-calendar.json")
+                    config = {"games": {g: load_rules(ROOT / "rules" / (g + ".json")) for g in sorted(GAME_IDS)}} if game == "all" else load_rules(ROOT / "rules" / (game + ".json"))
+                    return self.send({"schema_version": 1, "exported_at": iso(dt.datetime.now(dt.timezone.utc)), "rules": config, "versions": application.scoped_versions(game)}, filename=game + "-calendar.json")
                 if path == "/api/calendar.ics":
-                    return self.send(calendar_bytes(application.versions(), application.store.settings()), content_type="text/calendar; charset=utf-8", filename="playtime-endfield.ics")
+                    return self.send(calendar_bytes(application.scoped_versions(game), application.store.settings()), content_type="text/calendar; charset=utf-8", filename="playtime-" + ("endfield" if game == "endfield-cn" else game) + ".ics")
                 if path == "/api/health":
                     return self.send({"ok": True, "version": __version__})
                 if path.startswith("/api/artwork/"):
@@ -211,6 +237,8 @@ def handler_for(application):
                 return self.send(file.read_bytes(), content_type=content_type + "; charset=utf-8")
             except (BrokenPipeError, ConnectionResetError):
                 return
+            except ValueError as error:
+                return self.send({"error": str(error)}, 400)
 
         def do_POST(self):
             self.mutate()
@@ -235,7 +263,12 @@ def handler_for(application):
                     raise ValueError("请求应为 JSON 对象")
                 path = urllib.parse.urlsplit(self.path).path
                 if path == "/api/sync":
-                    application.collector.start()
+                    game = payload.get("game", application.store.settings()["active_game"])
+                    if not isinstance(game, str) or game not in GAME_IDS | {"all"}:
+                        raise ValueError("不支持的游戏")
+                    for key, collector in application.collectors.items():
+                        if game in {key, "all"}:
+                            collector.start()
                 elif path == "/api/settings":
                     application.update_settings(payload)
                 elif path == "/api/notifications/test":
@@ -250,6 +283,8 @@ def handler_for(application):
                     version = next((v for v in application.versions() if v["id"] == match.group(1)), None)
                     if not version:
                         raise LookupError("版本不存在")
+                    if not version["maintenance"].get("start"):
+                        raise ValueError("这个日历没有版本维护记录")
                     actual = iso(stamp(payload.get("actual_end")))
                     if actual and version["maintenance"]["start"] and stamp(actual) <= stamp(version["maintenance"]["start"]):
                         raise ValueError("实际开服时间需晚于维护开始")
@@ -284,7 +319,7 @@ def main():
         parser.exit(1, f"无法使用端口 {args.port}：{error}\n可以尝试 --port 8766\n")
     server.daemon_threads = True
     application.start()
-    print(f"\n  游时 · 终末地日历 {__version__}\n  Local: http://127.0.0.1:{args.port}\n  Data:  {args.data_dir.resolve()}\n  按 Ctrl+C 停止。\n", flush=True)
+    print(f"\n  游时 · 游戏活动日历 {__version__}\n  Local: http://127.0.0.1:{args.port}\n  Data:  {args.data_dir.resolve()}\n  按 Ctrl+C 停止。\n", flush=True)
     try:
         server.serve_forever(poll_interval=0.3)
     except KeyboardInterrupt:

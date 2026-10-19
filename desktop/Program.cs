@@ -41,7 +41,7 @@ public static class Program
 }
 
 public record Endpoint(string? At, string State);
-public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source, JsonElement Artwork, JsonElement Reward)
+public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source, JsonElement Artwork, JsonElement Reward, string Game)
 {
     public DateTimeOffset? Begin => Parse(Start.At);
     public DateTimeOffset? Finish => Parse(End.At);
@@ -62,6 +62,9 @@ public sealed class CalendarWindow : Window
     readonly TextBlock status = new();
     readonly TextBlock clock = new();
     readonly TextBlock rewardTotal = new();
+    readonly StackPanel rewardHeader = new();
+    readonly ComboBox gameSelect = new();
+    string selectedGame = "endfield-cn";
     int verifiedRewardTotal;
     readonly Calendar month = new();
     readonly Grid content = new();
@@ -108,17 +111,22 @@ public sealed class CalendarWindow : Window
         heading.Children.Add(brand); layout.Children.Add(heading);
         var controls = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
         subtitle.FontSize = 17; subtitle.FontWeight = FontWeights.SemiBold; subtitle.Text = "正在启动本地日历…"; controls.Children.Add(subtitle);
-        var rewards = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0), ToolTip = "活动已核实小计，不含地图、信用商店、维护补偿及通行证；未知数量不按零计算。完整明细见时间轴。" };
+        var rewards = rewardHeader; rewards.Orientation = Orientation.Horizontal; rewards.Margin = new Thickness(0, 6, 0, 0); rewards.ToolTip = "终末地活动已核实小计，不含地图、信用商店、维护补偿及通行证；未知数量不按零计算。完整明细见时间轴。";
         if (RewardIcon() is ImageSource currency) rewards.Children.Add(new Image { Source = currency, Width = 27, Height = 27 });
         rewardTotal.FontSize = 11; rewardTotal.Foreground = Brush("#805B42"); rewardTotal.VerticalAlignment = VerticalAlignment.Center; rewards.Children.Add(rewardTotal); controls.Children.Add(rewards);
+        gameSelect.Items.Add("终末地国服 · 官方"); gameSelect.Items.Add("明日方舟国服 · PRTS"); gameSelect.Items.Add("全部游戏 · 对照排期");
+        gameSelect.SelectedIndex = selectedGame == "arknights-cn" ? 1 : selectedGame == "all" ? 2 : 0;
+        gameSelect.Margin = new Thickness(0, 8, 0, 0); gameSelect.Padding = new Thickness(5, 3, 5, 3);
+        gameSelect.SelectionChanged += (_, _) => { selectedGame = gameSelect.SelectedIndex == 1 ? "arknights-cn" : gameSelect.SelectedIndex == 2 ? "all" : "endfield-cn"; selected = null; month.SelectedDate = null; Render(); SavePreferences(); };
+        controls.Children.Add(gameSelect);
         var toolbar = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
         mode = Button("展开月历", ToggleMode); toolbar.Children.Add(mode);
         toolbar.Children.Add(Button("近期", () => { showAll = false; selected = null; month.SelectedDate = null; Render(); }));
         allButton = Button("全部活动", () => { showAll = !showAll; selected = null; month.SelectedDate = null; if (showAll && compact) ShowMode(false); Render(); });
         toolbar.Children.Add(allButton);
         densityButton = Button("图文模式", () => { dense = !dense; Render(); }); toolbar.Children.Add(densityButton);
-        toolbar.Children.Add(Button("同步", async () => await Mutate("/api/sync", new { })));
-        toolbar.Children.Add(Button("完整时间轴 ↗", () => Open(address)));
+        toolbar.Children.Add(Button("同步", async () => await Mutate("/api/sync", new { game = selectedGame })));
+        toolbar.Children.Add(Button("完整时间轴 ↗", () => Open(address + "?game=" + selectedGame)));
         controls.Children.Add(toolbar); Grid.SetRow(controls, 1); layout.Children.Add(controls);
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         content.ColumnDefinitions.Add(new ColumnDefinition());
@@ -137,7 +145,7 @@ public sealed class CalendarWindow : Window
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("显示桌面挂件", null, (_, _) => Dispatcher.Invoke(() => ShowMode(true)));
         menu.Items.Add("显示月历", null, (_, _) => Dispatcher.Invoke(() => ShowMode(false)));
-        menu.Items.Add("打开完整时间轴", null, (_, _) => Open(address));
+        menu.Items.Add("打开完整时间轴", null, (_, _) => Open(address + "?game=" + selectedGame));
         menu.Items.Add("导出日历文件", null, async (_, _) => await Export());
         notificationsMenu = new Forms.ToolStripMenuItem("启用 Windows 通知");
         notificationsMenu.Click += async (_, _) => await Mutate("/api/settings", new { native_notifications = !notificationsMenu.Checked });
@@ -199,12 +207,13 @@ public sealed class CalendarWindow : Window
             Left = Math.Clamp(p.GetProperty("left").GetDouble(), area.Left, Math.Max(area.Left, area.Right - Width));
             Top = Math.Clamp(p.GetProperty("top").GetDouble(), area.Top, Math.Max(area.Top, area.Bottom - Height));
             Topmost = p.GetProperty("topmost").GetBoolean();
+            if (p.TryGetProperty("game", out var game) && game.GetString() is "endfield-cn" or "arknights-cn" or "all") selectedGame = game.GetString()!;
         }
         catch { }
     }
     void SavePreferences()
     {
-        try { Directory.CreateDirectory(Path.GetDirectoryName(preferences)!); File.WriteAllText(preferences, JsonSerializer.Serialize(new { left = Left, top = Top, topmost = Topmost })); }
+        try { Directory.CreateDirectory(Path.GetDirectoryName(preferences)!); File.WriteAllText(preferences, JsonSerializer.Serialize(new { left = Left, top = Top, topmost = Topmost, game = selectedGame })); }
         catch { /* Position persistence must not stop the calendar. */ }
     }
 
@@ -267,7 +276,7 @@ public sealed class CalendarWindow : Window
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
             events = events.Select(e => e with { Source = e.Source.Clone(), Artwork = e.Artwork.ValueKind == JsonValueKind.Undefined ? default : e.Artwork.Clone(), Reward = e.Reward.ValueKind == JsonValueKind.Undefined ? default : e.Reward.Clone() }).ToArray();
-            var current = state.RootElement.GetProperty("versions")[0];
+            var current = state.RootElement.GetProperty("versions").EnumerateArray().First(v => v.GetProperty("game").GetString() == "endfield-cn");
             if (current.TryGetProperty("reward_summary", out var summary))
             {
                 verifiedRewardTotal = summary.GetProperty("verified_total").GetInt32();
@@ -282,12 +291,14 @@ public sealed class CalendarWindow : Window
     {
         clock.Text = DateTime.Now.ToString("M月d日 dddd HH:mm") + " · 本机时区";
         if (events.Length == 0) return;
-        subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + events.Length + " 项" : "接下来，别错过";
+        var scoped = events.Where(e => selectedGame == "all" || e.Game == selectedGame).ToArray();
+        rewardHeader.Visibility = selectedGame == "arknights-cn" ? Visibility.Collapsed : Visibility.Visible;
+        subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + scoped.Length + " 项" : "接下来，别错过";
         allButton.Content = showAll ? "仅看近期" : "全部活动";
         densityButton.Content = dense ? "图文模式" : "紧凑模式";
         cards.Children.Clear();
         var now = DateTimeOffset.Now;
-        var shown = showAll ? events.AsEnumerable() : events.Where(e => !e.Completed && !e.Ignored && e.Category != "maintenance");
+        var shown = showAll ? scoped.AsEnumerable() : scoped.Where(e => !e.Completed && !e.Ignored && e.Category != "maintenance");
         if (selected is DateTime chosen)
             shown = shown.Where(e => e.Begin != null && e.Begin.Value.LocalDateTime.Date <= chosen.Date && (e.Finish?.LocalDateTime.Date >= chosen.Date || (e.Time_Kind == "point" ? e.Begin.Value.LocalDateTime.Date == chosen.Date : e.Finish == null)));
         else if (!showAll) shown = shown.Where(e => e.Finish > now || e.Begin > now || (e.Finish == null && e.Time_Kind != "point"));
@@ -300,6 +311,7 @@ public sealed class CalendarWindow : Window
             var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(6), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = color, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
             var body = new StackPanel();
             string type = entry.Category switch { "gacha" => "寻访", "exchange" => "兑换", "update" => "更新", "maintenance" => "维护", _ => "活动" };
+            if (selectedGame == "all") type = (entry.Game == "arknights-cn" ? "明日方舟" : "终末地") + " · " + type;
             var heading = new DockPanel();
             var done = Button(entry.Completed ? "↶" : "✓", async () => await Mutate("/api/events/" + entry.Id, new { completed = !entry.Completed }, true));
             done.ToolTip = entry.Completed ? "撤销完成" : "标记完成"; done.Padding = new Thickness(6, 2, 6, 2); DockPanel.SetDock(done, Dock.Right); heading.Children.Add(done);
@@ -334,11 +346,11 @@ public sealed class CalendarWindow : Window
             }
             var actions = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
             actions.Children.Add(Button("标记完成", async () => await Mutate("/api/events/" + entry.Id, new { completed = true }, true)));
-            if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button("公告 ↗", () => Open(source.GetString()!)));
+            if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button(entry.Game == "arknights-cn" ? "PRTS ↗" : "公告 ↗", () => Open(source.GetString()!)));
             if (!dense) body.Children.Add(actions); card.Child = body; cards.Children.Add(card);
         }
         if (ordered.Length == 0) cards.Children.Add(Text("这一天没有待办活动，换一天看看。", 13));
-        status.Text = $"当前 {ordered.Length} / 共 {events.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n{(showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。")}";
+        status.Text = $"当前 {ordered.Length} / 共 {scoped.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n" + (selectedGame == "arknights-cn" ? "来源：PRTS 社区 Wiki · 国服 · 可在完整时间轴查看修订。" : showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。");
     }
     ImageSource? currencyIcon;
     ImageSource? RewardIcon()
@@ -382,9 +394,9 @@ public sealed class CalendarWindow : Window
     {
         try
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = "游时-终末地.ics", Filter = "iCalendar 日历 (*.ics)|*.ics" };
+            var dialog = new Microsoft.Win32.SaveFileDialog { FileName = "游时-" + selectedGame + ".ics", Filter = "iCalendar 日历 (*.ics)|*.ics" };
             if (dialog.ShowDialog(this) != true) return;
-            var bytes = await http.GetByteArrayAsync(address + "/api/calendar.ics");
+            var bytes = await http.GetByteArrayAsync(address + "/api/calendar.ics?game=" + selectedGame);
             await File.WriteAllBytesAsync(dialog.FileName, bytes);
             status.Text = "已导出。日历应用导入的是快照，不会自动同步到系统时钟面板。";
         }
@@ -409,7 +421,7 @@ public sealed class CalendarWindow : Window
         try
         {
             if (events.Length < 1 || cards.Children.Count < 1 || csrf == "") throw new Exception("Desktop did not load real calendar data");
-            if (verifiedRewardTotal != 11000 || RewardIcon() == null || !events.Any(e => e.Reward.GetProperty("state").GetString() == "shared")) throw new Exception("Reward summary, shared pool, or icon did not load");
+            if (verifiedRewardTotal != 11000 || RewardIcon() == null || !events.Any(e => e.Reward.ValueKind == JsonValueKind.Object && e.Reward.GetProperty("state").GetString() == "shared")) throw new Exception("Reward summary, shared pool, or icon did not load");
             Hide();
             using (var hidden = await http.GetAsync(address + "/api/health")) hidden.EnsureSuccessStatusCode();
             if (IsVisible) throw new Exception("Desktop did not hide to the tray");
@@ -422,6 +434,11 @@ public sealed class CalendarWindow : Window
             byte[] ics = await http.GetByteArrayAsync(address + "/api/calendar.ics");
             if (!System.Text.Encoding.UTF8.GetString(ics).StartsWith("BEGIN:VCALENDAR")) throw new Exception("Calendar export failed");
             SaveRender("widget.png"); ShowMode(false); showAll = true; Render(); SaveRender("month.png");
+            gameSelect.SelectedIndex = 1; Render(); SaveRender("arknights.png");
+            if (cards.Children.Count != events.Count(e => e.Game == "arknights-cn") || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("Arknights filter or currency isolation failed");
+            byte[] arkIcs = await http.GetByteArrayAsync(address + "/api/calendar.ics?game=arknights-cn");
+            if (!System.Text.Encoding.UTF8.GetString(arkIcs).Contains("PRTS")) throw new Exception("Arknights calendar attribution missing");
+            gameSelect.SelectedIndex = 2; Render(); SaveRender("combined.png");
             if (cards.Children.Count != events.Length) throw new Exception("All-activities view omitted entries");
             month.SelectedDate = DateTime.Today.AddDays(1);
             if (selected != DateTime.Today.AddDays(1)) throw new Exception("Calendar selection did not update");

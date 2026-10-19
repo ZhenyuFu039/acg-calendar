@@ -11,6 +11,7 @@ import sys
 import threading
 
 from .parser import iso, resolve_versions, stamp
+from .games import game_name
 
 
 def native_available():
@@ -63,7 +64,7 @@ class ReminderEngine:
                 if threshold is None:
                     continue
                 key = hashlib.sha256(f"{event['id']}|{endpoint['at']}|{threshold}".encode()).hexdigest()
-                payload = {"title": event["title"], "message": "活动已到截止时间" if threshold == 0 else "活动即将结束", "end_at": endpoint["at"], "threshold_minutes": threshold, "kind": "deadline"}
+                payload = {"title": event["title"], "game": version.get("game", "endfield-cn"), "game_name": game_name(version.get("game", "endfield-cn")), "message": "活动已到截止时间" if threshold == 0 else "活动即将结束", "end_at": endpoint["at"], "threshold_minutes": threshold, "kind": "deadline"}
                 if self.store.add_notification(key, event["id"], payload, iso(now)):
                     created.append(payload)
         if created and settings["native_notifications"]:
@@ -74,7 +75,7 @@ class ReminderEngine:
         def run():
             with self.delivery_lock:
                 title = "游时 · " + (notices[0]["message"] if len(notices) == 1 else f"{len(notices)} 项活动提醒")
-                body = "\n".join(notice["title"] for notice in notices[:4])
+                body = "\n".join((notice.get("game_name", "") + " · " if notice.get("game_name") else "") + notice["title"] for notice in notices[:4])
                 try:
                     sent = self.sender(title, body)
                     self.store.set_meta("desktop_delivery", {"at": iso(dt.datetime.now(dt.timezone.utc)), "ok": sent, "message": "已交给系统通知服务" if sent else "系统通知不可用，请查看提醒收件箱"})
