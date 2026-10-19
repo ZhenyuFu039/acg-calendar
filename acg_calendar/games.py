@@ -4,6 +4,8 @@ GAMES = [
     {'id': 'arknights-cn', 'name': '明日方舟', 'short_name': '明日方舟', 'monogram': 'AK', 'server': '国服', 'timezone': 'Asia/Shanghai', 'source_label': 'PRTS 社区 Wiki', 'source_kind': 'community_wiki'},
 ]
 GAME_IDS = {game['id'] for game in GAMES}
+for game in GAMES:
+    game['icon'] = '/assets/arknights-logo.png' if game['id'] == 'arknights-cn' else '/assets/endfield-icon-zh.svg'
 
 
 def game_name(game_id):

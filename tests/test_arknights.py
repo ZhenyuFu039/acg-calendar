@@ -145,6 +145,25 @@ class PrtsPersistenceTests(TempStoreTest):
         with self.assertRaises(ValueError): collector.collect()
         self.assertEqual(self.store.versions(), before)
 
+    def test_official_image_failure_cannot_fail_successful_date_sync(self):
+        class BrokenImages:
+            def attach(self, version):
+                raise OSError('image adapter offline')
+        collector = ArknightsCollector(self.store, self.directory, self.fetcher, official_artwork=BrokenImages())
+        result = collector.collect()
+        self.assertTrue(result['events'])
+        self.assertIsNone(self.store.get_meta(collector.meta_key)['error'])
+        self.assertIn('image adapter offline', result['official_artwork']['errors'][0])
+
+    def test_official_images_are_applied_before_optional_wiki_fallback(self):
+        class Images:
+            def attach(self, version):
+                for event in version['events']:
+                    event['artwork'] = {'match': 'official_activity_heading'}
+        collector = ArknightsCollector(self.store, self.directory, self.fetcher, official_artwork=Images())
+        result = collector.collect()
+        self.assertTrue(all(e['artwork']['match']=='official_activity_heading' for e in result['events']))
+
     def test_announcement_outage_preserves_existing_gacha_and_phase_rows(self):
         collector=ArknightsCollector(self.store,self.directory,self.fetcher)
         original=collector.collect()

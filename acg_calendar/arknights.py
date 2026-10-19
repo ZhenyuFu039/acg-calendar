@@ -11,6 +11,7 @@ import threading
 import urllib.parse
 
 from .artwork import ArtworkCache
+from .arknights_artwork import OfficialArknightsArtwork
 from .parser import ROOT, iso, stamp
 from .wiki_http import WikiHTTP, wiki_url
 
@@ -115,7 +116,7 @@ def parse_page(page):
     source = {'url': page_url(title), 'title': title, 'page_id': page.get('pageid'), 'revision_id': revision['revid'], 'revision_url': 'https://prts.wiki/index.php?' + urllib.parse.urlencode({'title': title, 'oldid': revision['revid']}), 'revised_at': revision.get('timestamp'), 'kind': 'community_wiki', 'label': 'PRTS 社区 Wiki', 'license': LICENSE, 'line': line, 'time_label': '活动信息模板 · 国服', 'time_text': start['raw'] + ' → ' + end['raw'], 'block_text': raw}
     def make(suffix, event_title, category, begin, finish):
         key = hashlib.sha256((GAME + '|' + title + '|' + suffix).encode()).hexdigest()[:20]
-        return {'id': key, 'version_id': VERSION_ID, 'title': event_title, 'parent_title': None if suffix == 'activity' else name, 'section': kind, 'category': category, 'subtype': '签到' if '登录' in kind else '复刻' if '复刻' in name else kind, 'time_kind': 'interval', 'start': begin, 'end': finish, 'phases': [], 'description': 'PRTS 国服活动时间；关卡开放与奖励兑换分别列出。', 'requirements': [clean(fields['参加条件关卡'])] if fields.get('参加条件关卡') else [], 'source': dict(source), 'warnings': [], 'prts': {'page': title, 'image_title': clean(fields.get('标题图文件名', '')), 'announcement': clean(fields.get('公告', '')).split('#')[0], 'role': suffix}}
+        return {'id': key, 'version_id': VERSION_ID, 'title': event_title, 'parent_title': None if suffix == 'activity' else name, 'section': kind, 'category': category, 'subtype': '签到' if '登录' in kind else '复刻' if '复刻' in name else kind, 'time_kind': 'interval', 'start': begin, 'end': finish, 'phases': [], 'description': 'PRTS 国服活动时间；关卡开放与奖励兑换分别列出。', 'requirements': [clean(fields['参加条件关卡'])] if fields.get('参加条件关卡') else [], 'source': dict(source), 'warnings': [], 'prts': {'page': title, 'image_title': clean(fields.get('标题图文件名', '')), 'announcement': clean(fields.get('公告', '')).split('#')[0], 'official_cid': fields.get('官网链接', '').strip() if re.fullmatch(r'\d{1,10}', fields.get('官网链接', '').strip()) else None, 'role': suffix}}
     event = make('activity', name, 'event', start, end)
     events = [event]
     shop = endpoint(cn_field(fields, '兑换结束时间'))
@@ -262,7 +263,7 @@ def make_version(events, fetched_at, origin='live', errors=None):
 class ArknightsCollector:
     meta_key = 'sync:arknights-cn'
 
-    def __init__(self, store, data_dir: Path, fetcher=None, artwork=None):
+    def __init__(self, store, data_dir: Path, fetcher=None, artwork=None, official_artwork=None):
         self.store, self.data_dir = store, data_dir
         self.fetcher = fetcher or WikiHTTP()
         self.lock = threading.Lock()
@@ -270,6 +271,7 @@ class ArknightsCollector:
         def image_allowed(url):
             return wiki_url(url) and urllib.parse.urlsplit(url).hostname == 'media.prts.wiki'
         self.artwork = artwork or ArtworkCache(data_dir, downloader=WikiHTTP(timeout=8).read, validator=image_allowed)
+        self.official_artwork = official_artwork or (OfficialArknightsArtwork(data_dir) if fetcher is None else None)
 
     def seed(self):
         if any(v.get('game') == GAME for v in self.store.versions()):
@@ -296,8 +298,21 @@ class ArknightsCollector:
         except Exception as error:
             previous = self.store.get_meta(self.meta_key, {})
             self.store.set_meta(self.meta_key, {**previous, 'running': False, 'error': str(error)[:300], 'message': 'PRTS 同步失败，保留本地日历'})
+            # Official pictures may refresh even when the independent date source is offline.
+            if self.official_artwork:
+                version = next((v for v in self.store.versions() if v['id'] == VERSION_ID), None)
+                if version:
+                    self.enrich(version)
+                    self.store.save_version(version)
         finally:
             self.lock.release()
+
+    def enrich(self, version):
+        if self.official_artwork:
+            try:
+                self.official_artwork.attach(version)
+            except Exception as error:
+                version['official_artwork'] = {'errors': ['官网图片补充失败：' + str(error)[:160]]}
 
     def collect(self):
         config = rules()
@@ -348,6 +363,10 @@ class ArknightsCollector:
             if image and self.artwork.path(image.get('key', '')):
                 event['artwork'] = image
         now = dt.datetime.now(dt.timezone.utc)
+        fetched = iso(now)
+        version = make_version(list({e['id']: e for e in events}.values()), fetched, errors=errors)
+        self.store.save_version(version)
+        self.enrich(version)
         image_candidates = sorted(events, key=lambda e: (bool(e['end']['at']) and stamp(e['end']['at']) < now, -(stamp(e['start']['at']).timestamp() if e['start']['at'] else 0)))
         images = list(dict.fromkeys(e['prts']['image_title'] for e in image_candidates if e['prts'].get('image_title') and not e.get('artwork')))[:config['max_images']]
         image_errors = 0
@@ -358,15 +377,14 @@ class ArknightsCollector:
             try:
                 key = self.artwork.cache(url)
                 for event in events:
-                    if key and event['prts'].get('image_title') == filename:
+                    if key and event['prts'].get('image_title') == filename and not event.get('artwork'):
                         event['artwork'] = {'key': key, 'path': '/api/artwork/' + key, 'url': url, 'source_url': event['source']['url'], 'source_title': '文件:' + filename, 'match': 'prts_template_image'}
             except Exception as error:
                 errors.append('图片未更新（' + filename + '）：' + str(error)[:120])
                 image_errors += 1
                 if image_errors >= 2:
                     break
-        fetched = iso(dt.datetime.now(dt.timezone.utc))
-        version = make_version(list({e['id']: e for e in events}.values()), fetched, errors=errors)
+        version['warnings'] = errors
         self.store.save_version(version)
         self.store.set_meta(self.meta_key, {'running': False, 'mode': 'live', 'last_attempt': fetched, 'last_success': fetched, 'error': None, 'message': '已同步 PRTS 社区 Wiki', 'page_count': parsed, 'warnings': errors})
         return version

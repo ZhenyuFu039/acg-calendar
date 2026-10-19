@@ -47,3 +47,14 @@
 .sidebar #game-select{margin-bottom:18px}.game-card #game-source-note{font-size:10px;line-height:1.6;overflow-wrap:anywhere}.wiki-evidence{padding:13px 15px;border:1px solid #dce6ec;border-radius:7px;background:#f4f8fb;font-size:11px;line-height:1.9;margin-top:12px;color:#637889}.wiki-evidence p{margin:6px 0}.wiki-evidence a{color:#507b94}.arknights-timeline .timeline-head,.arknights-timeline .timeline-row{grid-template-columns:240px minmax(0,1fr) 132px}.arknights-timeline .reward-cell,.arknights-timeline .timeline-reward-head{display:none}body[data-game=arknights-cn] .game-monogram{background:#e8f1f6;color:#54748b;border-color:#d6e3ec}body[data-game=all] .game-monogram{font-size:13px;background:#f1ece5;color:#92784e}
 @media(max-width:850px){.arknights-timeline .timeline-head,.arknights-timeline .timeline-row{grid-template-columns:210px minmax(0,1fr) 132px}}
 @media(max-width:760px){.sidebar #game-select{margin:0;min-width:150px;max-width:230px}.sidebar label[for=game-select]{margin:0}.sidebar .game-card{margin:0}.sidebar #game-source-note{max-width:145px}}
+
+/* Fixed game identity occupies the square; activity art stays on its time bar. */
+.timeline-row[data-game=endfield-cn],.catalog-event[data-game=endfield-cn]{--game-color:#a38337}
+.timeline-row[data-game=arknights-cn],.catalog-event[data-game=arknights-cn]{--game-color:#477e9f}
+.timeline-row .event-name,.catalog-event{border-left-color:var(--game-color)}
+.event-avatar{background:#fff;border:1px solid color-mix(in srgb,var(--game-color) 40%,white)}
+.game-icon{display:block;width:100%;height:100%;object-fit:contain;padding:3px}
+.game-label{color:var(--game-color);font-weight:600}
+.game-monogram{overflow:hidden;background:#fff!important}.game-monogram .game-icon{padding:5px}
+.catalog-visual>.catalog-game-badge{position:absolute;left:6px;bottom:6px;z-index:2;width:38px;height:38px;border:1px solid color-mix(in srgb,var(--game-color) 40%,white);border-radius:4px;background:#fff}
+@media(max-width:560px){.event-avatar{height:36px}.catalog-visual>.catalog-game-badge{left:4px;bottom:4px;width:35px;height:35px}}

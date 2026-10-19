@@ -7,6 +7,8 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
+using System.Xml.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -308,7 +310,11 @@ public sealed class CalendarWindow : Window
             string[] palette = ["#69946e", "#5e8ea3", "#ae825d", "#8f7bac", "#9f8f4c", "#668f91", "#b07679", "#7b8e57"];
             uint hash = 0; foreach (char letter in entry.Id) hash = unchecked(hash * 31 + letter);
             var color = Brush(palette[hash % 8]);
-            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(6), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = color, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
+            var gameColor = Brush(entry.Game == "arknights-cn" ? "#477E9F" : "#A38337");
+            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(6), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = gameColor, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
+            var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
+            var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(3), ToolTip = entry.Game == "arknights-cn" ? "明日方舟" : "终末地" };
+            badge.Child = new Image { Source = GamePicture(entry.Game), Stretch = Stretch.Uniform }; layout.Children.Add(badge);
             var body = new StackPanel();
             string type = entry.Category switch { "gacha" => "寻访", "exchange" => "兑换", "update" => "更新", "maintenance" => "维护", _ => "活动" };
             if (selectedGame == "all") type = (entry.Game == "arknights-cn" ? "明日方舟" : "终末地") + " · " + type;
@@ -347,12 +353,39 @@ public sealed class CalendarWindow : Window
             var actions = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
             actions.Children.Add(Button("标记完成", async () => await Mutate("/api/events/" + entry.Id, new { completed = true }, true)));
             if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button(entry.Game == "arknights-cn" ? "PRTS ↗" : "公告 ↗", () => Open(source.GetString()!)));
-            if (!dense) body.Children.Add(actions); card.Child = body; cards.Children.Add(card);
+            if (!dense) body.Children.Add(actions); Grid.SetColumn(body, 1); layout.Children.Add(body); card.Child = layout; cards.Children.Add(card);
         }
         if (ordered.Length == 0) cards.Children.Add(Text("这一天没有待办活动，换一天看看。", 13));
         status.Text = $"当前 {ordered.Length} / 共 {scoped.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n" + (selectedGame == "arknights-cn" ? "来源：PRTS 社区 Wiki · 国服 · 可在完整时间轴查看修订。" : showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。");
     }
     ImageSource? currencyIcon;
+    readonly Dictionary<string, ImageSource> gamePictures = new();
+    ImageSource? GamePicture(string game)
+    {
+        if (gamePictures.TryGetValue(game, out var cached)) return cached;
+        try
+        {
+            ImageSource image;
+            if (game == "arknights-cn")
+            {
+                var bitmap = new System.Windows.Media.Imaging.BitmapImage(); bitmap.BeginInit();
+                bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+                bitmap.UriSource = new Uri(Path.Combine(root, "web", "assets", "arknights-logo.png")); bitmap.EndInit(); image = bitmap;
+            }
+            else
+            {
+                // This bundled icon contains only paths in a 512-square viewBox.
+                using var reader = XmlReader.Create(Path.Combine(root, "web", "assets", "endfield-icon-zh.svg"), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+                var document = XDocument.Load(reader); var drawing = new DrawingGroup();
+                drawing.Children.Add(new GeometryDrawing(Brushes.Transparent, null, new RectangleGeometry(new Rect(0, 0, 512, 512))));
+                foreach (var path in document.Descendants().Where(e => e.Name.LocalName == "path"))
+                    drawing.Children.Add(new GeometryDrawing(Brushes.Black, null, Geometry.Parse(path.Attribute("d")!.Value)));
+                image = new DrawingImage(drawing);
+            }
+            image.Freeze(); gamePictures[game] = image; return image;
+        }
+        catch { return null; }
+    }
     ImageSource? RewardIcon()
     {
         if (currencyIcon != null) return currencyIcon;
@@ -421,6 +454,7 @@ public sealed class CalendarWindow : Window
         try
         {
             if (events.Length < 1 || cards.Children.Count < 1 || csrf == "") throw new Exception("Desktop did not load real calendar data");
+            if (GamePicture("arknights-cn") == null || GamePicture("endfield-cn") == null) throw new Exception("Game identity icons did not load");
             if (verifiedRewardTotal != 11000 || RewardIcon() == null || !events.Any(e => e.Reward.ValueKind == JsonValueKind.Object && e.Reward.GetProperty("state").GetString() == "shared")) throw new Exception("Reward summary, shared pool, or icon did not load");
             Hide();
             using (var hidden = await http.GetAsync(address + "/api/health")) hidden.EnsureSuccessStatusCode();

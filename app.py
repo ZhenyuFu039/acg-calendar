@@ -227,7 +227,7 @@ def handler_for(application):
                         content_type = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[image.suffix]
                         return self.send(image.read_bytes(), content_type=content_type, cache_control="private, max-age=604800, immutable")
                     return self.send({"error": "图片尚未缓存"}, 404)
-                assets = {"/": "index.html", "/app.js": "app.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg", "/assets/oroberyl.png": "assets/oroberyl.png"}
+                assets = {"/": "index.html", "/app.js": "app.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg", "/assets/oroberyl.png": "assets/oroberyl.png", "/assets/arknights-logo.png": "assets/arknights-logo.png", "/assets/endfield-icon-zh.svg": "assets/endfield-icon-zh.svg"}
                 if path not in assets:
                     return self.send({"error": "页面不存在"}, 404)
                 file = ROOT / "web" / assets[path]

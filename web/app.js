@@ -73,6 +73,10 @@
     const path=event.artwork?.path;
     return /^\/api\/artwork\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(path||'')?`<img class="activity-art ${className}" src="${path}" alt="" loading="lazy" decoding="async">`:'';
   }
+  function gameIcon(game) {
+    const path=game==='arknights-cn'?'/assets/arknights-logo.png':'/assets/endfield-icon-zh.svg';
+    return `<img class="game-icon" src="${path}" alt="${game==='arknights-cn'?'明日方舟':'终末地'}" decoding="async">`;
+  }
   function accent(event) {
     let hash=0;for(const c of event.id) hash=(hash*31+c.charCodeAt(0))>>>0;
     return ['#69946e','#5e8ea3','#ae825d','#8f7bac','#9f8f4c','#668f91','#b07679','#7b8e57'][hash%8];
@@ -169,7 +173,7 @@
     $('#game-name').textContent=gameInfo()?.name||'全部游戏';
     $('#game-source-note').textContent=gameInfo()?.source_label||'国服对照 · UTC+8';
     $('#source-caption').textContent=(gameInfo()?.source_label||'各自来源')+' · 无 AI 调用';
-    $('.game-monogram').innerHTML=esc(gameInfo()?.monogram||'ALL')+'<span>CN</span>';
+    $('.game-monogram').innerHTML=S.game==='all'?'ALL':gameIcon(S.game);
     $('.version-label').textContent=S.game==='endfield-cn'?'版本':'日历范围';
     $('.page-heading .eyebrow').textContent=(S.game==='endfield-cn'?'ENDFIELD':S.game==='arknights-cn'?'ARKNIGHTS':'MY GAMES')+' / ACTIVITY CALENDAR';
     document.body.dataset.game=S.game;
@@ -269,7 +273,7 @@
       return `<div class="timeline-group" style="--category:${definition.color}"><span class="category-dot"></span>${definition.name}<span class="group-count">${String(group.length).padStart(2,'0')}</span></div>`+group.map(event=>{
         const markers=event.phases.filter(p=>p.at&&civil(p.at)>=lo&&civil(p.at)<hi).map(p=>`<button type="button" class="phase-mark" style="left:${(civil(p.at)-lo)/days*100}%" data-event="${event.id}" aria-label="${esc(event.title+' · '+p.title+' '+format(p.at,{year:true}))}" title="${esc(p.title+' '+format(p.at))}"></button>`).join('');
         const deadline=event.time_kind==='point'?`<strong>${esc(format(event.start.at))}</strong><span>更新节点</span>`:event.end.at?`<strong>${esc(format(event.end.at))}</strong><span>${event.end.state==='estimated'?'预计结束':esc(countdown(event.end.at))}</span>`:`<strong class="pending-label">截止待定</strong><span>${event.end.reference==='recruitment_cycles'?'按寻访次数结束':'等待后续公告'}</span>`;
-        return `<div class="timeline-row ${event.completed?'completed':''}" style="--event-accent:${accent(event)}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="event-avatar ${event.artwork?'with-image':''}" style="--event-accent:${accent(event)}">${artwork(event,'avatar-art')}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="event-name-text"><strong>${esc(cleanTitle(event))}</strong><small>${S.game==='all'?esc(gameLabel(event))+' · ':''}${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button><button type="button" class="reward-cell" data-event="${event.id}" aria-label="${esc(cleanTitle(event))}的嵌晶玉奖励">${rewardBadge(event)}</button></div>`;
+        return `<div data-game="${event.game}" class="timeline-row ${event.completed?'completed':''}" style="--event-accent:${accent(event)}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="event-avatar">${gameIcon(event.game)}</span><span class="event-name-text"><strong>${esc(cleanTitle(event))}</strong><small><span class="game-label">${esc(gameLabel(event))}</span> · ${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button><button type="button" class="reward-cell" data-event="${event.id}" aria-label="${esc(cleanTitle(event))}的嵌晶玉奖励">${rewardBadge(event)}</button></div>`;
       }).join('');
     }).join('');
     return `<div class="timeline-scroll"><div class="timeline ${S.game==='arknights-cn'?'arknights-timeline':''} ${S.fit?'fit-version':''}" style="--days:${days};min-width:${S.fit?Math.max(1000,456+days*10):Math.max(840,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态 · 标题完整显示</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div><div class="timeline-reward-head">嵌晶玉<span>${S.game==='all'?'仅终末地':'活动总量'}</span></div></div>${rows}</div></div>`;
@@ -279,7 +283,7 @@
     return '<div class="activity-catalog">'+events.sort((a,b)=>(Date.parse(a.start.at)||Infinity)-(Date.parse(b.start.at)||Infinity)).map(event=>{
       const picture=artwork(event,'catalog-art');
       const end=event.time_kind==='point'?'单次更新':event.end.at?format(event.end.at,{year:true})+(event.end.state==='estimated'?' · 预计':''):'截止待定';
-      return `<button class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="catalog-info"><small>${S.game==='all'?esc(gameLabel(event))+' · ':''}${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':esc(countdown(event.end.at))}</span>${rewardBadge(event)}</span><span class="catalog-arrow" aria-hidden="true">↗</span></button>`;
+      return `<button data-game="${event.game}" class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span class="catalog-game-badge">${gameIcon(event.game)}</span></span><span class="catalog-info"><small>${S.game==='all'?esc(gameLabel(event))+' · ':''}${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':esc(countdown(event.end.at))}</span>${rewardBadge(event)}</span><span class="catalog-arrow" aria-hidden="true">↗</span></button>`;
     }).join('')+'</div>';
   }
   function renderMonth(events,monthStart,monthEnd) {
@@ -348,6 +352,11 @@
       const panel=document.createElement('section');panel.className='wiki-evidence';
       panel.innerHTML=`<strong>PRTS 社区 Wiki · 国服</strong><p>页面修订 ${esc(event.source.revision_id)} · ${esc(event.source.revised_at||'')}<br>社区整理资料，具体变更以游戏与官方公告为准。</p><a href="${esc(event.source.revision_url)}" target="_blank" rel="noopener noreferrer">查看本次解析的固定修订 ↗</a> · <a href="${esc(event.source.license.url)}" target="_blank" rel="noopener noreferrer">${esc(event.source.license.name)}</a>`;
       link.after(panel);
+    }
+    if(event.artwork?.match==='official_activity_heading' && /^https:\/\/ak\.hypergryph\.com\/news\/\d+$/.test(event.artwork.source_url||'')) {
+      const panel=document.createElement('section');panel.className='wiki-evidence official-art-evidence';
+      panel.innerHTML=`<strong>活动图片 · 明日方舟官网</strong><p>${esc(event.artwork.source_title)}${event.artwork.shared_activity?' · 与主活动共用横幅':''}</p><a href="${esc(event.artwork.source_url)}" target="_blank" rel="noopener noreferrer">阅读图片对应的官方公告 ↗</a>`;
+      $('#detail-content .source-link').after(panel);
     }
     if(event.briefing) {
       const source=event.briefing, times=source.cn_time;

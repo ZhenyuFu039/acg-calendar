@@ -41,6 +41,13 @@ const base='http://127.0.0.1:8793';
     await page.locator('#reset-filters').click();await page.waitForFunction(()=>document.querySelectorAll('.catalog-event').length===38);
     const catalog=await page.locator('.activity-catalog').innerText();assert.match(catalog,/明日方舟/);assert.match(catalog,/终末地/);
     await page.locator('#fit-version').click();await page.waitForFunction(()=>document.querySelectorAll('.timeline-row').length===38);
+    await page.waitForFunction(()=>[...document.querySelectorAll('.timeline-row .game-icon')].every(i=>i.complete&&i.naturalWidth>0));
+    assert.equal(await page.locator('.timeline-row .game-icon').count(),38);
+    for(const game of ['arknights-cn','endfield-cn']) {
+      const icon=page.locator(`.timeline-row[data-game="${game}"] .game-icon`).first();
+      assert.match(await icon.getAttribute('src'),game==='arknights-cn'?/arknights-logo\.png$/:/endfield-icon-zh\.svg$/);
+      const box=await icon.locator('..').boundingBox();assert.ok(Math.abs(box.width-box.height)<1,'Game icon should occupy a square');
+    }
     assert.match(await page.locator('.timeline-row').filter({hasText:'卡莉的芳菲童话'}).locator('.reward-cell').innerText(),/1,500/);
     assert.match(await page.locator('.timeline-row').filter({hasText:'昨日海'}).first().locator('.reward-cell').innerText(),/—/);
     for(const width of [320,390,768,1440,1920]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Page overflow '+width);}
