@@ -12,6 +12,8 @@ import json
 from pathlib import Path
 import re
 
+from .rewards import summarize_rewards
+
 ROOT = Path(__file__).resolve().parents[1]
 UTC = dt.timezone.utc
 
@@ -178,7 +180,8 @@ class AnnouncementParser:
             parser_warnings.append("公告中未识别到维护区间，维护后开放的活动继续保留为待定")
         if len(events) < 2:
             raise ValueError("未识别到足够的活动条目，可能是公告结构变化，未覆盖已有数据")
-        return {"schema_version": 1, "ruleset_version": self.rules["ruleset_version"], "id": version_id, "name": name, "game": self.rules["game_id"], "timezone": self.rules["timezone"], "source": {"cid": str(cid), "url": source_url, "title": title or f"「{name}」版本更新说明", "published_at": published_at, "fetched_at": fetched_at, "origin": origin, "text_sha256": hashlib.sha256(text.encode()).hexdigest()}, "maintenance": maintenance, "events": events, "warnings": parser_warnings, "analysis": {"strategy": "section_rules", "ai_used": False, "event_count": len(events), "exact_windows": sum(e["start"]["state"] == "exact" and e["end"]["state"] == "exact" for e in events), "estimated_starts": sum(e["start"]["state"] == "estimated" for e in events), "unknown_ends": sum(e["end"]["at"] is None for e in events)}}
+        version = {"schema_version": 1, "ruleset_version": self.rules["ruleset_version"], "id": version_id, "name": name, "game": self.rules["game_id"], "timezone": self.rules["timezone"], "source": {"cid": str(cid), "url": source_url, "title": title or f"「{name}」版本更新说明", "published_at": published_at, "fetched_at": fetched_at, "origin": origin, "text_sha256": hashlib.sha256(text.encode()).hexdigest()}, "maintenance": maintenance, "events": events, "warnings": parser_warnings, "analysis": {"strategy": "section_rules", "ai_used": False, "event_count": len(events), "exact_windows": sum(e["start"]["state"] == "exact" and e["end"]["state"] == "exact" for e in events), "estimated_starts": sum(e["start"]["state"] == "estimated" for e in events), "unknown_ends": sum(e["end"]["at"] is None for e in events)}}
+        return summarize_rewards(version, self.rules.get("rewards"), text)
 
     def parse_block(self, block, version_id, year, maintenance, source_url):
         segments = [{"title": block["title"], "category": self.structure["event_sections"][block["section"]], "line": block["line"], "lines": [], "suffix": "main"}]
@@ -229,6 +232,7 @@ class AnnouncementParser:
             subtype = next((value for keyword, value in self.rules["classification"]["subtypes"].items() if keyword in segment["title"]), "玩法更新" if category == "update" else "活动")
             source_lines = [line for _, line in segment["lines"]]
             result.append({"id": hashlib.sha256(key.encode()).hexdigest()[:20], "version_id": version_id, "title": segment["title"], "parent_title": block["title"] if segment["suffix"] != "main" else None, "section": block["section"], "category": category, "subtype": subtype, "time_kind": time_kind, "start": start, "end": end, "phases": phases, "description": "\n".join(description), "requirements": requirements, "source": {"url": source_url, "line": number, "time_label": label, "time_text": raw, "block_text": "\n".join([segment["title"], *source_lines])}, "warnings": warnings})
+            result[-1]["source"]["reward_lines"] = [{"line": n, "text": line} for n, line in segment["lines"] if "嵌晶玉" in line]
         return result
 
     def make_maintenance(self, version_id, maintenance, url):

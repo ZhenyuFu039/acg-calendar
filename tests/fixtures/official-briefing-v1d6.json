@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "name": "丹青渡",
   "version_tag": "v1d6",
   "page_title": "《明日方舟：终末地》「丹青渡」新版本导览",
@@ -16,7 +16,41 @@
         "startsAfterUpdate": true,
         "endTimeDisplay": "beforeUpdate"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.0ab0c1.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.0ab0c1.jpg",
+      "rewards": [
+        {
+          "id": "item_diamond",
+          "quantity": 1000
+        },
+        {
+          "id": "item_char_skill_crown",
+          "quantity": 1
+        },
+        {
+          "id": "item_case_bp_selfselect_skillsp_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage2_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_expcard_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_7_12",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_break_stage_3_4",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        }
+      ]
     },
     {
       "id": "activity_map02_guide_010",
@@ -26,7 +60,17 @@
         "closeTime": "2026/11/5 12:00:00",
         "startsAfterUpdate": true
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.2ff83e.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.2ff83e.jpg",
+      "rewards": [
+        {
+          "id": "item_diamond",
+          "quantity": 1200
+        },
+        {
+          "id": "item_char_skill_crown",
+          "quantity": 7
+        }
+      ]
     },
     {
       "id": "activity_contingency_contract_1",
@@ -36,7 +80,85 @@
         "closeTime": "2026/12/3 4:00:00",
         "endTimeDisplay": "beforeUpdate"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.0952be.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.0952be.jpg",
+      "rewards": [
+        {
+          "id": "item_user_avatar_activity_13",
+          "quantity": 1
+        },
+        {
+          "id": "item_user_avatar_frame_activity_9",
+          "quantity": 1
+        },
+        {
+          "id": "item_shot_sticker_activity_5",
+          "quantity": 1
+        },
+        {
+          "id": "item_diamond",
+          "quantity": 2000
+        },
+        {
+          "id": "item_case_bp_selfselect_skillsp_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_crown",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage2_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_specialize_6",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_specialize_5",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_specialize_4",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_specialize_3",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_specialize_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_specialize_1",
+          "quantity": 1
+        },
+        {
+          "id": "item_wpngem_enhance_dust",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_break_stage_3_4",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_7_12",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_expcard_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_break_high",
+          "quantity": 1
+        }
+      ]
     },
     {
       "id": "activity_gambling_dungeon",
@@ -45,7 +167,65 @@
         "openTime": "2026/10/29 12:00:00",
         "closeTime": "2026/11/19 4:00:00"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.33ee37.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.33ee37.jpg",
+      "rewards": [
+        {
+          "id": "item_user_avatar_activity_10",
+          "quantity": 1
+        },
+        {
+          "id": "item_diamond",
+          "quantity": 1200
+        },
+        {
+          "id": "item_case_bp_selfselect_skillsp_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_crown",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage2_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_break_stage_3_4",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_7_12",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_expcard_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_break_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage1_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_break_stage_1_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_1_6",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_break_low",
+          "quantity": 1
+        }
+      ]
     },
     {
       "id": "activity_phototaking_carly_3",
@@ -54,7 +234,61 @@
         "openTime": "2026/10/22 12:00:00",
         "closeTime": "2026/11/5 4:00:00"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.71776c.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.71776c.jpg",
+      "rewards": [
+        {
+          "id": "item_user_avatar_frame_activity_8",
+          "quantity": 1
+        },
+        {
+          "id": "item_diamond",
+          "quantity": 1500
+        },
+        {
+          "id": "item_char_skill_crown",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage2_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_break_stage_3_4",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_7_12",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_expcard_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_break_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage1_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_break_stage_1_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_1_6",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_break_low",
+          "quantity": 1
+        }
+      ]
     },
     {
       "id": "activity_high_difficulty_v1d6",
@@ -63,7 +297,41 @@
         "openTime": "2026/10/22 12:00:00",
         "closeTime": "2026/11/5 4:00:00"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.c59b9f.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.c59b9f.jpg",
+      "rewards": [
+        {
+          "id": "item_diamond",
+          "quantity": 1200
+        },
+        {
+          "id": "item_case_bp_selfselect_skillsp_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage2_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_7_12",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_expcard_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_break_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_break_stage_3_4",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        }
+      ]
     },
     {
       "id": "activity_seasontower_0",
@@ -74,7 +342,37 @@
         "startsAfterUpdate": true,
         "endTimeDisplay": "beforeUpdate"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.614a75.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.614a75.jpg",
+      "rewards": [
+        {
+          "id": "item_diamond",
+          "quantity": 1
+        },
+        {
+          "id": "item_case_bp_selfselect_skillsp_1",
+          "quantity": 1
+        },
+        {
+          "id": "item_case_bp_selfselect_skillsp_2",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage2_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_crown",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_7_12",
+          "quantity": 1
+        }
+      ]
     },
     {
       "id": "web_activity_v1d6_ghost",
@@ -83,7 +381,17 @@
         "openTime": "2026/10/31 12:00:00",
         "closeTime": "2026/11/14 4:00:00"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.b9a7b5.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.b9a7b5.jpg",
+      "rewards": [
+        {
+          "id": "item_diamond",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        }
+      ]
     },
     {
       "id": "activity_puzzle_1",
@@ -94,7 +402,33 @@
         "startsAfterUpdate": true,
         "endTimeDisplay": "alwaysAvailable"
       },
-      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.ab83b6.jpg"
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.ab83b6.jpg",
+      "rewards": [
+        {
+          "id": "item_diamond",
+          "quantity": 1
+        },
+        {
+          "id": "item_expcard_stage2_high",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_crown",
+          "quantity": 1
+        },
+        {
+          "id": "item_gold",
+          "quantity": 1
+        },
+        {
+          "id": "item_char_skill_level_7_12",
+          "quantity": 1
+        },
+        {
+          "id": "item_weapon_expcard_high",
+          "quantity": 1
+        }
+      ]
     }
   ]
 }

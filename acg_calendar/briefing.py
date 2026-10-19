@@ -12,7 +12,8 @@ import re
 import urllib.parse
 
 from .official import CDN_PREFIX, official_url
-from .parser import iso, stamp
+from .parser import html_to_text, iso, stamp
+from .rewards import summarize_rewards
 
 LITERAL = re.compile(r'''JSON\.parse\(\s*('(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*")\s*\)''')
 
@@ -84,10 +85,11 @@ def parse_bundle(script, script_url):
             image = None
         cn = row.get("timeByServer", {}).get("cn", {})
         times = {key: cn[key] for key in ("openTime", "closeTime", "startsAfterUpdate", "endTimeDisplay") if key in cn and isinstance(cn[key], (str, bool))}
-        entries.append({"id": activity_id, "title": name, "cn": times, "thumbnail_url": image})
+        rewards = [{"id": r["id"], "quantity": r.get("quantity")} for r in row.get("rewards", []) if isinstance(r, dict) and isinstance(r.get("id"), str) and type(r.get("quantity")) is int]
+        entries.append({"id": activity_id, "title": name, "cn": times, "thumbnail_url": image, "rewards": rewards})
     if not entries:
         raise ValueError("导览中未找到可识别的国服活动配置")
-    return {"schema_version": 1, "name": name_match.group(1), "version_tag": tag, "page_title": title, "script_url": script_url, "script_sha256": hashlib.sha256(script.encode()).hexdigest(), "source_environment": config["meta"].get("sourceEnvironment"), "entries": entries}
+    return {"schema_version": 2, "name": name_match.group(1), "version_tag": tag, "page_title": title, "script_url": script_url, "script_sha256": hashlib.sha256(script.encode()).hexdigest(), "source_environment": config["meta"].get("sourceEnvironment"), "entries": entries}
 
 
 class BriefingReader:
@@ -108,7 +110,7 @@ class BriefingReader:
                 try:
                     data = json.loads(path.read_text(encoding="utf-8"))
                     required = ("name", "version_tag", "page_title", "news_cid", "news_url", "source_url", "script_url", "fetched_at")
-                    if data.get("schema_version") == 1 and isinstance(data.get("entries"), list) and all(isinstance(data.get(key), str) for key in required) and official_url(data["source_url"]) and official_url(data["script_url"]):
+                    if data.get("schema_version") in {1, 2} and isinstance(data.get("entries"), list) and all(isinstance(data.get(key), str) for key in required) and official_url(data["source_url"]) and official_url(data["script_url"]):
                         result.append(data)
                 except (OSError, ValueError, KeyError):
                     continue
@@ -122,7 +124,11 @@ class BriefingReader:
         if not expected:
             raise ValueError("导览新闻缺少版本名称，暂不自动关联")
         news_url = detail_template.format(cid=cid)
-        page_url = briefing_link(self.fetch(news_url), news_url)
+        news_html = self.fetch(news_url)
+        page_url = briefing_link(news_html, news_url)
+        news_text = html_to_text(news_html)
+        news_rewards = [{"line": number, "text": line} for number, line in enumerate(news_text.splitlines(), 1) if "嵌晶玉" in line and re.search(r"[×xX*]\s*\d", line)]
+        news_before_update = "对应游戏版本更新维护前" in news_text
         links = Links()
         links.feed(self.fetch(page_url))
         scripts = [urllib.parse.urljoin(page_url, src) for src in links.scripts]
@@ -132,8 +138,8 @@ class BriefingReader:
         cache = next((x for x in self.cached() if x.get("news_cid") == cid and normalize(x["name"]) == normalize(expected.group(1))), None)
         last_error = None
         for script_url in scripts[:3]:
-            if cache and cache["script_url"] == script_url:
-                return {**cache, "checked_at": fetched_at, "cache_reused": True}
+            if cache and cache["schema_version"] == 2 and cache["script_url"] == script_url:
+                return {**cache, "checked_at": fetched_at, "cache_reused": True, "news_reward_mentions": news_rewards, "news_reward_before_update": news_before_update}
             try:
                 parsed = parse_bundle(self.fetch(script_url), script_url)
             except ValueError as error:
@@ -141,7 +147,7 @@ class BriefingReader:
                 continue
             if normalize(parsed["name"]) != normalize(expected.group(1)):
                 raise ValueError("专题 latest 已切换版本，拒绝关联到旧版；保留已缓存的版本快照")
-            parsed.update(news_cid=cid, news_url=news_url, news_title=article["title"], source_url=page_url, fetched_at=fetched_at, checked_at=fetched_at, cache_reused=False)
+            parsed.update(news_cid=cid, news_url=news_url, news_title=article["title"], source_url=page_url, fetched_at=fetched_at, checked_at=fetched_at, cache_reused=False, news_reward_mentions=news_rewards, news_reward_before_update=news_before_update)
             self.directory.mkdir(parents=True, exist_ok=True)
             temporary = self.directory / (cid + ".tmp")
             temporary.write_text(json.dumps(parsed, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -207,6 +213,7 @@ def merge_briefing(version, guide, artwork):
                     evidence["supplemented"].append(role)
                     supplemented += 1
         event["briefing"] = evidence
+        evidence["reward_items"] = copy.deepcopy(row.get("rewards", []))
         if row.get("thumbnail_url"):
             try:
                 key = artwork.cache(row["thumbnail_url"])
@@ -216,6 +223,8 @@ def merge_briefing(version, guide, artwork):
                 image_errors += 1
     version["briefing"] = {key: guide[key] for key in ("name", "version_tag", "page_title", "source_url", "news_url", "script_url", "fetched_at")}
     version["briefing"].update(matched_events=matched, conflicts=conflicts, supplemented_endpoints=supplemented, image_errors=image_errors)
+    version["briefing"].update(news_reward_mentions=guide.get("news_reward_mentions", []), news_reward_before_update=guide.get("news_reward_before_update", False))
     version["briefing"]["unmatched_activities"] = [{"id": row["id"], "title": row["title"]} for row in guide["entries"] if row["id"] not in matched_ids]
     version["artwork_summary"] = {"matched": sum(bool(e.get("artwork")) for e in version["events"]), "total": len(version["events"]), "errors": image_errors + version.get("artwork_summary", {}).get("errors", 0)}
     version["analysis"].update(briefing_matched=matched, source_conflicts=conflicts, supplemented_endpoints=supplemented)
+    summarize_rewards(version)

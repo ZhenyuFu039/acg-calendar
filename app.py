@@ -22,6 +22,7 @@ from acg_calendar.ical import calendar_bytes
 from acg_calendar.parser import ROOT, iso, load_rules, resolve_versions, stamp
 from acg_calendar.reminders import ReminderEngine, native_available
 from acg_calendar.storage import Store
+from acg_calendar.rewards import summarize_rewards
 
 
 class Application:
@@ -37,7 +38,26 @@ class Application:
         self.desktop = desktop
 
     def versions(self):
-        return resolve_versions(self.store.versions(), self.store.state())
+        versions = self.store.versions()
+        reward_rules = load_rules().get("rewards")
+        for version in versions:
+            # Rebuild legacy local snapshots once from their retained official text.
+            if "reward_mentions" not in version:
+                source = self.data_dir / "sources" / (version["id"] + ".txt")
+                if not source.is_file() and version["source"].get("cid") == "6094":
+                    source = ROOT / "samples/endfield-cn-6094.txt"
+                if source.is_file():
+                    try:
+                        reparsed = self.collector.parser.parse(source.read_text(encoding="utf-8"), cid=version["source"]["cid"], source_url=version["source"]["url"], title=version["source"]["title"], published_at=version["source"].get("published_at"))
+                    except (OSError, ValueError):
+                        reparsed = None
+                    if reparsed:
+                        by_id = {e["id"]: e for e in reparsed["events"]}
+                        version["reward_mentions"] = reparsed["reward_mentions"]
+                        for event in version["events"]:
+                            event["source"]["reward_lines"] = by_id.get(event["id"], {}).get("source", {}).get("reward_lines", [])
+            summarize_rewards(version, reward_rules)
+        return resolve_versions(versions, self.store.state())
 
     def state(self):
         versions = sorted(self.versions(), key=lambda v: v["maintenance"].get("start") or "", reverse=True)
@@ -181,10 +201,12 @@ def handler_for(application):
                         content_type = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[image.suffix]
                         return self.send(image.read_bytes(), content_type=content_type, cache_control="private, max-age=604800, immutable")
                     return self.send({"error": "图片尚未缓存"}, 404)
-                assets = {"/": "index.html", "/app.js": "app.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg"}
+                assets = {"/": "index.html", "/app.js": "app.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg", "/assets/oroberyl.png": "assets/oroberyl.png"}
                 if path not in assets:
                     return self.send({"error": "页面不存在"}, 404)
                 file = ROOT / "web" / assets[path]
+                if file.suffix == ".png":
+                    return self.send(file.read_bytes(), content_type="image/png", cache_control="private, max-age=86400")
                 content_type = {".html": "text/html", ".js": "application/javascript", ".css": "text/css", ".svg": "image/svg+xml"}[file.suffix]
                 return self.send(file.read_bytes(), content_type=content_type + "; charset=utf-8")
             except (BrokenPipeError, ConnectionResetError):

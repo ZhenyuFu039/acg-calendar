@@ -1,6 +1,18 @@
 {
   "schema_version": 1,
-  "ruleset_version": "0.1.0",
+  "ruleset_version": "0.2.0",
+  "rewards": {
+    "currency_id": "item_diamond",
+    "per_unit_pattern": "每日|每天|每次|每完成|每关",
+    "amount_pattern": "(?:【|〖)?嵌晶玉(?:】|〗)?\\s*[×xX*]\\s*([0-9][0-9,，]*)",
+    "sources": ["announcement", "official_briefing"],
+    "unknown_policy": "unlisted_is_not_zero",
+    "guide_quantity_one_policy": "display_placeholder_needs_announcement",
+    "conflict_policy": "announcement_first_show_conflict",
+    "excluded": ["new_map_exploration", "credit_store", "maintenance_compensation", "battle_pass"],
+    "included": ["events", "operator_trials", "new_seasons", "new_challenges", "activity_exchange_once"],
+    "total_policy": "unique_source_claims_independent_of_filters_and_completion"
+  },
   "game_id": "endfield-cn",
   "game_name": "明日方舟：终末地",
   "server": "国服",

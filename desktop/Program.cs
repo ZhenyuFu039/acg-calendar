@@ -41,7 +41,7 @@ public static class Program
 }
 
 public record Endpoint(string? At, string State);
-public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source, JsonElement Artwork)
+public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source, JsonElement Artwork, JsonElement Reward)
 {
     public DateTimeOffset? Begin => Parse(Start.At);
     public DateTimeOffset? Finish => Parse(End.At);
@@ -61,6 +61,8 @@ public sealed class CalendarWindow : Window
     readonly TextBlock subtitle = new();
     readonly TextBlock status = new();
     readonly TextBlock clock = new();
+    readonly TextBlock rewardTotal = new();
+    int verifiedRewardTotal;
     readonly Calendar month = new();
     readonly Grid content = new();
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(15) };
@@ -106,6 +108,9 @@ public sealed class CalendarWindow : Window
         heading.Children.Add(brand); layout.Children.Add(heading);
         var controls = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
         subtitle.FontSize = 17; subtitle.FontWeight = FontWeights.SemiBold; subtitle.Text = "正在启动本地日历…"; controls.Children.Add(subtitle);
+        var rewards = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 6, 0, 0), ToolTip = "活动已核实小计，不含地图、信用商店、维护补偿及通行证；未知数量不按零计算。完整明细见时间轴。" };
+        if (RewardIcon() is ImageSource currency) rewards.Children.Add(new Image { Source = currency, Width = 27, Height = 27 });
+        rewardTotal.FontSize = 11; rewardTotal.Foreground = Brush("#805B42"); rewardTotal.VerticalAlignment = VerticalAlignment.Center; rewards.Children.Add(rewardTotal); controls.Children.Add(rewards);
         var toolbar = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
         mode = Button("展开月历", ToggleMode); toolbar.Children.Add(mode);
         toolbar.Children.Add(Button("近期", () => { showAll = false; selected = null; month.SelectedDate = null; Render(); }));
@@ -261,7 +266,13 @@ public sealed class CalendarWindow : Window
             notificationsMenu.Checked = state.RootElement.GetProperty("settings").GetProperty("native_notifications").GetBoolean();
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
-            events = events.Select(e => e with { Source = e.Source.Clone(), Artwork = e.Artwork.ValueKind == JsonValueKind.Undefined ? default : e.Artwork.Clone() }).ToArray();
+            events = events.Select(e => e with { Source = e.Source.Clone(), Artwork = e.Artwork.ValueKind == JsonValueKind.Undefined ? default : e.Artwork.Clone(), Reward = e.Reward.ValueKind == JsonValueKind.Undefined ? default : e.Reward.Clone() }).ToArray();
+            var current = state.RootElement.GetProperty("versions")[0];
+            if (current.TryGetProperty("reward_summary", out var summary))
+            {
+                verifiedRewardTotal = summary.GetProperty("verified_total").GetInt32();
+                rewardTotal.Text = current.GetProperty("name").GetString() + $" · 活动已核实 {verifiedRewardTotal:N0} 玉";
+            }
             lastRefresh = DateTimeOffset.Now; Render();
         }
         catch (Exception error) { status.Text = "连接中断，已保留上次数据。"; Log(error.Message); }
@@ -308,6 +319,19 @@ public sealed class CalendarWindow : Window
                 double progress = Math.Clamp((now - entry.Begin.Value).TotalSeconds / (entry.Finish.Value - entry.Begin.Value).TotalSeconds * 100, 0, 100);
                 body.Children.Add(new ProgressBar { Value = progress, Height = 3, Foreground = color, Background = Brush("#EDF1E6"), BorderThickness = new Thickness(0), Margin = new Thickness(0, dense ? 5 : 9, 0, dense ? 0 : 7) });
             }
+            if (entry.Reward.ValueKind == JsonValueKind.Object)
+            {
+                var reward = entry.Reward;
+                var line = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 3, 0, 0), ToolTip = reward.GetProperty("note").GetString() };
+                if (reward.GetProperty("amount").ValueKind == JsonValueKind.Number)
+                {
+                    if (RewardIcon() is ImageSource icon) line.Children.Add(new Image { Source = icon, Width = 24, Height = 24 });
+                    string shared = reward.GetProperty("state").GetString() == "shared" ? " · 共享" : entry.Category == "gacha" ? " · 试用" : "";
+                    var value = Text(reward.GetProperty("amount").GetInt32().ToString("N0") + shared, 11, true); value.VerticalAlignment = VerticalAlignment.Center; value.Foreground = Brush("#805B42"); line.Children.Add(value);
+                }
+                else line.Children.Add(Text(entry.Category == "maintenance" ? "补偿单列" : "嵌晶玉未列明", 10));
+                body.Children.Add(line);
+            }
             var actions = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
             actions.Children.Add(Button("标记完成", async () => await Mutate("/api/events/" + entry.Id, new { completed = true }, true)));
             if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button("公告 ↗", () => Open(source.GetString()!)));
@@ -315,6 +339,16 @@ public sealed class CalendarWindow : Window
         }
         if (ordered.Length == 0) cards.Children.Add(Text("这一天没有待办活动，换一天看看。", 13));
         status.Text = $"当前 {ordered.Length} / 共 {events.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n{(showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。")}";
+    }
+    ImageSource? currencyIcon;
+    ImageSource? RewardIcon()
+    {
+        if (currencyIcon != null) return currencyIcon;
+        string file = Path.Combine(root, "web", "assets", "oroberyl.png");
+        if (!File.Exists(file)) return null;
+        var image = new System.Windows.Media.Imaging.BitmapImage(); image.BeginInit();
+        image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
+        image.UriSource = new Uri(file); image.EndInit(); image.Freeze(); return currencyIcon = image;
     }
     ImageSource? Picture(CalendarEvent entry)
     {
@@ -375,6 +409,7 @@ public sealed class CalendarWindow : Window
         try
         {
             if (events.Length < 1 || cards.Children.Count < 1 || csrf == "") throw new Exception("Desktop did not load real calendar data");
+            if (verifiedRewardTotal != 11000 || RewardIcon() == null || !events.Any(e => e.Reward.GetProperty("state").GetString() == "shared")) throw new Exception("Reward summary, shared pool, or icon did not load");
             Hide();
             using (var hidden = await http.GetAsync(address + "/api/health")) hidden.EnsureSuccessStatusCode();
             if (IsVisible) throw new Exception("Desktop did not hide to the tray");
@@ -390,7 +425,7 @@ public sealed class CalendarWindow : Window
             if (cards.Children.Count != events.Length) throw new Exception("All-activities view omitted entries");
             month.SelectedDate = DateTime.Today.AddDays(1);
             if (selected != DateTime.Today.AddDays(1)) throw new Exception("Calendar selection did not update");
-            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, exportBytes = ics.Length, backendPid = backend?.Id }));
+            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
         }
         catch (Exception error)
         {

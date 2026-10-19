@@ -25,7 +25,7 @@ def bundle(name='丹青渡', tag='v1d6'):
     asset_rows = []
     for index, row in enumerate(FIXTURE['entries']):
         key = f'gameplay.{index}.thumbnail'
-        config['gameplay'].append({'id': row['id'], 'name': {'zh-cn': row['title']}, 'timeByServer': {'cn': row['cn'], 'us': {'openTime': '2000/1/1 00:00:00'}}, 'thumbnail': {'assetKey': key}})
+        config['gameplay'].append({'id': row['id'], 'name': {'zh-cn': row['title']}, 'timeByServer': {'cn': row['cn'], 'us': {'openTime': '2000/1/1 00:00:00'}}, 'thumbnail': {'assetKey': key}, 'rewards': row.get('rewards', [])})
         filename = Path(urllib.parse.urlsplit(row['thumbnail_url']).path).name
         asset_rows.append(json.dumps(key) + ':x.p+' + json.dumps('assets/imgs/' + filename))
     label = {'page.title': {'zh-cn': '《明日方舟：终末地》「' + name + '」新版本导览'}}
