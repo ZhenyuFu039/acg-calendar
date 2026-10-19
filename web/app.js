@@ -170,6 +170,8 @@
     else if(sync.error) message=`联网同步失败，继续使用本地${version.source.origin==='snapshot'?'官网快照':'缓存'}。可稍后重试。`;
     else if(version.source.origin==='snapshot') message=`内置官网真实快照 · ${format(version.source.fetched_at,{year:true})} 采集 · 点击“同步公告”检查更新`;
     else message=`已连接官方公告 · ${format(version.source.fetched_at,{year:true})} 采集 · 预计开服时间有独立标记`;
+    if(version.briefing) message+=` · 官方导览已关联 ${version.briefing.matched_events} 项${version.briefing.conflicts?' · '+version.briefing.conflicts+' 处时间需核对':''}`;
+    if(S.data.briefing_previews?.length) message+=` · 已缓存 ${S.data.briefing_previews.length} 份新版本导览，等待对应更新公告`;
     target.innerHTML=`<span class="status-point"></span><span>${esc(message)}</span>`;
     target.classList.toggle('warning',Boolean(sync.error));
     target.title=sync.error||'';
@@ -270,7 +272,7 @@
   function endpointDetail(endpoint,role,event) {
     if(role==='end'&&event.time_kind==='point') return '<div class="detail-time-value">更新节点</div><div class="detail-time-state">公告未设活动截止时间</div>';
     const value=endpoint.at?format(endpoint.at,{year:true}):'尚未公布';
-    const basis=endpoint.state==='unknown'?(referenceLabels[endpoint.reference]||'需要核对公告'):endpointLabels[endpoint.state];
+    const basis=endpoint.reference==='briefing_explicit'?'官方版本导览明确':endpoint.state==='unknown'?(referenceLabels[endpoint.reference]||'需要核对公告'):endpointLabels[endpoint.state];
     return `<div class="detail-time-value">${esc(value)}</div><div class="detail-time-state">${esc(basis)}</div>`;
   }
   function renderDetail(event) {
@@ -286,6 +288,14 @@
     const chosen=event.reminder_minutes===null?'follow':event.reminder_minutes.length===0?'off':event.reminder_minutes.length===1?String(event.reminder_minutes[0]):'custom';
     $('#detail-content').innerHTML=`<div class="dialog-header"><div><div class="eyebrow">${esc(event.version_name)} / ${esc(cat.name)}</div><h2 id="detail-title">${esc(cleanTitle(event))}</h2><div class="detail-meta"><span class="tag">${esc(status(event))}</span><span class="tag neutral">${esc(event.subtype)}</span>${event.has_overrides?'<span class="tag warning">已手动校正</span>':''}</div></div><button class="icon-button" type="button" data-close aria-label="关闭活动详情">×</button></div><div class="dialog-body"><div class="help-text">你的时间 · ${esc(zone())}</div><div class="detail-time-grid"><div><div class="detail-time-label">开始</div>${endpointDetail(event.start,'start',event)}</div><div><div class="detail-time-label">${event.time_kind==='point'?'类型':'结束'}</div>${endpointDetail(event.end,'end',event)}</div></div><div class="detail-countdown"><span>${countLabel}</span><strong>${esc(countValue)}</strong></div><div class="help-text">服务器时间（UTC+8）：${event.start.at?esc(format(event.start.at,{timeZone:'Asia/Shanghai',year:true})):'开始待定'} → ${event.end.at?esc(format(event.end.at,{timeZone:'Asia/Shanghai',year:true})):event.time_kind==='point'?'更新节点':'结束待定'}</div>${phases}${event.description?'<p class="detail-description">'+esc(event.description)+'</p>':''}${requirements}${event.warnings.length?'<p class="form-error">'+esc(event.warnings.join('；'))+'</p>':''}<div class="detail-actions"><button id="toggle-completed" class="button ${event.completed?'':'button-primary'}" type="button" aria-pressed="${event.completed}">${event.completed?'已完成 · 撤销':'标记已完成'}</button><button id="open-event-reminders" class="button" type="button">提醒设置</button></div><label class="field-label" for="event-reminder">这个活动的提醒</label><select id="event-reminder"><option value="follow">跟随全局设置</option><option value="off">不提醒</option><option value="4320">结束前 3 天</option><option value="1440">结束前 24 小时</option><option value="60">结束前 1 小时</option>${chosen==='custom'?'<option value="custom">自定义提前量（保留）</option>':''}</select>${maintenance}<details class="source-box"><summary>查看公告原文与解析依据</summary><p class="help-text">${esc(event.source.time_label)}：${esc(event.source.time_text)}<br>标准化正文第 ${event.source.line} 行 · 规则解析，未调用 AI</p><pre>${esc(event.source.block_text)}</pre></details><a class="source-link" href="${esc(event.source.url)}" target="_blank" rel="noopener noreferrer">阅读官方公告 ↗</a><details class="edit-section"><summary>手动校正与备注</summary><p class="help-text">以下日期均使用服务器时间（UTC+8）。手动校正独立保存，同步公告不会覆盖。留空会恢复对应的公告时间。</p><form id="event-edit-form"><div class="edit-fields"><label>开始时间<input id="edit-start" type="datetime-local" value="${sourceInput(event.start.at)}" data-initial="${sourceInput(event.start.at)}"></label><label>结束时间<input id="edit-end" type="datetime-local" value="${sourceInput(event.end.at)}" data-initial="${sourceInput(event.end.at)}"></label></div><label class="field-label" for="edit-notes">我的备注</label><textarea id="edit-notes" maxlength="2000" placeholder="例如：周末完成剧情，兑换留到最后一天">${esc(event.notes)}</textarea><div class="edit-actions"><button class="button button-primary" type="submit">保存校正</button><button id="reset-event-times" class="text-button" type="button">恢复公告时间</button></div><div id="edit-error" class="form-error" role="alert" hidden></div></form></details></div>`;
     $('#event-reminder').value=chosen;
+    if(event.briefing) {
+      const source=event.briefing, times=source.cn_time;
+      const start=times.startsAfterUpdate?'版本更新维护后':times.openTime||'未明确公布';
+      const end=times.endTimeDisplay==='beforeUpdate'?'版本更新维护前':times.endTimeDisplay==='alwaysAvailable'?'常驻开放':times.closeTime||'未明确公布';
+      const panel=document.createElement('section');panel.className='briefing-evidence';
+      panel.innerHTML=`<strong>官方版本导览 · ${esc(source.title)}</strong><p>国服时间依据：${esc(start)} → ${esc(end)}</p><p>${source.match==='parent_activity'?'关联到同一玩法的素材，当前阶段时间沿用更新公告。':source.conflicts.length?'两份官方来源的时间存在差异，当前保留版本更新公告时间。':'已与版本更新公告核对；维护相关时间仍保留待确认标记。'}</p><a class="source-link" href="${esc(source.news_url)}" target="_blank" rel="noopener noreferrer">阅读导览上线公告 ↗</a> <a class="source-link" href="${esc(source.source_url)}" target="_blank" rel="noopener noreferrer">打开官方导览（入口随版本更新）↗</a>`;
+      $('#detail-content .source-link').after(panel);
+    }
   }
   function openAgenda(day) {
     const events=filteredEvents().filter(e=>overlaps(e,day,day+1)).sort((a,b)=>Date.parse(a.start.at)-Date.parse(b.start.at));

@@ -49,6 +49,7 @@ class Application:
             "sync": self.store.get_meta("sync", {}), "notifications": self.store.notifications(),
             "native_available": self.desktop and native_available(),
             "desktop_delivery": self.store.get_meta("desktop_delivery"),
+            "briefing_previews": self.store.get_meta("briefing_previews", []),
         }
 
     def start(self):

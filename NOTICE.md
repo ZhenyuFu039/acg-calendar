@@ -5,3 +5,5 @@
 这些公告内容、游戏名称及相关权利归原权利人所有，不属于本项目 MIT 代码许可的授权范围。程序在运行时从官方公告 CDN 缓存活动封面到本地 `data/artwork/`，该目录不纳入 Git；文档界面预览中出现的官方封面同样不属于 MIT 许可范围。项目不打包游戏客户端资源。
 
 本项目是独立的个人日历工具，与鹰角网络无隶属关系。
+
+`tests/fixtures/official-briefing-v1d6.json` 是从官方 [「丹青渡」新版本导览](https://endfield.hypergryph.com/version_briefing/latest?source_from=official) 脚本提取的少量活动配置，用于验证名称、国服时间语义和素材映射。其原始内容与素材权利同样不属于 MIT 代码许可；程序只静态读取公开配置，不执行脚本或登录领取奖励。

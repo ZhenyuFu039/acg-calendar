@@ -45,6 +45,8 @@ def calendar_bytes(versions, settings, now=None):
             if event.get("notes"):
                 description += "\n备注：" + event["notes"]
             description += "\n公告：" + event["source"]["url"] + "\n本文件为导出快照，时间变更需重新导入。"
+            if event.get("briefing"):
+                description += "\n官方版本导览：" + event["briefing"]["source_url"]
             lines += ["SUMMARY:" + text(event["title"]), "DESCRIPTION:" + text(description), "URL:" + event["source"]["url"], "STATUS:CONFIRMED", "TRANSP:TRANSPARENT"]
             if settings.get("reminders_enabled") and not point:
                 offsets = event.get("reminder_minutes")

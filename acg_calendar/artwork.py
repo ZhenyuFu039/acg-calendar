@@ -14,7 +14,8 @@ MAX_BYTES = 5_000_000
 def official_image(url):
     try:
         parsed = urllib.parse.urlsplit(url or "")
-        return parsed.scheme == "https" and parsed.hostname in HOSTS and parsed.port in {None, 443} and not parsed.username and not parsed.password and parsed.path.startswith("/upload/image/")
+        allowed_path = parsed.path.startswith("/upload/image/") or bool(re.fullmatch(r"/endfield/webview/_version_briefing/[A-Za-z0-9_.-]+/assets/imgs/[A-Za-z0-9_.-]+", parsed.path))
+        return parsed.scheme == "https" and parsed.hostname in HOSTS and parsed.port in {None, 443} and not parsed.username and not parsed.password and allowed_path
     except (ValueError, TypeError):
         return False
 

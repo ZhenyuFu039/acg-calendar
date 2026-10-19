@@ -7,10 +7,15 @@
   "timezone": "Asia/Shanghai",
   "utc_offset_minutes": 480,
   "sources": {
-    "list_url": "https://web-news.hypergryph.com/api/bulletin?lang=zh-cn&code=endfield_web&page=1&pageSize=10",
+    "list_url": "https://web-news.hypergryph.com/api/bulletin?lang=zh-cn&code=endfield_web&page=1&pageSize=20",
     "detail_url_template": "https://endfield.hypergryph.com/news/{cid}",
     "version_title_pattern": "「(?P<name>[^」]+)」版本更新说明",
-    "max_version_articles": 2
+    "max_version_articles": 2,
+    "max_list_pages": 3,
+    "briefing_news_pattern": "新版本导览|版本导览专题",
+    "max_briefing_articles": 3,
+    "briefing_server": "cn",
+    "briefing_policy": "announcement_first_preserve_relative_times"
   },
   "structure": {
     "section_pattern": "^■\\s*(?P<name>.+)$",

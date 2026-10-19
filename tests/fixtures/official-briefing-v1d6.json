@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "name": "丹青渡",
+  "version_tag": "v1d6",
+  "page_title": "《明日方舟：终末地》「丹青渡」新版本导览",
+  "script_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/version-v1d6.87cf2c.js",
+  "script_sha256": "3441a92c04d506e13e135832aa391f41f07a9e6311e635fd63853be5e031a04c",
+  "source_environment": "dev",
+  "entries": [
+    {
+      "id": "activity_timelimited_inn",
+      "title": "烟火生缘",
+      "cn": {
+        "openTime": "2026/10/15 7:00:00",
+        "closeTime": "2026/11/26 6:00:00",
+        "startsAfterUpdate": true,
+        "endTimeDisplay": "beforeUpdate"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.0ab0c1.jpg"
+    },
+    {
+      "id": "activity_map02_guide_010",
+      "title": "墨分诸彩",
+      "cn": {
+        "openTime": "2026/10/15 7:00:00",
+        "closeTime": "2026/11/5 12:00:00",
+        "startsAfterUpdate": true
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.2ff83e.jpg"
+    },
+    {
+      "id": "activity_contingency_contract_1",
+      "title": "危机合约 浸蓝测试作战",
+      "cn": {
+        "openTime": "2026/11/5 12:00:00",
+        "closeTime": "2026/12/3 4:00:00",
+        "endTimeDisplay": "beforeUpdate"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.0952be.jpg"
+    },
+    {
+      "id": "activity_gambling_dungeon",
+      "title": "百趣演武",
+      "cn": {
+        "openTime": "2026/10/29 12:00:00",
+        "closeTime": "2026/11/19 4:00:00"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.33ee37.jpg"
+    },
+    {
+      "id": "activity_phototaking_carly_3",
+      "title": "卡莉的芳菲童话",
+      "cn": {
+        "openTime": "2026/10/22 12:00:00",
+        "closeTime": "2026/11/5 4:00:00"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.71776c.jpg"
+    },
+    {
+      "id": "activity_high_difficulty_v1d6",
+      "title": "丰碑留名·魇林",
+      "cn": {
+        "openTime": "2026/10/22 12:00:00",
+        "closeTime": "2026/11/5 4:00:00"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.c59b9f.jpg"
+    },
+    {
+      "id": "activity_seasontower_0",
+      "title": "战争回响常驻挑战玩法更新",
+      "cn": {
+        "openTime": "2026/7/16 7:00:00",
+        "closeTime": "",
+        "startsAfterUpdate": true,
+        "endTimeDisplay": "beforeUpdate"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.614a75.jpg"
+    },
+    {
+      "id": "web_activity_v1d6_ghost",
+      "title": "予众魂的新光影",
+      "cn": {
+        "openTime": "2026/10/31 12:00:00",
+        "closeTime": "2026/11/14 4:00:00"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.b9a7b5.jpg"
+    },
+    {
+      "id": "activity_puzzle_1",
+      "title": "密境行者空间组更新",
+      "cn": {
+        "openTime": "2026/2/24 12:00:00",
+        "closeTime": "",
+        "startsAfterUpdate": true,
+        "endTimeDisplay": "alwaysAvailable"
+      },
+      "thumbnail_url": "https://web.hycdn.cn/endfield/webview/_version_briefing/v1d6/assets/imgs/thumbnail.ab83b6.jpg"
+    }
+  ]
+}
