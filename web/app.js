@@ -1,0 +1,451 @@
+'use strict';
+(() => {
+  const $ = selector => document.querySelector(selector);
+  const DAY = 86400000;
+  const categories = {
+    event: { name: '活动', color: 'var(--event)' },
+    gacha: { name: '寻访与申领', color: 'var(--gacha)' },
+    exchange: { name: '奖励兑换', color: 'var(--exchange)' },
+    update: { name: '玩法更新', color: 'var(--update)' },
+    maintenance: { name: '版本维护', color: 'var(--maintenance)' }
+  };
+  const endpointLabels = {exact:'公告明确', estimated:'预计 / 待核实', confirmed:'开服已确认', manual:'手动校正', unknown:'待定'};
+  const referenceLabels = {next_maintenance_start:'下次版本维护前，具体时间未公布', recruitment_cycles:'按寻访次数结束，具体日期未公布', maintenance_end:'随本版本维护结束开放', unpublished:'公告未给出结束时间', invalid_interval:'时间顺序异常，请核对'};
+  const S = {data:null, version:null, view:'timeline', days:14, anchor:null, selected:null, categories:new Set(['event','gacha','exchange','update']), includePending:true, rules:null, rulesTab:'config', seenNotices:new Set(), initialized:false, pollTimer:null, toastTimer:null};
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const now = () => Date.now();
+  const allEvents = () => S.data?.events || [];
+  const activeVersion = () => S.data?.versions.find(version => version.id === S.version);
+  function zone() {
+    const candidate = S.data?.settings.timezone;
+    const value = candidate && candidate !== 'auto' ? candidate : Intl.DateTimeFormat().resolvedOptions().timeZone;
+    try { new Intl.DateTimeFormat('en-US', {timeZone:value}).format(); return value; }
+    catch { return 'UTC'; }
+  }
+  function dateParts(value, timeZone=zone()) {
+    return Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(value)).map(part => [part.type,part.value]));
+  }
+  function civil(value) {
+    const p = dateParts(value);
+    return Date.UTC(+p.year,+p.month-1,+p.day)/DAY+(+p.hour*3600 + +p.minute*60 + +p.second)/86400;
+  }
+  function serialDate(serial) { return new Date(Math.floor(serial)*DAY); }
+  function shortDay(serial, year=false) {
+    const d=serialDate(serial);
+    return (year?d.getUTCFullYear()+'/':'')+String(d.getUTCMonth()+1).padStart(2,'0')+'/'+String(d.getUTCDate()).padStart(2,'0');
+  }
+  function format(value, {timeZone=zone(),year=false,dateOnly=false,seconds=false}={}) {
+    if (!value) return '时间待定';
+    const p=dateParts(value,timeZone);
+    return (year?p.year+'/':'')+p.month+'/'+p.day+(dateOnly?'':' '+p.hour+':'+p.minute+(seconds?':'+p.second:''));
+  }
+  function sourceInput(value) {
+    if(!value) return '';
+    const p=dateParts(value,'Asia/Shanghai');
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+  }
+  function countdown(value) {
+    if(!value) return '截止时间待定';
+    const delta=Date.parse(value)-now();
+    if(delta<=0) return '已结束';
+    const minutes=Math.ceil(delta/60000), days=Math.floor(minutes/1440), hours=Math.floor(minutes%1440/60);
+    if(days) return `${days}天 ${hours}小时`;
+    if(hours) return `${hours}小时 ${minutes%60}分`;
+    return `${minutes}分钟`;
+  }
+  function status(event) {
+    if(event.completed) return '已完成';
+    if(event.invalid_interval) return '时间待核对';
+    if(event.end.at && Date.parse(event.end.at)<=now()) return event.end.state==='estimated'?'已过预计结束':'已结束';
+    if(!event.start.at) return '开始时间待定';
+    if(Date.parse(event.start.at)>now()) return event.start.state==='estimated'?'预计开放':'未开始';
+    if(event.time_kind==='point') return '已更新';
+    if(event.start.state==='estimated') return '开始待核实';
+    if(!event.end.at) return '结束待定';
+    return '进行中';
+  }
+  function cleanTitle(event) { return event.title.replace(/[「」]/g,''); }
+  function filteredEvents() {
+    return allEvents().filter(event => event.version_id===S.version && S.categories.has(event.category) && !event.ignored && (!S.data.settings.hide_completed || !event.completed) && (S.includePending || event.time_kind==='point' || event.end.at));
+  }
+  function range() {
+    if(S.view==='timeline') return [S.anchor,S.anchor+S.days];
+    const d=serialDate(S.anchor), first=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)/DAY;
+    const last=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,1)/DAY;
+    return [first,last];
+  }
+  function overlaps(event,lo,hi) {
+    if(!event.start.at || event.invalid_interval) return false;
+    const start=civil(event.start.at);
+    if(event.time_kind==='point') return start>=lo && start<hi;
+    const end=event.end.at?civil(event.end.at):Infinity;
+    return start<hi && end>lo;
+  }
+  async function api(path, method='GET', body) {
+    const response=await fetch(path,{method,headers:method==='GET'?{}:{'Content-Type':'application/json','X-Calendar-Token':S.data.csrf_token},body:body===undefined?undefined:JSON.stringify(body)});
+    const result=await response.json();
+    if(!response.ok) throw new Error(result.error || '请求失败');
+    return result;
+  }
+  function toast(message,error=false) {
+    const el=$('#toast');
+    el.textContent=message;el.classList.toggle('error',error);el.hidden=false;
+    clearTimeout(S.toastTimer);S.toastTimer=setTimeout(()=>{el.hidden=true;},4500);
+  }
+  async function mutate(path,body={},method='POST') {
+    try { const data=await api(path,method,body); applyState(data); return true; }
+    catch(error) { toast(error.message,true);return false; }
+  }
+  function applyState(data) {
+    const first=!S.initialized;
+    S.data=data;
+    if(!data.versions.some(version=>version.id===S.version)) S.version=data.versions[0]?.id;
+    if(first) {
+      S.view=data.settings.view;S.anchor=Math.floor(civil(now()));
+      data.notifications.forEach(notice=>S.seenNotices.add(notice.id));
+      buildFilters();S.initialized=true;
+    }
+    deliverBrowserNotices(data.notifications);
+    render();
+    if($('#reminder-dialog').open) renderInbox();
+    $('#load-error').hidden=true;
+  }
+  function buildFilters() {
+    $('#category-filters').innerHTML=Object.entries(categories).map(([id,category])=>`<label class="filter-row" style="--category:${category.color}"><input type="checkbox" data-category="${id}" ${S.categories.has(id)?'checked':''}><span class="category-dot"></span><span>${category.name}</span><span class="filter-count" data-count="${id}">0</span></label>`).join('');
+  }
+  function render() {
+    const version=activeVersion();
+    if(!version) return;
+    const options=S.data.versions.map(v=>`<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
+    if($('#version-select').innerHTML!==options) $('#version-select').innerHTML=options;
+    $('#version-select').value=S.version;
+    $('#timezone-select').value=S.data.settings.timezone;
+    $('#hide-completed').checked=S.data.settings.hide_completed;
+    $('#version-summary').textContent=`「${version.name}」版本 · ${allEvents().filter(e=>e.version_id===S.version).length} 个独立条目 · 官方公告规则解析`;
+    for(const id of Object.keys(categories)) $(`[data-count="${id}"]`).textContent=allEvents().filter(e=>e.version_id===S.version && e.category===id).length;
+    $('#timeline-view').setAttribute('aria-pressed',S.view==='timeline');
+    $('#month-view').setAttribute('aria-pressed',S.view==='month');
+    $('.range-control').hidden=S.view==='month';
+    const [lo,hi]=range();
+    const date=serialDate(lo);
+    $('#period-title').textContent=S.view==='month'?`${date.getUTCFullYear()} 年 ${date.getUTCMonth()+1} 月`:`${shortDay(lo,true)} — ${shortDay(hi-1,serialDate(hi-1).getUTCFullYear()!==date.getUTCFullYear())}`;
+    const filtered=filteredEvents(), shown=filtered.filter(event=>overlaps(event,lo,hi));
+    const pending=filtered.filter(e=>!e.end.at&&e.time_kind!=='point').length;
+    $('#visible-summary').textContent=`当前日期范围 ${shown.length} 项${pending?' · '+pending+' 项截止待定':''}`;
+    renderSourceStatus(version);
+    renderDeadline(filtered);
+    $('#calendar').innerHTML=S.view==='timeline'?renderTimeline(shown,lo,hi):renderMonth(filtered,lo,hi);
+    const unscheduled=filtered.filter(e=>!e.start.at||e.invalid_interval);
+    $('#unscheduled').hidden=!unscheduled.length;
+    $('#unscheduled').innerHTML=unscheduled.length?`<h3>时间待核对 · ${unscheduled.length} 项</h3>${unscheduled.map(e=>`<button type="button" data-event="${e.id}">${esc(cleanTitle(e))}</button>`).join('')}`:'';
+    const unread=S.data.notifications.filter(n=>!n.read).length;
+    $('#unread-count').textContent=unread;$('#unread-count').hidden=!unread;
+    const sync=S.data.sync;
+    $('#sync-button').disabled=sync.running;
+    $('#sync-button').classList.toggle('syncing',Boolean(sync.running));
+    $('#sync-button').lastChild.textContent=sync.running?'同步中…':'同步公告';
+    $('#sync-status').textContent=sync.last_success?`最近同步 ${format(sync.last_success,{year:true})} · 数据保存在本机`:`官网快照 ${format(version.source.fetched_at,{year:true})} · 数据保存在本机`;
+    renderClock();
+  }
+  function renderSourceStatus(version) {
+    const sync=S.data.sync, target=$('#source-status');
+    let message;
+    if(sync.running) message='正在读取官方公告，现有日历仍可使用。';
+    else if(sync.error) message=`联网同步失败，继续使用本地${version.source.origin==='snapshot'?'官网快照':'缓存'}。可稍后重试。`;
+    else if(version.source.origin==='snapshot') message=`内置官网真实快照 · ${format(version.source.fetched_at,{year:true})} 采集 · 点击“同步公告”检查更新`;
+    else message=`已连接官方公告 · ${format(version.source.fetched_at,{year:true})} 采集 · 预计开服时间有独立标记`;
+    target.innerHTML=`<span class="status-point"></span><span>${esc(message)}</span>`;
+    target.classList.toggle('warning',Boolean(sync.error));
+    target.title=sync.error||'';
+  }
+  function renderClock() {
+    $('#clock-label').textContent=`${format(now(),{year:true})} · ${zone()}`;
+    const offset=new Intl.DateTimeFormat('en-US',{timeZone:zone(),timeZoneName:'shortOffset'}).formatToParts(now()).find(p=>p.type==='timeZoneName')?.value || '';
+    $('#zone-offset').textContent=offset.replace('GMT','UTC')+' · 按日期自动换算';
+  }
+  function renderDeadline(events) {
+    const next=events.filter(e=>!e.completed && e.end.at && e.end.state!=='estimated' && !e.invalid_interval && Date.parse(e.end.at)>now()).sort((a,b)=>Date.parse(a.end.at)-Date.parse(b.end.at))[0];
+    $('#deadline-strip').innerHTML=next?`<span>NEXT DEADLINE</span><strong>${esc(format(next.end.at))}</strong><span>${esc(cleanTitle(next))} · 还剩 ${esc(countdown(next.end.at))}</span><button class="text-button" type="button" data-event="${next.id}">查看活动 ↗</button>`:'<span>DEADLINES</span><span>当前筛选中没有已明确的未来截止时间。</span>';
+  }
+  function bar(event,lo,hi,{month=false,top=0}={}) {
+    const start=civil(event.start.at), isPoint=event.time_kind==='point';
+    const end=isPoint?start+0.03:(event.end.at?civil(event.end.at):hi);
+    const a=Math.max(lo,start),b=Math.min(hi,end),span=hi-lo;
+    if(b<=a) return '';
+    const left=(a-lo)/span*100,width=(b-a)/span*100;
+    const progress=Math.max(0,Math.min(100,(civil(now())-a)/(b-a)*100));
+    const cat=categories[event.category];
+    const tooltip=`${cleanTitle(event)} · ${format(event.start.at,{year:true})} → ${event.end.at?format(event.end.at,{year:true}):referenceLabels[event.end.reference]||'截止待定'} · ${status(event)}`;
+    if(isPoint&&!month) return `<button type="button" class="point-marker" style="--category:${cat.color};--bar-left:${left}%" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}"></button>`;
+    const label=month?cleanTitle(event):(start<lo?'← ':'')+format(event.start.at,{dateOnly:true})+(event.start.state==='estimated'?' 预计':'')+(event.end.at?' → '+format(event.end.at,{dateOnly:true}):' → 待定')+(end>hi?' →':'');
+    return `<button type="button" class="event-bar ${!event.end.at&&!isPoint?'open-end':''} ${event.start.state==='estimated'?'estimated-start':''} ${end>hi?'clipped-end':''} ${event.completed?'completed':''}" style="--category:${cat.color};--bar-left:${left}%;--bar-width:${width}%;--progress:${progress}%;--bar-top:${top}px" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}"><span class="bar-label">${esc(label)}</span></button>`;
+  }
+  function renderTimeline(events,lo,hi) {
+    if(!events.length) return emptyCalendar();
+    const today=Math.floor(civil(now())), days=hi-lo;
+    const axis=Array.from({length:days},(_,i)=>{
+      const serial=lo+i,d=serialDate(serial),week=d.getUTCDay();
+      return `<div class="axis-day ${serial===today?'today':''} ${[0,6].includes(week)?'weekend':''}"><span>${['日','一','二','三','四','五','六'][week]}</span><strong>${d.getUTCDate()===1?(d.getUTCMonth()+1)+'/':''}${d.getUTCDate()}</strong></div>`;
+    }).join('');
+    const rows=Object.entries(categories).map(([category,definition])=>{
+      const group=events.filter(e=>e.category===category).sort((a,b)=>Date.parse(a.start.at)-Date.parse(b.start.at)||a.title.localeCompare(b.title,'zh'));
+      if(!group.length) return '';
+      return `<div class="timeline-group" style="--category:${definition.color}"><span class="category-dot"></span>${definition.name}<span class="group-count">${String(group.length).padStart(2,'0')}</span></div>`+group.map(event=>{
+        const markers=event.phases.filter(p=>p.at&&civil(p.at)>=lo&&civil(p.at)<hi).map(p=>`<button type="button" class="phase-mark" style="left:${(civil(p.at)-lo)/days*100}%" data-event="${event.id}" aria-label="${esc(event.title+' · '+p.title+' '+format(p.at,{year:true}))}" title="${esc(p.title+' '+format(p.at))}"></button>`).join('');
+        const deadline=event.time_kind==='point'?`<strong>${esc(format(event.start.at))}</strong><span>更新节点</span>`:event.end.at?`<strong>${esc(format(event.end.at))}</strong><span>${event.end.state==='estimated'?'预计结束':esc(countdown(event.end.at))}</span>`:`<strong class="pending-label">截止待定</strong><span>${event.end.reference==='recruitment_cycles'?'按寻访次数结束':'等待后续公告'}</span>`;
+        return `<div class="timeline-row ${event.completed?'completed':''}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="category-dot"></span><span class="event-name-text"><strong>${esc(cleanTitle(event))}</strong><small>${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button></div>`;
+      }).join('');
+    }).join('');
+    return `<div class="timeline-scroll"><div class="timeline" style="--days:${days};min-width:${Math.max(680,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div></div>${rows}</div></div>`;
+  }
+  function renderMonth(events,monthStart,monthEnd) {
+    const d=serialDate(monthStart), first=monthStart-(d.getUTCDay()+6)%7, weeks=Math.ceil((monthEnd-first)/7), today=Math.floor(civil(now()));
+    let html='<div class="month-head">'+['一','二','三','四','五','六','日'].map(day=>`<span>周${day}</span>`).join('')+'</div>';
+    for(let week=0;week<weeks;week++) {
+      const lo=first+week*7,hi=lo+7;
+      const visible=events.filter(e=>overlaps(e,lo,hi)).sort((a,b)=>civil(a.start.at)-civil(b.start.at)||a.title.localeCompare(b.title,'zh'));
+      const ends=[], bars=[],drawn=[];
+      for(const event of visible) {
+        const start=Math.max(lo,civil(event.start.at)),end=Math.min(hi,event.time_kind==='point'?Math.floor(civil(event.start.at))+1:(event.end.at?civil(event.end.at):hi));
+        let lane=ends.findIndex(value=>value<=start);
+        if(lane<0) lane=ends.length;
+        ends[lane]=end;
+        if(lane>=3) continue;
+        drawn.push(event.id);
+        if(event.time_kind==='point') {
+          const serial=Math.floor(civil(event.start.at)),left=(serial-lo)/7*100;
+          bars.push(`<button type="button" class="event-bar" style="--category:${categories[event.category].color};--bar-left:${left}%;--bar-width:${100/7}%;--progress:0%;--bar-top:${38+lane*25}px" data-event="${event.id}" title="${esc(cleanTitle(event)+' '+format(event.start.at))}"><span class="bar-label">◆ ${esc(cleanTitle(event))}</span></button>`);
+        } else bars.push(bar(event,lo,hi,{month:true,top:38+lane*25}));
+      }
+      const cells=Array.from({length:7},(_,i)=>{
+        const day=lo+i,date=serialDate(day),extra=visible.filter(e=>overlaps(e,day,day+1)&&!drawn.includes(e.id)).length;
+        return `<div class="month-cell ${day<monthStart||day>=monthEnd?'outside':''} ${day===today?'today':''}"><button type="button" class="month-date" data-day="${day}" aria-label="${shortDay(day,true)}的全部活动">${date.getUTCDate()}</button>${extra?`<button type="button" class="month-more" data-day="${day}">+${extra} 项</button>`:''}</div>`;
+      }).join('');
+      html+=`<div class="month-week">${cells}${bars.join('')}</div>`;
+    }
+    return html;
+  }
+  function emptyCalendar() {
+    return '<div class="empty-state"><strong>这段日期里没有符合筛选的活动</strong>可以切换日期、调整筛选，或 <button class="text-button" type="button" data-focus-version>查看版本开始日期</button>。</div>';
+  }
+  function openDialog(selector) {
+    const dialog=$(selector);
+    if(!dialog.open) dialog.showModal();
+  }
+  function openEvent(id) {
+    const event=allEvents().find(e=>e.id===id);
+    if(!event) return;
+    S.selected=id;
+    if($('#agenda-dialog').open) $('#agenda-dialog').close();
+    renderDetail(event);openDialog('#detail-dialog');
+  }
+  function endpointDetail(endpoint,role,event) {
+    if(role==='end'&&event.time_kind==='point') return '<div class="detail-time-value">更新节点</div><div class="detail-time-state">公告未设活动截止时间</div>';
+    const value=endpoint.at?format(endpoint.at,{year:true}):'尚未公布';
+    const basis=endpoint.state==='unknown'?(referenceLabels[endpoint.reference]||'需要核对公告'):endpointLabels[endpoint.state];
+    return `<div class="detail-time-value">${esc(value)}</div><div class="detail-time-state">${esc(basis)}</div>`;
+  }
+  function renderDetail(event) {
+    const cat=categories[event.category], isMaintenance=event.category==='maintenance';
+    const upcoming=event.start.at&&Date.parse(event.start.at)>now();
+    const target=upcoming?event.start.at:event.end.at;
+    const countLabel=event.time_kind==='point'?'更新状态':upcoming?'距离'+(event.start.state==='estimated'?'预计开放':'开放'):'距离截止';
+    const countValue=event.time_kind==='point'?(upcoming?countdown(event.start.at):'已更新'):countdown(target);
+    const phases=event.phases.length?`<div class="detail-phases">${event.phases.map(phase=>`<div><strong>${esc(phase.title)}</strong><span>${esc(format(phase.at,{year:true}))}</span></div>`).join('')}</div>`:'';
+    const requirements=event.requirements.length?'<p class="detail-description">参与条件：'+esc(event.requirements.join('；'))+'</p>':'';
+    const version=S.data.versions.find(v=>v.id===event.version_id);
+    const maintenance=isMaintenance?`<div class="maintenance-edit"><h3>确认实际开服时间</h3><p class="help-text">公告给出的是预计结束时间。确认实际开服后，这个版本中“维护后开放”的条目会一起更新。</p><form id="maintenance-form"><div class="edit-fields"><label>实际开服时间 · 服务器时间（UTC+8）<input id="actual-maintenance-end" type="datetime-local" value="${sourceInput(version.maintenance.actual_end)}"></label></div><div class="edit-actions"><button class="button button-primary" type="submit">保存开服记录</button><button id="clear-maintenance" class="text-button" type="button">恢复预计时间</button></div></form></div>`:'';
+    const chosen=event.reminder_minutes===null?'follow':event.reminder_minutes.length===0?'off':event.reminder_minutes.length===1?String(event.reminder_minutes[0]):'custom';
+    $('#detail-content').innerHTML=`<div class="dialog-header"><div><div class="eyebrow">${esc(event.version_name)} / ${esc(cat.name)}</div><h2 id="detail-title">${esc(cleanTitle(event))}</h2><div class="detail-meta"><span class="tag">${esc(status(event))}</span><span class="tag neutral">${esc(event.subtype)}</span>${event.has_overrides?'<span class="tag warning">已手动校正</span>':''}</div></div><button class="icon-button" type="button" data-close aria-label="关闭活动详情">×</button></div><div class="dialog-body"><div class="help-text">你的时间 · ${esc(zone())}</div><div class="detail-time-grid"><div><div class="detail-time-label">开始</div>${endpointDetail(event.start,'start',event)}</div><div><div class="detail-time-label">${event.time_kind==='point'?'类型':'结束'}</div>${endpointDetail(event.end,'end',event)}</div></div><div class="detail-countdown"><span>${countLabel}</span><strong>${esc(countValue)}</strong></div><div class="help-text">服务器时间（UTC+8）：${event.start.at?esc(format(event.start.at,{timeZone:'Asia/Shanghai',year:true})):'开始待定'} → ${event.end.at?esc(format(event.end.at,{timeZone:'Asia/Shanghai',year:true})):event.time_kind==='point'?'更新节点':'结束待定'}</div>${phases}${event.description?'<p class="detail-description">'+esc(event.description)+'</p>':''}${requirements}${event.warnings.length?'<p class="form-error">'+esc(event.warnings.join('；'))+'</p>':''}<div class="detail-actions"><button id="toggle-completed" class="button ${event.completed?'':'button-primary'}" type="button" aria-pressed="${event.completed}">${event.completed?'已完成 · 撤销':'标记已完成'}</button><button id="open-event-reminders" class="button" type="button">提醒设置</button></div><label class="field-label" for="event-reminder">这个活动的提醒</label><select id="event-reminder"><option value="follow">跟随全局设置</option><option value="off">不提醒</option><option value="4320">结束前 3 天</option><option value="1440">结束前 24 小时</option><option value="60">结束前 1 小时</option>${chosen==='custom'?'<option value="custom">自定义提前量（保留）</option>':''}</select>${maintenance}<details class="source-box"><summary>查看公告原文与解析依据</summary><p class="help-text">${esc(event.source.time_label)}：${esc(event.source.time_text)}<br>标准化正文第 ${event.source.line} 行 · 规则解析，未调用 AI</p><pre>${esc(event.source.block_text)}</pre></details><a class="source-link" href="${esc(event.source.url)}" target="_blank" rel="noopener noreferrer">阅读官方公告 ↗</a><details class="edit-section"><summary>手动校正与备注</summary><p class="help-text">以下日期均使用服务器时间（UTC+8）。手动校正独立保存，同步公告不会覆盖。留空会恢复对应的公告时间。</p><form id="event-edit-form"><div class="edit-fields"><label>开始时间<input id="edit-start" type="datetime-local" value="${sourceInput(event.start.at)}" data-initial="${sourceInput(event.start.at)}"></label><label>结束时间<input id="edit-end" type="datetime-local" value="${sourceInput(event.end.at)}" data-initial="${sourceInput(event.end.at)}"></label></div><label class="field-label" for="edit-notes">我的备注</label><textarea id="edit-notes" maxlength="2000" placeholder="例如：周末完成剧情，兑换留到最后一天">${esc(event.notes)}</textarea><div class="edit-actions"><button class="button button-primary" type="submit">保存校正</button><button id="reset-event-times" class="text-button" type="button">恢复公告时间</button></div><div id="edit-error" class="form-error" role="alert" hidden></div></form></details></div>`;
+    $('#event-reminder').value=chosen;
+  }
+  function openAgenda(day) {
+    const events=filteredEvents().filter(e=>overlaps(e,day,day+1)).sort((a,b)=>Date.parse(a.start.at)-Date.parse(b.start.at));
+    $('#agenda-title').textContent=shortDay(day,true)+' · '+events.length+' 项';
+    $('#agenda-content').innerHTML=events.length?events.map(e=>`<button type="button" class="agenda-event" data-event="${e.id}" style="--category:${categories[e.category].color}"><strong><span class="category-dot"></span>${esc(cleanTitle(e))}</strong><span>${esc(format(e.start.at))} → ${e.end.at?esc(format(e.end.at)):'截止待定'} · ${esc(status(e))}</span></button>`).join(''):'<div class="empty-state">当天没有符合筛选的活动。</div>';
+    openDialog('#agenda-dialog');
+  }
+  function openReminders() {
+    const settings=S.data.settings;
+    $('#reminder-settings').innerHTML=`<label class="setting-row"><span><strong>开启截止提醒</strong><p>只为截止时间已明确、尚未完成的活动生成提醒。</p></span><input id="reminders-enabled" type="checkbox" ${settings.reminders_enabled?'checked':''}></label><div class="offset-choices" role="group" aria-label="提前多久提醒">${[[4320,'提前 3 天'],[1440,'提前 24 小时'],[60,'提前 1 小时']].map(([n,label])=>`<label><input type="checkbox" data-offset="${n}" ${settings.reminder_offsets.includes(n)?'checked':''}>${label}</label>`).join('')}</div><label class="setting-row"><span><strong>系统桌面提醒</strong><p>${S.data.native_available?'本地程序保持运行时，关闭网页后仍可交给系统通知。':'此环境暂不支持本机通知，可使用应用内或浏览器提醒。'}</p></span><input id="native-notifications" type="checkbox" ${settings.native_notifications?'checked':''} ${S.data.native_available?'':'disabled'}></label><div class="setting-row"><span><strong>自动同步官方公告</strong><p>同步失败时保留上次成功的数据。</p></span><select id="sync-interval"><option value="60">每小时</option><option value="180">每 3 小时</option><option value="360">每 6 小时</option><option value="1440">每天</option></select></div><p class="help-text">电脑关机、休眠或本地程序停止时暂停检查。重新运行后补查提醒窗口；同一活动、截止时间和提前量只提醒一次。浏览器提醒需要网页保持打开。</p><div class="settings-actions"><button id="test-reminder" class="button button-primary" type="button">发送测试提醒</button><button id="browser-notifications" class="button" type="button">${browserEnabled()?'关闭浏览器提醒':'开启浏览器提醒'}</button></div><p id="delivery-result" class="help-text"></p>`;
+    const interval=$('#sync-interval');
+    if(![...interval.options].some(option=>Number(option.value)===settings.sync_interval_minutes)) interval.add(new Option(`每 ${settings.sync_interval_minutes} 分钟`,settings.sync_interval_minutes));
+    interval.value=settings.sync_interval_minutes;
+    renderInbox();openDialog('#reminder-dialog');
+  }
+  function renderInbox() {
+    $('#notification-list').innerHTML=S.data.notifications.length?S.data.notifications.map(notice=>`<div class="notice ${notice.read?'read':''}"><span class="notice-dot"></span><${notice.event_id?'button type="button" data-event="'+esc(notice.event_id)+'"':'div'}><strong>${esc(notice.title)}</strong><p>${esc(notice.message)}${notice.end_at?' · 截止 '+esc(format(notice.end_at,{year:true})):''}</p><small>${esc(format(notice.created_at,{year:true}))}</small></${notice.event_id?'button':'div'}></div>`).join(''):'<div class="empty-state">还没有提醒。可以发送一条测试提醒。</div>';
+    const delivery=S.data.desktop_delivery;
+    if($('#delivery-result')) $('#delivery-result').textContent=delivery?`${format(delivery.at)} · ${delivery.message}`:'';
+  }
+  function browserEnabled() {
+    try { return localStorage.getItem('playtime-browser-notifications')==='true' && 'Notification' in window && Notification.permission==='granted'; }
+    catch { return false; }
+  }
+  function deliverBrowserNotices(notices) {
+    for(const notice of notices) {
+      if(S.seenNotices.has(notice.id)) continue;
+      S.seenNotices.add(notice.id);
+      if(!browserEnabled()||notice.read) continue;
+      try {
+        const notification=new Notification('游时 · '+notice.title,{body:notice.message+(notice.end_at?' · 截止 '+format(notice.end_at,{year:true}):''),tag:notice.id});
+        notification.onclick=()=>{window.focus();if(notice.event_id) openEvent(notice.event_id);};
+      } catch { /* The persistent inbox remains available if the OS blocks delivery. */ }
+    }
+  }
+  async function openRules() {
+    try { S.rules=await api('/api/rules');S.rulesTab='config';renderRules();openDialog('#rules-dialog'); }
+    catch(error) { toast(error.message,true); }
+  }
+  function currentJSON() {
+    return S.rulesTab==='config'?S.rules:{...activeVersion(),events:allEvents().filter(e=>e.version_id===S.version)};
+  }
+  function renderRules() {
+    $('#show-config').setAttribute('aria-pressed',S.rulesTab==='config');
+    $('#show-analysis').setAttribute('aria-pressed',S.rulesTab==='analysis');
+    $('#rules-json').textContent=JSON.stringify(currentJSON(),null,2);
+  }
+  function downloadJSON(value,name) {
+    const blob=new Blob([JSON.stringify(value,null,2)],{type:'application/json;charset=utf-8'}),url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=name;link.click();setTimeout(()=>URL.revokeObjectURL(url),2000);
+  }
+  async function switchView(view) {
+    if(S.view===view) return;
+    S.view=view;render();await mutate('/api/settings',{view});
+  }
+  function movePeriod(direction) {
+    if(S.view==='timeline') S.anchor+=direction*S.days;
+    else { const d=serialDate(S.anchor);S.anchor=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+direction,1)/DAY; }
+    render();
+  }
+  document.addEventListener('click',async event=>{
+    const target=event.target.closest('button');
+    if(!target) return;
+    if(target.hasAttribute('data-close')) { target.closest('dialog').close();return; }
+    if(target.dataset.event) {
+      if($('#reminder-dialog').open) $('#reminder-dialog').close();
+      openEvent(target.dataset.event);return;
+    }
+    if(target.dataset.day) {openAgenda(Number(target.dataset.day));return;}
+    if(target.hasAttribute('data-focus-version')) {
+      const start=activeVersion()?.maintenance.start;
+      if(start) {S.anchor=Math.floor(civil(start));render();}
+      return;
+    }
+    if(!S.data) return;
+    switch(target.id) {
+      case 'previous-period':movePeriod(-1);break;
+      case 'next-period':movePeriod(1);break;
+      case 'today-button':S.anchor=Math.floor(civil(now()));render();break;
+      case 'timeline-view':await switchView('timeline');break;
+      case 'month-view':await switchView('month');break;
+      case 'sync-button':
+        if(await mutate('/api/sync')) toast('正在同步官方公告…');
+        break;
+      case 'inbox-button':case 'settings-button':case 'open-event-reminders':openReminders();break;
+      case 'rules-button':await openRules();break;
+      case 'show-config':S.rulesTab='config';renderRules();break;
+      case 'show-analysis':S.rulesTab='analysis';renderRules();break;
+      case 'download-rules':downloadJSON(currentJSON(),S.rulesTab==='config'?'endfield-cn.rules.json':'endfield-version.json');break;
+      case 'export-button':
+        try { const data=await api('/api/export');downloadJSON(data,'endfield-calendar.json');toast('已导出规则与活动 JSON'); } catch(error) {toast(error.message,true);}
+        break;
+      case 'maintenance-button': {
+        const maintenance=allEvents().find(e=>e.version_id===S.version&&e.category==='maintenance');
+        if(maintenance) openEvent(maintenance.id);else toast('这篇公告没有可识别的维护时间');
+        break;
+      }
+      case 'toggle-completed': {
+        const e=allEvents().find(e=>e.id===S.selected);
+        if(await mutate('/api/events/'+e.id,{completed:!e.completed},'PATCH')) renderDetail(allEvents().find(item=>item.id===e.id));
+        break;
+      }
+      case 'reset-event-times':
+        if(await mutate('/api/events/'+S.selected,{clear_overrides:true},'PATCH')) {renderDetail(allEvents().find(e=>e.id===S.selected));toast('已恢复公告时间');}
+        break;
+      case 'clear-maintenance': {
+        const e=allEvents().find(e=>e.id===S.selected);
+        if(await mutate('/api/versions/'+e.version_id+'/maintenance',{actual_end:null})) {renderDetail(allEvents().find(item=>item.id===S.selected));toast('已恢复预计开服时间');}
+        break;
+      }
+      case 'test-reminder':
+        if(await mutate('/api/notifications/test')) toast('测试提醒已写入收件箱');
+        break;
+      case 'read-notifications':
+        if(await mutate('/api/notifications/read')) renderInbox();
+        break;
+      case 'browser-notifications':
+        try {
+          if(browserEnabled()) {localStorage.setItem('playtime-browser-notifications','false');target.textContent='开启浏览器提醒';toast('已关闭此浏览器的提醒');}
+          else if(!('Notification' in window)) toast('此浏览器不支持系统通知，请使用应用内提醒',true);
+          else {
+            const permission=await Notification.requestPermission();
+            if(permission==='granted') {localStorage.setItem('playtime-browser-notifications','true');target.textContent='关闭浏览器提醒';toast('已开启，网页保持打开时可接收浏览器提醒');}
+            else toast('浏览器未授予通知权限，应用内提醒仍然可用');
+          }
+        } catch(error) {toast(error.message,true);}
+        break;
+    }
+  });
+  document.addEventListener('change',async event=>{
+    const target=event.target;
+    if(!S.data) return;
+    if(target.dataset.category) {
+      if(target.checked) S.categories.add(target.dataset.category);else S.categories.delete(target.dataset.category);
+      render();return;
+    }
+    if(target.dataset.offset) {
+      const offsets=[...document.querySelectorAll('[data-offset]:checked')].map(input=>Number(input.dataset.offset));
+      await mutate('/api/settings',{reminder_offsets:offsets});return;
+    }
+    switch(target.id) {
+      case 'version-select':S.version=target.value;S.anchor=Math.floor(civil(activeVersion().maintenance.start||now()));render();break;
+      case 'timezone-select':await mutate('/api/settings',{timezone:target.value});break;
+      case 'range-select':S.days=Number(target.value);render();break;
+      case 'hide-completed':await mutate('/api/settings',{hide_completed:target.checked});break;
+      case 'include-pending':S.includePending=target.checked;render();break;
+      case 'reminders-enabled':await mutate('/api/settings',{reminders_enabled:target.checked});break;
+      case 'native-notifications':await mutate('/api/settings',{native_notifications:target.checked});break;
+      case 'sync-interval':await mutate('/api/settings',{sync_interval_minutes:Number(target.value)});break;
+      case 'event-reminder': {
+        if(target.value==='custom') break;
+        const reminder_minutes=target.value==='follow'?null:target.value==='off'?[]:[Number(target.value)];
+        if(await mutate('/api/events/'+S.selected,{reminder_minutes},'PATCH')) toast('活动提醒设置已保存');
+        break;
+      }
+    }
+  });
+  document.addEventListener('submit',async event=>{
+    if(event.target.id==='event-edit-form') {
+      event.preventDefault();
+      const patch={notes:$('#edit-notes').value};
+      for(const role of ['start','end']) {
+        const input=$('#edit-'+role);
+        if(input.value!==input.dataset.initial) patch[role+'_override']=input.value?input.value+':00+08:00':null;
+      }
+      if(await mutate('/api/events/'+S.selected,patch,'PATCH')) {renderDetail(allEvents().find(e=>e.id===S.selected));toast('校正与备注已保存在本机');}
+    } else if(event.target.id==='maintenance-form') {
+      event.preventDefault();
+      const value=$('#actual-maintenance-end').value;
+      if(!value) {toast('请先填写实际开服时间',true);return;}
+      const selected=allEvents().find(e=>e.id===S.selected);
+      if(await mutate('/api/versions/'+selected.version_id+'/maintenance',{actual_end:value+':00+08:00'})) {renderDetail(allEvents().find(e=>e.id===S.selected));toast('已更新本版本所有关联开服时间');}
+    }
+  });
+  document.querySelectorAll('dialog').forEach(dialog=>dialog.addEventListener('click',event=>{
+    if(event.target!==dialog) return;
+    const rect=dialog.getBoundingClientRect();
+    if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom) dialog.close();
+  }));
+  async function refresh() {
+    try {applyState(await api('/api/state'));}
+    catch(error) {
+      if(!S.data) {$('#load-error').textContent='无法连接本地程序：'+error.message+'。请运行 start.ps1 或 python app.py。';$('#load-error').hidden=false;}
+      else {$('#source-status').textContent='本地连接已断开，请检查程序是否仍在运行。现有日历保留显示。';$('#source-status').classList.add('warning');}
+    }
+  }
+  refresh();
+  S.pollTimer=setInterval(refresh,10000);
+  setInterval(()=>{if(S.data) renderClock();},30000);
+  window.addEventListener('focus',()=>{if(S.initialized) refresh();});
+})();

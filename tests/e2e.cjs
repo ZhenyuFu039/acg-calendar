@@ -1,0 +1,125 @@
+// Browser QA. Uses an isolated data directory when launched by the test runner.
+const fs=require('node:fs/promises');
+const assert=require('node:assert/strict');
+const path=require('node:path');
+const {spawn}=require('node:child_process');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const base=process.env.CALENDAR_TEST_URL||'http://127.0.0.1:8787';
+const output='logs/demo-qa';
+(async()=>{
+  await fs.mkdir(output,{recursive:true});
+  let qaServer;
+  if(!process.env.CALENDAR_TEST_URL){
+    const dataDir=path.resolve(output,'data-'+Date.now());
+    qaServer=spawn(process.env.CALENDAR_PYTHON||'python',['app.py','--port','8787','--data-dir',dataDir,'--no-sync','--no-desktop'],{windowsHide:true,stdio:'ignore'});
+    for(let attempt=0;attempt<50;attempt++){
+      try{if((await fetch(base+'/api/health')).ok)break;}catch{}
+      if(attempt===49)throw new Error('QA server did not start');
+      await new Promise(resolve=>setTimeout(resolve,200));
+    }
+  }
+  const browser=await chromium.launch({channel:'msedge',headless:true});
+  const errors=[];
+  try{
+    const context=await browser.newContext({viewport:{width:1440,height:1050},timezoneId:'America/New_York',locale:'zh-CN'});
+    const page=await context.newPage();
+    page.on('pageerror',error=>errors.push(error.message));
+    await page.goto(base);
+    await page.locator('.timeline-row').first().waitFor();
+    await page.screenshot({path:output+'/timeline-1440.png',fullPage:true});
+    assert.ok(await page.locator('.timeline-row').count()>8);
+    assert.match(await page.locator('#source-status').innerText(),/官网|官方/);
+    await page.locator('#timezone-select').selectOption('Asia/Shanghai');
+    await page.waitForFunction(()=>document.querySelector('#zone-offset').textContent.includes('UTC+8'));
+    const event=page.locator('.event-name').filter({hasText:'卡莉的芳菲童话'}).first();
+    await event.click();
+    assert.match(await page.locator('#detail-content').innerText(),/2026\/11\/05 04:00/);
+    await page.locator('#toggle-completed').click();
+    await page.waitForFunction(()=>document.querySelector('#toggle-completed').textContent.includes('撤销'));
+    await page.locator('#detail-dialog [data-close]').click();
+    await page.reload();
+    await page.locator('.timeline-row').first().waitFor();
+    await page.locator('.event-name').filter({hasText:'卡莉的芳菲童话'}).first().click();
+    assert.match(await page.locator('#toggle-completed').innerText(),/撤销/);
+    await page.locator('.edit-section summary').click();
+    await page.locator('#edit-notes').fill('QA 临时备注：重启后应保留');
+    await page.locator('#edit-end').fill('2026-11-06T04:00');
+    await page.locator('#event-edit-form button[type=submit]').click();
+    await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('已手动校正'));
+    assert.match(await page.locator('#detail-content').innerText(),/2026\/11\/06 04:00/);
+    await page.locator('.edit-section summary').click();
+    assert.equal(await page.locator('#edit-notes').inputValue(),'QA 临时备注：重启后应保留');
+    await page.locator('#edit-end').fill('2026-10-01T04:00');
+    await page.locator('#event-edit-form button[type=submit]').click();
+    await page.waitForFunction(()=>!document.querySelector('#toast').hidden&&document.querySelector('#toast').textContent.includes('结束时间必须晚于开始时间'));
+    await page.locator('#reset-event-times').click();
+    await page.waitForFunction(()=>!document.querySelector('#detail-content').textContent.includes('已手动校正'));
+    await page.locator('#toggle-completed').click();
+    await page.waitForFunction(()=>document.querySelector('#toggle-completed').textContent.includes('标记已完成'));
+    await page.locator('.edit-section summary').click();
+    await page.locator('#edit-notes').fill('');
+    await page.locator('#event-edit-form button[type=submit]').click();
+    await page.waitForTimeout(100);
+    await page.locator('#detail-dialog [data-close]').click();
+    await page.locator('#timezone-select').selectOption('America/New_York');
+    await page.waitForFunction(()=>document.querySelector('#zone-offset').textContent.includes('UTC-4'));
+    await page.locator('.event-name').filter({hasText:'卡莉的芳菲童话'}).first().click();
+    assert.match(await page.locator('#detail-content').innerText(),/2026\/11\/04 15:00/);
+    await page.locator('#detail-dialog [data-close]').click();
+    await page.locator('#month-view').click();
+    await page.locator('.month-week').first().waitFor();
+    await page.screenshot({path:output+'/month-1440.png',fullPage:true});
+    const more=page.locator('.month-more').first();
+    assert.ok(await more.count()>0);
+    await more.click();
+    assert.ok(await page.locator('.agenda-event').count()>3);
+    await page.locator('.agenda-event').first().click();
+    assert.equal(await page.locator('#detail-dialog').evaluate(node=>node.open),true);
+    await page.locator('#detail-dialog [data-close]').click();
+    await page.locator('#inbox-button').click();
+    await page.locator('#test-reminder').click();
+    await page.locator('.notice').filter({hasText:'提醒系统测试'}).first().waitFor();
+    await page.locator('#read-notifications').click();
+    await page.waitForFunction(()=>document.querySelector('#unread-count').hidden);
+    await page.locator('#reminder-dialog [data-close]').click();
+    await page.locator('#rules-button').click();
+    await page.waitForFunction(()=>document.querySelector('#rules-dialog').open && document.querySelector('#rules-json').textContent.includes('numbered_heading_pattern'));
+    assert.match(await page.locator('#rules-json').innerText(),/numbered_heading_pattern/);
+    await page.locator('#show-analysis').click();
+    assert.match(await page.locator('#rules-json').innerText(),/next_maintenance_start/);
+    const downloadPromise=page.waitForEvent('download');
+    await page.locator('#download-rules').click();
+    const download=await downloadPromise;
+    assert.equal(download.suggestedFilename(),'endfield-version.json');
+    const downloaded=JSON.parse(await fs.readFile(await download.path(),'utf8'));
+    assert.equal(downloaded.events.length,24);
+    assert.equal(downloaded.analysis.ai_used,false);
+    await page.locator('#rules-dialog [data-close]').click();
+    for(const width of [1024,768,390,320]){
+      await page.setViewportSize({width,height:1000});
+      await page.screenshot({path:`${output}/month-${width}.png`,fullPage:true});
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Page overflows at '+width);
+    }
+    await page.locator('#timeline-view').click();
+    await page.locator('.timeline-row').first().waitFor();
+    await page.locator('#range-select').selectOption('28');
+    await page.waitForFunction(()=>document.querySelectorAll('.axis-day').length===28&&document.querySelector('.timeline').style.minWidth==='1080px');
+    assert.ok(await page.locator('.timeline').evaluate(node=>node.getBoundingClientRect().width)>=1079.9);
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    await page.locator('#range-select').selectOption('14');
+    await page.screenshot({path:output+'/timeline-320.png',fullPage:true});
+    assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
+    await page.setViewportSize({width:1440,height:1050});
+    await page.locator('#maintenance-button').click();
+    await page.locator('#actual-maintenance-end').fill('2026-10-15T12:15');
+    await page.locator('#maintenance-form button[type=submit]').click();
+    await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('开服已确认'));
+    await page.locator('#clear-maintenance').click();
+    await page.waitForFunction(()=>!document.querySelector('#detail-content').textContent.includes('开服已确认'));
+    await page.locator('#detail-dialog [data-close]').click();
+    await page.waitForTimeout(4600);
+    await page.screenshot({path:output+'/final-timeline.png',fullPage:true});
+    assert.deepEqual(errors,[]);
+    console.log('PASS: live UI, timezone/DST, completion and correction persistence, date validation, monthly overlap agenda, reminders, JSON export, maintenance links, responsive layouts, no runtime errors');
+  }finally{await browser.close();qaServer?.kill();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

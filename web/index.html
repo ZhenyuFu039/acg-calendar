@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f7f1">
+  <meta name="description" content="本地运行的终末地活动日历：版本公告解析、时间轴、时区换算和截止提醒。">
+  <title>游时 · 终末地活动日历</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="app-header">
+    <a class="brand" href="/" aria-label="游时首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>游时<span class="brand-en">PLAYTIME</span></span></a>
+    <div class="header-context"><span class="context-dot"></span>你的游戏，有自己的时间。</div>
+    <div class="header-actions"><span class="local-label"><span></span>本地运行</span><button id="inbox-button" class="button button-light" type="button">提醒 <span id="unread-count" class="unread" hidden>0</span></button><button id="sync-button" class="button button-primary" type="button"><span class="sync-icon" aria-hidden="true">↻</span>同步公告</button></div>
+  </header>
+  <div class="app-layout">
+    <aside class="sidebar" aria-label="日历筛选">
+      <div class="sidebar-label">我的游戏</div>
+      <div class="game-card"><div class="game-monogram" aria-hidden="true">EF<span>CN</span></div><div><strong>明日方舟：终末地</strong><span>国服 · UTC+8</span></div></div>
+      <label class="field-label version-label" for="version-select">版本</label><select id="version-select" aria-label="选择版本"><option>加载中…</option></select>
+      <div class="sidebar-section"><div class="sidebar-label">活动类型</div><div id="category-filters"></div></div>
+      <div class="sidebar-section sidebar-options"><label class="check-row"><input id="hide-completed" type="checkbox"><span>隐藏已完成</span></label><label class="check-row"><input id="include-pending" type="checkbox" checked><span>显示截止待定</span></label></div>
+      <div class="sidebar-note"><span class="tiny-label">时间标记</span><span><i class="legend-solid"></i>公告明确时间</span><span><i class="legend-estimate"></i>预计 / 待核实</span><span><i class="legend-unknown"></i>结束尚未公布</span></div>
+      <div class="sidebar-bottom"><button id="rules-button" class="sidebar-action" type="button"><span aria-hidden="true">{ }</span> 公告解析 JSON <span aria-hidden="true">↗</span></button><button id="settings-button" class="sidebar-action" type="button"><span aria-hidden="true">⚙</span> 日历与提醒设置</button><p>源自官方公告 · 无 AI 调用<br><span id="app-version">DEMO 0.1.0</span></p></div>
+    </aside>
+    <main id="main-content" class="main-content">
+      <div class="page-heading"><div><div class="eyebrow">ENDFIELD / ACTIVITY CALENDAR</div><h1>把活动排进日历<span class="heading-dot">.</span></h1><p id="version-summary">正在读取本地活动数据…</p></div><div class="heading-controls"><label class="timezone-label" for="timezone-select">显示时区<select id="timezone-select"><option value="auto">跟随系统</option><option value="America/New_York">纽约</option><option value="Asia/Shanghai">北京 / 服务器</option><option value="Asia/Tokyo">东京</option><option value="Europe/London">伦敦</option><option value="UTC">UTC</option></select></label><div id="zone-offset" class="timezone-offset"></div></div></div>
+      <div id="source-status" class="source-status" role="status"></div>
+      <section class="calendar-panel" aria-label="活动日历">
+        <div class="calendar-toolbar"><div class="date-navigation"><button id="previous-period" class="icon-button" type="button" aria-label="上一段日期">‹</button><button id="next-period" class="icon-button" type="button" aria-label="下一段日期">›</button><h2 id="period-title">加载日历…</h2><button id="today-button" class="button button-small" type="button">今天</button></div><div class="view-controls"><label class="range-control"><span class="sr-only">时间轴显示天数</span><select id="range-select"><option value="7">一周</option><option value="14" selected>两周</option><option value="28">四周</option></select></label><div class="view-switch" role="group" aria-label="日历视图"><button id="timeline-view" type="button" aria-pressed="true">时间轴</button><button id="month-view" type="button" aria-pressed="false">月历</button></div></div></div>
+        <div class="calendar-context"><span id="visible-summary"></span><div><button id="maintenance-button" class="text-button" type="button">查看维护时间</button><span class="context-divider">/</span><button id="export-button" class="text-button" type="button">导出 JSON ↗</button></div></div>
+        <div id="deadline-strip" class="deadline-strip"></div>
+        <div id="calendar" class="calendar" aria-live="polite"></div>
+        <div class="calendar-legend"><span><i class="progress-sample"></i>深色表示已过去的时间</span><span><i class="open-sample"></i>斜纹表示结束时间待定</span><span>点击活动查看原文与精确时间</span></div>
+      </section>
+      <section id="unscheduled" class="unscheduled" hidden></section>
+      <footer class="main-footer"><span id="sync-status">本地数据</span><span id="clock-label"></span></footer>
+      <div id="load-error" class="load-error" hidden role="alert"></div>
+    </main>
+  </div>
+  <dialog id="detail-dialog" class="detail-dialog" aria-labelledby="detail-title"><div id="detail-content"></div></dialog>
+  <dialog id="reminder-dialog" class="settings-dialog" aria-labelledby="reminder-title"><div class="dialog-header"><div><div class="eyebrow">NOTIFICATIONS</div><h2 id="reminder-title">提醒与收件箱</h2></div><button class="icon-button" type="button" data-close aria-label="关闭提醒">×</button></div><div class="dialog-body"><div id="reminder-settings"></div><div class="inbox-header"><h3>最近提醒</h3><button id="read-notifications" class="text-button" type="button">全部标为已读</button></div><div id="notification-list"></div></div></dialog>
+  <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title"><div class="dialog-header"><div><div class="eyebrow">SOURCE → RULES → CALENDAR</div><h2 id="rules-title">公告解析 JSON</h2></div><button class="icon-button" type="button" data-close aria-label="关闭规则">×</button></div><div class="dialog-body"><p class="help-text">按章节识别独立活动，再关联维护时间。每个条目保留原文和时间依据。</p><div class="rules-tabs" role="group" aria-label="JSON 内容"><button id="show-config" class="button" type="button" aria-pressed="true">规则配置</button><button id="show-analysis" class="button" type="button" aria-pressed="false">版本解析结果</button><button id="download-rules" class="button button-small" type="button">下载 JSON</button></div><pre id="rules-json"></pre></div></dialog>
+  <dialog id="agenda-dialog" class="agenda-dialog" aria-labelledby="agenda-title"><div class="dialog-header"><h2 id="agenda-title">当日活动</h2><button class="icon-button" type="button" data-close aria-label="关闭当日日程">×</button></div><div id="agenda-content" class="dialog-body"></div></dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <noscript><div class="load-error">请开启 JavaScript 以使用日历。公告解析在本地 Python 程序中运行。</div></noscript>
+</body>
+</html>

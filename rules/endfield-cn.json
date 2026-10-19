@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "ruleset_version": "0.1.0",
+  "game_id": "endfield-cn",
+  "game_name": "明日方舟：终末地",
+  "server": "国服",
+  "timezone": "Asia/Shanghai",
+  "utc_offset_minutes": 480,
+  "sources": {
+    "list_url": "https://web-news.hypergryph.com/api/bulletin?lang=zh-cn&code=endfield_web&page=1&pageSize=10",
+    "detail_url_template": "https://endfield.hypergryph.com/news/{cid}",
+    "version_title_pattern": "「(?P<name>[^」]+)」版本更新说明",
+    "max_version_articles": 2
+  },
+  "structure": {
+    "section_pattern": "^■\\s*(?P<name>.+)$",
+    "numbered_heading_pattern": "^\\d+[.．]\\s*(?P<name>.+)$",
+    "variant_heading_pattern": "^○\\s*「(?P<name>[^」]+)」",
+    "inline_event_pattern": "^同时.*开放「(?P<name>[^」]+)」.*活动$",
+    "shop_time_pattern": "^「(?P<name>[^」]+)」开放时间$",
+    "event_sections": {
+      "全新寻访及申领": "gacha",
+      "全新活动": "event",
+      "活动及玩法更新": "update"
+    }
+  },
+  "time": {
+    "datetime_pattern": "(?:(?P<year>\\d{4})[年/\\-])?(?P<month>\\d{1,2})[月/\\-](?P<day>\\d{1,2})日?\\s*(?P<hour>\\d{1,2}):(?P<minute>\\d{2})(?::(?P<second>\\d{2}))?",
+    "range_separator": "\\s+-\\s+|\\s*[~～—]\\s*|至",
+    "primary_labels": ["活动时间", "活动开放时间", "开放时间", "赛季更新", "更新时间"],
+    "phase_labels": ["活动内容更新时间"],
+    "maintenance_heading": "更新维护时间",
+    "maintenance_end_markers": ["版本更新后", "更新维护后", "维护结束后"],
+    "next_maintenance_markers": ["版本更新维护前", "下次版本更新维护前"],
+    "cycle_end_pattern": "于\\d+次.+后结束",
+    "end_precision_policy": "preserve_as_written",
+    "unresolved_policy": "keep_null_with_source",
+    "planned_maintenance_policy": "estimated_until_manually_confirmed"
+  },
+  "classification": {
+    "subtypes": {
+      "签到": "签到",
+      "挑战": "挑战",
+      "拍照": "拍照",
+      "趣味": "趣味",
+      "叙事": "叙事",
+      "引入": "引入",
+      "理智补给": "补给",
+      "寻访": "寻访",
+      "申领": "申领"
+    },
+    "requirement_prefixes": ["开放条件", "参与条件", "开启条件"],
+    "description_labels": ["活动说明", "更新说明", "寻访说明", "申领说明"]
+  }
+}
