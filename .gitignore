@@ -5,5 +5,8 @@ node_modules/
 data/
 logs/
 dist/
+**/bin/
+**/obj/
+.dotnet/
 .DS_Store
 Thumbs.db

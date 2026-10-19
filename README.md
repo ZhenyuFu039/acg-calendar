@@ -8,6 +8,14 @@
 
 ## 启动
 
+Windows 桌面版：双击项目根目录的 **`Playtime.cmd`**，或运行 `./start-desktop.ps1`。提供可拖动挂件、可选置顶、原生月历和托盘菜单；关闭窗口会收起到托盘，右键托盘选择“退出游时”才会结束程序。桌面端的时间跟随本机时区，网页端可另外切换显示时区。
+
+本机已生成 `dist/desktop/Playtime.exe`；桌面端需要 .NET 10 Desktop Runtime 和 Python 3.11+。从源码首次构建需要 .NET 10 SDK，启动脚本会自动编译。详细操作、构建和系统日历边界见 [Windows 桌面版](docs/windows-desktop.md)。
+
+![桌面挂件](docs/desktop-widget.png)
+
+以下为原有网页模式的启动方式：
+
 需要 **Python 3.11 或更新版本**，服务端仅使用 Python 标准库，前端无需 npm 安装和构建。
 
 Windows PowerShell，在项目目录运行：
@@ -134,7 +142,7 @@ node tests/e2e.cjs
 
 如 Python 或 Playwright 不在默认路径，可设置 `CALENDAR_PYTHON` 和 `PLAYWRIGHT_MODULE`。也可通过 `CALENDAR_TEST_URL` 指向已有的**测试实例**；此时测试会修改该实例的个人状态。
 
-本次在 Windows 上验证了 39 项后端测试，以及浏览器中的时区/DST、维护关联、校正保存、完成标记、提醒收件箱、JSON 下载与 320–1440px 布局。Windows 系统通知进程调用成功；未在 macOS/Linux 上实际验证系统通知。
+本次在 Windows 上验证了 46 项后端测试，以及浏览器中的时区/DST、维护关联、校正保存、完成标记、提醒收件箱、JSON 下载与 320–1440px 布局。桌面端另有隔离自检，覆盖本地服务启动、24 项活动加载、完成标记、日历导出、挂件/月历渲染及退出清理。Windows 系统通知进程调用成功；未在 macOS/Linux 上实际验证系统通知。
 
 ## 当前范围
 

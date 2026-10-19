@@ -12,3 +12,11 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m unittest discover -s tests -p "test_*.py" -v
+  desktop:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet build desktop/Playtime.Desktop.csproj -c Release

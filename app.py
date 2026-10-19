@@ -18,6 +18,7 @@ import urllib.parse
 
 from acg_calendar import __version__
 from acg_calendar.collector import Collector
+from acg_calendar.ical import calendar_bytes
 from acg_calendar.parser import ROOT, iso, load_rules, resolve_versions, stamp
 from acg_calendar.reminders import ReminderEngine, native_available
 from acg_calendar.storage import Store
@@ -169,6 +170,8 @@ def handler_for(application):
                     return self.send(load_rules())
                 if path == "/api/export":
                     return self.send({"schema_version": 1, "exported_at": iso(dt.datetime.now(dt.timezone.utc)), "rules": load_rules(), "versions": application.versions()}, filename="endfield-calendar.json")
+                if path == "/api/calendar.ics":
+                    return self.send(calendar_bytes(application.versions(), application.store.settings()), content_type="text/calendar; charset=utf-8", filename="playtime-endfield.ics")
                 if path == "/api/health":
                     return self.send({"ok": True, "version": __version__})
                 assets = {"/": "index.html", "/app.js": "app.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg"}

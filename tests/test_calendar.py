@@ -292,6 +292,15 @@ class HttpTests(TempStoreTest):
         self.assertEqual(self.request("/api/settings", {"timezone": "UTC"}, token=False)[0], 403)
         self.assertEqual(self.app.store.settings()["timezone"], "auto")
 
+    def test_ical_download_is_a_snapshot_attachment(self):
+        with urllib.request.urlopen(self.base + "/api/calendar.ics") as response:
+            self.assertEqual(response.headers.get_content_type(), "text/calendar")
+            self.assertIn("attachment", response.headers["Content-Disposition"])
+            content = response.read().decode()
+        self.assertIn("BEGIN:VCALENDAR", content)
+        self.assertNotIn(self.app.csrf, content)
+        self.assertIn("BEGIN:VEVENT", content)
+
     def test_cross_origin_mutation_is_rejected(self):
         self.assertEqual(self.request("/api/settings", {"timezone": "UTC"}, origin="https://other.example")[0], 403)
 
