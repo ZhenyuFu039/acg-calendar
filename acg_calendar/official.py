@@ -29,7 +29,7 @@ def fetch_text(url):
     if not official_url(url):
         raise ValueError("采集仅支持已配置的游戏官方来源")
     limit = 6_000_000
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Playtime/0.0.1)", "Accept": "application/json,text/html,application/javascript;q=0.9", "Accept-Language": "zh-CN,zh;q=0.9", "Accept-Encoding": "identity"})
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Playtime/0.0.4)", "Accept": "application/json,text/html,application/javascript;q=0.9", "Accept-Language": "zh-CN,zh;q=0.9", "Accept-Encoding": "identity"})
     with urllib.request.build_opener(OfficialRedirect()).open(request, timeout=20) as response:
         raw = response.read(limit + 1)
         charset = response.headers.get_content_charset() or "utf-8"

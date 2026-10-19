@@ -51,7 +51,7 @@ public record CalendarEvent(string Id, string Title, string Category, Endpoint S
     public static DateTimeOffset? Parse(string? value) => DateTimeOffset.TryParse(value, out var date) ? date : null;
 }
 
-public sealed class CalendarWindow : Window
+public sealed partial class CalendarWindow : Window
 {
     readonly string root;
     readonly bool offline;
@@ -81,12 +81,11 @@ public sealed class CalendarWindow : Window
     CalendarEvent[] events = [];
     bool refreshing, exiting, compact = true;
     bool showAll, dense = true;
-    readonly Button allButton, densityButton;
+    Button allButton = null!, densityButton = null!;
     readonly Dictionary<string, ImageSource> pictures = new();
     DateTime? selected;
     DateTimeOffset lastRefresh;
-    readonly Button mode;
-    readonly Button pin;
+    Button mode = null!, pin = null!;
     static readonly Brush Ink = Brush("#233126"), Muted = Brush("#758073"), Green = Brush("#D8ED9A");
 
     public CalendarWindow(string root, bool offline, bool smoke = false)
@@ -101,59 +100,21 @@ public sealed class CalendarWindow : Window
         using (var iconStream = System.Windows.Application.GetResourceStream(iconUri).Stream)
         using (var originalIcon = new System.Drawing.Icon(iconStream, 32, 32)) trayIcon = (System.Drawing.Icon)originalIcon.Clone();
         MinWidth = 350; MinHeight = 440; WindowStyle = WindowStyle.None;
-        ResizeMode = ResizeMode.CanResizeWithGrip; Background = Brush("#F6F8F1");
+        AllowsTransparency = true; ResizeMode = ResizeMode.CanResizeWithGrip; Background = Brushes.Transparent;
         FontFamily = new FontFamily("Microsoft YaHei UI"); FontSize = 13;
         Foreground = Ink; WindowStartupLocation = WindowStartupLocation.Manual;
         var area = SystemParameters.WorkArea; Left = area.Right - Width - 24; Top = area.Top + 40;
         LoadPreferences();
-        var shell = new Border { Background = Background, BorderBrush = Brush("#DDE4D3"), BorderThickness = new Thickness(1), Padding = new Thickness(18) };
-        var layout = new Grid();
-        foreach (var height in new[] { GridLength.Auto, GridLength.Auto, new GridLength(1, GridUnitType.Star), GridLength.Auto }) layout.RowDefinitions.Add(new RowDefinition { Height = height });
-        var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 16) };
-        var close = Button("×", () => Hide()); close.ToolTip = "收起到系统托盘，提醒继续运行"; DockPanel.SetDock(close, Dock.Right); heading.Children.Add(close);
-        pin = Button("置顶", () => { Topmost = !Topmost; PinLabel(); SavePreferences(); }); DockPanel.SetDock(pin, Dock.Right); heading.Children.Add(pin); PinLabel();
-        heading.Children.Add(new Image { Source = Icon, Width = 33, Height = 33, Margin = new Thickness(0, 1, 9, 0), VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false });
-        var brand = new StackPanel();
-        brand.Children.Add(Text("游时  PLAYTIME", 19, true));
-        clock.FontSize = 11; clock.Foreground = Muted; clock.Margin = new Thickness(0, 4, 0, 0); brand.Children.Add(clock);
-        brand.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) ToggleMode(); else DragMove(); };
-        heading.Children.Add(brand); layout.Children.Add(heading);
-        var controls = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };
-        subtitle.FontSize = 17; subtitle.FontWeight = FontWeights.SemiBold; subtitle.Text = "正在启动本地日历…"; controls.Children.Add(subtitle);
-        var rewards = rewardHeader; rewards.Orientation = Orientation.Horizontal; rewards.Margin = new Thickness(0, 6, 0, 0); rewards.ToolTip = "终末地活动已核实小计，不含地图、信用商店、维护补偿及通行证；未知数量不按零计算。完整明细见时间轴。";
-        if (RewardIcon() is ImageSource currency) rewards.Children.Add(new Image { Source = currency, Width = 27, Height = 27 });
-        rewardTotal.FontSize = 11; rewardTotal.Foreground = Brush("#805B42"); rewardTotal.VerticalAlignment = VerticalAlignment.Center; rewards.Children.Add(rewardTotal); controls.Children.Add(rewards);
-        gameSelect.Items.Add("终末地国服 · 官方"); gameSelect.Items.Add("明日方舟国服 · PRTS"); gameSelect.Items.Add("全部游戏 · 对照排期");
-        gameSelect.SelectedIndex = selectedGame == "arknights-cn" ? 1 : selectedGame == "all" ? 2 : 0;
-        gameSelect.Margin = new Thickness(0, 8, 0, 0); gameSelect.Padding = new Thickness(5, 3, 5, 3);
-        gameSelect.SelectionChanged += (_, _) => { selectedGame = gameSelect.SelectedIndex == 1 ? "arknights-cn" : gameSelect.SelectedIndex == 2 ? "all" : "endfield-cn"; selected = null; month.SelectedDate = null; Render(); SavePreferences(); };
-        controls.Children.Add(gameSelect);
-        var toolbar = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
-        mode = Button("展开月历", ToggleMode); toolbar.Children.Add(mode);
-        toolbar.Children.Add(Button("近期", () => { showAll = false; selected = null; month.SelectedDate = null; Render(); }));
-        allButton = Button("全部活动", () => { showAll = !showAll; selected = null; month.SelectedDate = null; if (showAll && compact) ShowMode(false); Render(); });
-        toolbar.Children.Add(allButton);
-        densityButton = Button("图文模式", () => { dense = !dense; Render(); }); toolbar.Children.Add(densityButton);
-        toolbar.Children.Add(Button("同步", async () => await Mutate("/api/sync", new { game = selectedGame })));
-        toolbar.Children.Add(Button("完整时间轴 ↗", () => Open(address + "?game=" + selectedGame)));
-        controls.Children.Add(toolbar); Grid.SetRow(controls, 1); layout.Children.Add(controls);
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        content.ColumnDefinitions.Add(new ColumnDefinition());
-        month.Margin = new Thickness(0, 0, 18, 0); month.VerticalAlignment = VerticalAlignment.Top; month.Visibility = Visibility.Collapsed;
-        month.SelectedDatesChanged += (_, _) => { selected = month.SelectedDate; Render(); };
-        content.Children.Add(month);
-        var scroll = new ScrollViewer { Content = cards, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-        Grid.SetColumn(scroll, 1); content.Children.Add(scroll); Grid.SetRow(content, 2); layout.Children.Add(content);
-        var footer = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
-        status.FontSize = 11; status.Foreground = Muted; status.TextWrapping = TextWrapping.Wrap; footer.Children.Add(status);
-        var links = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
-        links.Children.Add(Button("导出日历 .ics", async () => await Export()));
-        links.Children.Add(Button("系统日历说明", ExplainIntegration)); footer.Children.Add(links);
-        Grid.SetRow(footer, 3); layout.Children.Add(footer); shell.Child = layout; Content = shell;
+        InitializeDesktopUI();
         tray = new Forms.NotifyIcon { Text = "游时 · 活动日历", Icon = trayIcon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("显示桌面挂件", null, (_, _) => Dispatcher.Invoke(() => ShowMode(true)));
         menu.Items.Add("显示月历", null, (_, _) => Dispatcher.Invoke(() => ShowMode(false)));
+        menu.Items.Add("打开侧边栏", null, (_, _) => Dispatcher.Invoke(() => OpenSidebar(false)));
+        menu.Items.Add("桌面设置", null, (_, _) => Dispatcher.Invoke(() => OpenSidebar(true)));
+        bubbleMenu = new Forms.ToolStripMenuItem("仅显示活动气泡");
+        bubbleMenu.Click += (_, _) => Dispatcher.Invoke(() => SetBubbleMode(!bubbleMode));
+        menu.Items.Add(bubbleMenu);
         menu.Items.Add("打开完整时间轴", null, (_, _) => Open(address + "?game=" + selectedGame));
         menu.Items.Add("导出日历文件", null, async (_, _) => await Export());
         notificationsMenu = new Forms.ToolStripMenuItem("启用 Windows 通知");
@@ -166,6 +127,7 @@ public sealed class CalendarWindow : Window
         tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) Dispatcher.Invoke(() => { if (IsVisible && IsActive) Hide(); else { Show(); Activate(); } }); };
         Closing += (_, e) => { if (!exiting) { e.Cancel = true; SavePreferences(); Hide(); } };
         LocationChanged += (_, _) => { if (IsLoaded) SavePreferences(); };
+        SizeChanged += (_, _) => TrackWindowSize();
         timer.Tick += async (_, _) => await Refresh();
         Loaded += async (_, _) =>
         {
@@ -177,6 +139,7 @@ public sealed class CalendarWindow : Window
             catch (Exception error)
             {
                 subtitle.Text = "无法启动本地服务"; status.Text = error.Message; Log(error.ToString());
+                cards.Children.Clear(); cards.Children.Add(MessageBubble("本地服务未启动：" + error.Message + "\n右键可打开侧边栏与设置。"));
                 if (smoke)
                 {
                     Directory.CreateDirectory(dataDirectory);
@@ -185,7 +148,8 @@ public sealed class CalendarWindow : Window
                 }
             }
         };
-        Dispatcher.UnhandledException += (_, e) => { status.Text = "操作失败：" + e.Exception.Message; e.Handled = true; };
+        Dispatcher.UnhandledException += (_, e) => { status.Text = "操作失败：" + e.Exception.Message; Log(e.Exception.ToString()); e.Handled = true; };
+        appearanceReady = true; ApplyPresentation();
     }
 
     static Brush Brush(string hex) => new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
@@ -195,37 +159,6 @@ public sealed class CalendarWindow : Window
         var button = new Button { Content = value, Padding = new Thickness(9, 6, 9, 6), Margin = new Thickness(0, 0, 5, 5), Background = Brush("#EDF1E6"), Foreground = Ink, BorderThickness = new Thickness(0), Cursor = Cursors.Hand };
         button.Click += (_, _) => action(); return button;
     }
-    void PinLabel() => pin.Content = Topmost ? "已置顶" : "置顶";
-    void ToggleMode() => ShowMode(!compact);
-    void ShowMode(bool mini)
-    {
-        compact = mini; month.Visibility = mini ? Visibility.Collapsed : Visibility.Visible;
-        Width = mini ? 390 : 820; Height = mini ? 620 : 720;
-        mode.Content = mini ? "展开月历" : "桌面挂件";
-        var area = SystemParameters.WorkArea;
-        Left = Math.Clamp(Left, area.Left, Math.Max(area.Left, area.Right - Width));
-        Top = Math.Clamp(Top, area.Top, Math.Max(area.Top, area.Bottom - Height));
-        selected = null; month.SelectedDate = null; Show(); Activate(); Render(); SavePreferences();
-    }
-    void LoadPreferences()
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(File.ReadAllText(preferences));
-            var p = doc.RootElement; var area = SystemParameters.WorkArea;
-            Left = Math.Clamp(p.GetProperty("left").GetDouble(), area.Left, Math.Max(area.Left, area.Right - Width));
-            Top = Math.Clamp(p.GetProperty("top").GetDouble(), area.Top, Math.Max(area.Top, area.Bottom - Height));
-            Topmost = p.GetProperty("topmost").GetBoolean();
-            if (p.TryGetProperty("game", out var game) && game.GetString() is "endfield-cn" or "arknights-cn" or "all") selectedGame = game.GetString()!;
-        }
-        catch { }
-    }
-    void SavePreferences()
-    {
-        try { Directory.CreateDirectory(Path.GetDirectoryName(preferences)!); File.WriteAllText(preferences, JsonSerializer.Serialize(new { left = Left, top = Top, topmost = Topmost, game = selectedGame })); }
-        catch { /* Position persistence must not stop the calendar. */ }
-    }
-
     async Task StartBackend()
     {
         // A private ephemeral port isolates this process from any web-mode instance.
@@ -265,7 +198,7 @@ public sealed class CalendarWindow : Window
             }
             catch (System.ComponentModel.Win32Exception) { }
         }
-        subtitle.Text = "无法启动日历"; status.Text = "需要 Python 3.11+。请安装后重新打开游时。";
+        throw new InvalidOperationException("需要 Python 3.11+。请安装后重新打开游时。");
     }
     readonly object logLock = new();
     void Log(string? line)
@@ -282,6 +215,7 @@ public sealed class CalendarWindow : Window
             using var state = JsonDocument.Parse(await http.GetStringAsync(address + "/api/state"));
             csrf = state.RootElement.GetProperty("csrf_token").GetString()!;
             notificationsMenu.Checked = state.RootElement.GetProperty("settings").GetProperty("native_notifications").GetBoolean();
+            UpdateReminderControls(state.RootElement.GetProperty("settings"));
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
             events = events.Select(e => e with { Source = e.Source.Clone(), Artwork = e.Artwork.ValueKind == JsonValueKind.Undefined ? default : e.Artwork.Clone(), Reward = e.Reward.ValueKind == JsonValueKind.Undefined ? default : e.Reward.Clone() }).ToArray();
@@ -299,7 +233,7 @@ public sealed class CalendarWindow : Window
     void Render()
     {
         clock.Text = DateTime.Now.ToString("M月d日 dddd HH:mm") + " · 本机时区";
-        if (events.Length == 0) return;
+        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("正在加载本地活动…")); return; }
         var scoped = events.Where(e => selectedGame == "all" || e.Game == selectedGame).ToArray();
         rewardHeader.Visibility = selectedGame == "arknights-cn" ? Visibility.Collapsed : Visibility.Visible;
         subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + scoped.Length + " 项" : "接下来，别错过";
@@ -318,7 +252,8 @@ public sealed class CalendarWindow : Window
             uint hash = 0; foreach (char letter in entry.Id) hash = unchecked(hash * 31 + letter);
             var color = Brush(palette[hash % 8]);
             var gameColor = Brush(entry.Game == "arknights-cn" ? "#477E9F" : "#A38337");
-            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(6), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = gameColor, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
+            var card = new Border { Background = CardBackground(), CornerRadius = new CornerRadius(8), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = gameColor, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
+            AttachBubbleDrag(card);
             var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
             var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(3), ToolTip = entry.Game == "arknights-cn" ? "明日方舟" : "终末地" };
             badge.Child = new Image { Source = GamePicture(entry.Game), Stretch = Stretch.Uniform }; layout.Children.Add(badge);
@@ -362,7 +297,7 @@ public sealed class CalendarWindow : Window
             if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button(entry.Game == "arknights-cn" ? "PRTS ↗" : "公告 ↗", () => Open(source.GetString()!)));
             if (!dense) body.Children.Add(actions); Grid.SetColumn(body, 1); layout.Children.Add(body); card.Child = layout; cards.Children.Add(card);
         }
-        if (ordered.Length == 0) cards.Children.Add(Text("这一天没有待办活动，换一天看看。", 13));
+        if (ordered.Length == 0) cards.Children.Add(MessageBubble("没有符合当前筛选的待办活动。右键打开侧栏，可切换游戏或显示全部活动。"));
         status.Text = $"当前 {ordered.Length} / 共 {scoped.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n" + (selectedGame == "arknights-cn" ? "来源：PRTS 社区 Wiki · 国服 · 可在完整时间轴查看修订。" : showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。");
     }
     ImageSource? currencyIcon;
@@ -481,9 +416,10 @@ public sealed class CalendarWindow : Window
             if (!System.Text.Encoding.UTF8.GetString(arkIcs).Contains("PRTS")) throw new Exception("Arknights calendar attribution missing");
             gameSelect.SelectedIndex = 2; Render(); SaveRender("combined.png");
             if (cards.Children.Count != events.Length) throw new Exception("All-activities view omitted entries");
+            bool appearanceVerified = await AppearanceSmokeTest();
             month.SelectedDate = DateTime.Today.AddDays(1);
             if (selected != DateTime.Today.AddDays(1)) throw new Exception("Calendar selection did not update");
-            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
+            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, appearanceVerified, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
         }
         catch (Exception error)
         {
@@ -495,10 +431,7 @@ public sealed class CalendarWindow : Window
     }
     void SaveRender(string name)
     {
-        UpdateLayout();
-        var visual = (FrameworkElement)Content;
-        var bitmap = new System.Windows.Media.Imaging.RenderTargetBitmap((int)visual.ActualWidth, (int)visual.ActualHeight, 96, 96, PixelFormats.Pbgra32);
-        bitmap.Render(visual);
+        var bitmap = CaptureRender();
         var encoder = new System.Windows.Media.Imaging.PngBitmapEncoder();
         encoder.Frames.Add(System.Windows.Media.Imaging.BitmapFrame.Create(bitmap));
         Directory.CreateDirectory(dataDirectory);

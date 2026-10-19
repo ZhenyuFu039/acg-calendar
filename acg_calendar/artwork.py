@@ -40,7 +40,7 @@ def image_kind(data):
 def download(url):
     if not official_image(url):
         raise ValueError("仅缓存官方图片 CDN")
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Playtime/0.0.1)"})
+    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Playtime/0.0.4)"})
     with urllib.request.build_opener(OfficialRedirect()).open(request, timeout=10) as response:
         data = response.read(MAX_BYTES + 1)
     if len(data) > MAX_BYTES:
