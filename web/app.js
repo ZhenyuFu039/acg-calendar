@@ -11,7 +11,7 @@
   };
   const endpointLabels = {exact:'公告明确', estimated:'预计 / 待核实', confirmed:'开服已确认', manual:'手动校正', unknown:'待定'};
   const referenceLabels = {next_maintenance_start:'下次版本维护前，具体时间未公布', recruitment_cycles:'按寻访次数结束，具体日期未公布', maintenance_end:'随本版本维护结束开放', unpublished:'公告未给出结束时间', invalid_interval:'时间顺序异常，请核对'};
-  const S = {data:null, version:null, view:'timeline', days:14, anchor:null, selected:null, categories:new Set(['event','gacha','exchange','update']), includePending:true, rules:null, rulesTab:'config', seenNotices:new Set(), initialized:false, pollTimer:null, toastTimer:null};
+  const S = {data:null, version:null, view:'timeline', days:14, fit:false, anchor:null, selected:null, categories:new Set(['event','gacha','exchange','update','maintenance']), includePending:true, rules:null, rulesTab:'config', seenNotices:new Set(), initialized:false, pollTimer:null, toastTimer:null};
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const now = () => Date.now();
   const allEvents = () => S.data?.events || [];
@@ -65,8 +65,17 @@
     return '进行中';
   }
   function cleanTitle(event) { return event.title.replace(/[「」]/g,''); }
+  function artwork(event, className='') {
+    const path=event.artwork?.path;
+    return /^\/api\/artwork\/[a-f0-9]{32}\.(jpg|png|webp)$/.test(path||'')?`<img class="activity-art ${className}" src="${path}" alt="" loading="lazy" decoding="async">`:'';
+  }
+  function accent(event) {
+    let hash=0;for(const c of event.id) hash=(hash*31+c.charCodeAt(0))>>>0;
+    return ['#69946e','#5e8ea3','#ae825d','#8f7bac','#9f8f4c','#668f91','#b07679','#7b8e57'][hash%8];
+  }
   function filteredEvents() {
-    return allEvents().filter(event => event.version_id===S.version && S.categories.has(event.category) && !event.ignored && (!S.data.settings.hide_completed || !event.completed) && (S.includePending || event.time_kind==='point' || event.end.at));
+    const query=($('#event-search')?.value||'').trim().toLocaleLowerCase();
+    return allEvents().filter(event => event.version_id===S.version && S.categories.has(event.category) && !event.ignored && (!S.data.settings.hide_completed || !event.completed) && (S.includePending || event.time_kind==='point' || event.end.at) && (!query||(event.title+' '+event.subtype+' '+event.section).toLocaleLowerCase().includes(query)));
   }
   function range() {
     if(S.view==='timeline') return [S.anchor,S.anchor+S.days];
@@ -125,16 +134,23 @@
     for(const id of Object.keys(categories)) $(`[data-count="${id}"]`).textContent=allEvents().filter(e=>e.version_id===S.version && e.category===id).length;
     $('#timeline-view').setAttribute('aria-pressed',S.view==='timeline');
     $('#month-view').setAttribute('aria-pressed',S.view==='month');
-    $('.range-control').hidden=S.view==='month';
+    $('#list-view').setAttribute('aria-pressed',S.view==='list');
+    $('.range-control').hidden=S.view!=='timeline'||S.fit;
+    $('#fit-version').textContent=S.fit?'退出全览':'版本全览';
+    $('#fit-version').setAttribute('aria-pressed',Boolean(S.fit));
+    $('.date-navigation').classList.toggle('list-mode',S.view==='list');
     const [lo,hi]=range();
     const date=serialDate(lo);
     $('#period-title').textContent=S.view==='month'?`${date.getUTCFullYear()} 年 ${date.getUTCMonth()+1} 月`:`${shortDay(lo,true)} — ${shortDay(hi-1,serialDate(hi-1).getUTCFullYear()!==date.getUTCFullYear())}`;
-    const filtered=filteredEvents(), shown=filtered.filter(event=>overlaps(event,lo,hi));
+    const filtered=filteredEvents(), shown=S.view==='list'?filtered:filtered.filter(event=>overlaps(event,lo,hi));
     const pending=filtered.filter(e=>!e.end.at&&e.time_kind!=='point').length;
-    $('#visible-summary').textContent=`当前日期范围 ${shown.length} 项${pending?' · '+pending+' 项截止待定':''}`;
+    const total=allEvents().filter(e=>e.version_id===S.version).length;
+    $('#visible-summary').textContent=S.view==='list'?`本版本共 ${total} 项 · 当前显示 ${shown.length} 项`:`日期范围内 ${shown.length} / 筛选后 ${filtered.length} 项 · 本版本 ${total} 项`;
+    $('#catalog-count').textContent=`${S.view==='list'?'全部列表不受日期范围限制':S.fit?'版本时间轴总览':'范围外活动可在“全部活动”查看'}${pending?' · '+pending+' 项截止待定':''}`;
+    if(S.view==='list') $('#period-title').textContent=`「${version.name}」全部活动`;
     renderSourceStatus(version);
     renderDeadline(filtered);
-    $('#calendar').innerHTML=S.view==='timeline'?renderTimeline(shown,lo,hi):renderMonth(filtered,lo,hi);
+    $('#calendar').innerHTML=S.view==='timeline'?renderTimeline(shown,lo,hi):S.view==='list'?renderList(filtered):renderMonth(filtered,lo,hi);
     const unscheduled=filtered.filter(e=>!e.start.at||e.invalid_interval);
     $('#unscheduled').hidden=!unscheduled.length;
     $('#unscheduled').innerHTML=unscheduled.length?`<h3>时间待核对 · ${unscheduled.length} 项</h3>${unscheduled.map(e=>`<button type="button" data-event="${e.id}">${esc(cleanTitle(e))}</button>`).join('')}`:'';
@@ -178,25 +194,37 @@
     const tooltip=`${cleanTitle(event)} · ${format(event.start.at,{year:true})} → ${event.end.at?format(event.end.at,{year:true}):referenceLabels[event.end.reference]||'截止待定'} · ${status(event)}`;
     if(isPoint&&!month) return `<button type="button" class="point-marker" style="--category:${cat.color};--bar-left:${left}%" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}"></button>`;
     const label=month?cleanTitle(event):(start<lo?'← ':'')+format(event.start.at,{dateOnly:true})+(event.start.state==='estimated'?' 预计':'')+(event.end.at?' → '+format(event.end.at,{dateOnly:true}):' → 待定')+(end>hi?' →':'');
-    return `<button type="button" class="event-bar ${!event.end.at&&!isPoint?'open-end':''} ${event.start.state==='estimated'?'estimated-start':''} ${end>hi?'clipped-end':''} ${event.completed?'completed':''}" style="--category:${cat.color};--bar-left:${left}%;--bar-width:${width}%;--progress:${progress}%;--bar-top:${top}px" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}"><span class="bar-label">${esc(label)}</span></button>`;
+    const image=month?'':artwork(event,'bar-art');
+    return `<button type="button" class="event-bar ${image?'has-art':''} ${!event.end.at&&!isPoint?'open-end':''} ${event.start.state==='estimated'?'estimated-start':''} ${end>hi?'clipped-end':''} ${event.completed?'completed':''}" style="--category:${cat.color};--event-accent:${accent(event)};--bar-left:${left}%;--bar-width:${width}%;--progress:${progress}%;--bar-top:${top}px" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}">${image}<span class="bar-label">${esc(label)}</span></button>`;
   }
   function renderTimeline(events,lo,hi) {
     if(!events.length) return emptyCalendar();
     const today=Math.floor(civil(now())), days=hi-lo;
     const axis=Array.from({length:days},(_,i)=>{
       const serial=lo+i,d=serialDate(serial),week=d.getUTCDay();
-      return `<div class="axis-day ${serial===today?'today':''} ${[0,6].includes(week)?'weekend':''}"><span>${['日','一','二','三','四','五','六'][week]}</span><strong>${d.getUTCDate()===1?(d.getUTCMonth()+1)+'/':''}${d.getUTCDate()}</strong></div>`;
+      const label=!S.fit||i%7===0||serial===today;
+      return `<div class="axis-day ${serial===today?'today':''} ${[0,6].includes(week)?'weekend':''}" title="${shortDay(serial,true)}"><span>${S.fit?'': ['日','一','二','三','四','五','六'][week]}</span><strong>${label?(S.fit?(d.getUTCMonth()+1)+'/':'')+d.getUTCDate():''}</strong></div>`;
     }).join('');
-    const rows=Object.entries(categories).map(([category,definition])=>{
+    const groupOrder=['gacha','event','exchange','update','maintenance'];
+    const rows=groupOrder.map(category=>{
+      const definition=categories[category];
       const group=events.filter(e=>e.category===category).sort((a,b)=>Date.parse(a.start.at)-Date.parse(b.start.at)||a.title.localeCompare(b.title,'zh'));
       if(!group.length) return '';
       return `<div class="timeline-group" style="--category:${definition.color}"><span class="category-dot"></span>${definition.name}<span class="group-count">${String(group.length).padStart(2,'0')}</span></div>`+group.map(event=>{
         const markers=event.phases.filter(p=>p.at&&civil(p.at)>=lo&&civil(p.at)<hi).map(p=>`<button type="button" class="phase-mark" style="left:${(civil(p.at)-lo)/days*100}%" data-event="${event.id}" aria-label="${esc(event.title+' · '+p.title+' '+format(p.at,{year:true}))}" title="${esc(p.title+' '+format(p.at))}"></button>`).join('');
         const deadline=event.time_kind==='point'?`<strong>${esc(format(event.start.at))}</strong><span>更新节点</span>`:event.end.at?`<strong>${esc(format(event.end.at))}</strong><span>${event.end.state==='estimated'?'预计结束':esc(countdown(event.end.at))}</span>`:`<strong class="pending-label">截止待定</strong><span>${event.end.reference==='recruitment_cycles'?'按寻访次数结束':'等待后续公告'}</span>`;
-        return `<div class="timeline-row ${event.completed?'completed':''}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="category-dot"></span><span class="event-name-text"><strong>${esc(cleanTitle(event))}</strong><small>${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button></div>`;
+        return `<div class="timeline-row ${event.completed?'completed':''}" style="--event-accent:${accent(event)}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="event-avatar ${event.artwork?'with-image':''}" style="--event-accent:${accent(event)}">${artwork(event,'avatar-art')}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="event-name-text"><strong>${esc(cleanTitle(event))}</strong><small>${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button></div>`;
       }).join('');
     }).join('');
-    return `<div class="timeline-scroll"><div class="timeline" style="--days:${days};min-width:${Math.max(680,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div></div>${rows}</div></div>`;
+    return `<div class="timeline-scroll"><div class="timeline ${S.fit?'fit-version':''}" style="--days:${days};min-width:${S.fit?Math.max(900,372+days*10):Math.max(680,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态 · 标题完整显示</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div></div>${rows}</div></div>`;
+  }
+  function renderList(events) {
+    if(!events.length) return emptyCalendar();
+    return '<div class="activity-catalog">'+events.sort((a,b)=>(Date.parse(a.start.at)||Infinity)-(Date.parse(b.start.at)||Infinity)).map(event=>{
+      const picture=artwork(event,'catalog-art');
+      const end=event.time_kind==='point'?'单次更新':event.end.at?format(event.end.at,{year:true})+(event.end.state==='estimated'?' · 预计':''):'截止待定';
+      return `<button class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span>${esc(event.subtype.slice(0,2))}</span></span><span class="catalog-info"><small>${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':esc(countdown(event.end.at))}</span></span><span class="catalog-arrow" aria-hidden="true">↗</span></button>`;
+    }).join('')+'</div>';
   }
   function renderMonth(events,monthStart,monthEnd) {
     const d=serialDate(monthStart), first=monthStart-(d.getUTCDay()+6)%7, weeks=Math.ceil((monthEnd-first)/7), today=Math.floor(civil(now()));
@@ -311,9 +339,27 @@
   }
   async function switchView(view) {
     if(S.view===view) return;
-    S.view=view;render();await mutate('/api/settings',{view});
+    S.view=view;S.fit=false;S.days=Number($('#range-select').value);render();await mutate('/api/settings',{view});
+  }
+  async function showAll(view='list') {
+    S.categories=new Set(Object.keys(categories));S.includePending=true;
+    $('#event-search').value='';$('#include-pending').checked=true;buildFilters();
+    S.view=view;S.fit=false;S.days=Number($('#range-select').value);
+    await mutate('/api/settings',{hide_completed:false,view});
+  }
+  async function fitVersion() {
+    if(S.fit) {S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));render();return;}
+    await showAll('timeline');
+    const events=allEvents().filter(e=>e.version_id===S.version&&!e.invalid_interval);
+    const starts=events.filter(e=>e.start.at).map(e=>civil(e.start.at));
+    const ends=events.flatMap(e=>[e.start.at,e.end.at]).filter(Boolean).map(value=>civil(value));
+    if(!starts.length) return;
+    const lo=Math.floor(Math.min(...starts)),hi=Math.floor(Math.max(...ends))+1;
+    if(hi-lo>120) {await showAll();toast('版本跨度超过 120 天，已用完整列表展示全部活动');return;}
+    S.fit=true;S.anchor=lo;S.days=Math.max(7,hi-lo);render();
   }
   function movePeriod(direction) {
+    if(S.fit) {S.fit=false;S.days=Number($('#range-select').value);}
     if(S.view==='timeline') S.anchor+=direction*S.days;
     else { const d=serialDate(S.anchor);S.anchor=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+direction,1)/DAY; }
     render();
@@ -336,9 +382,12 @@
     switch(target.id) {
       case 'previous-period':movePeriod(-1);break;
       case 'next-period':movePeriod(1);break;
-      case 'today-button':S.anchor=Math.floor(civil(now()));render();break;
+      case 'today-button':S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));render();break;
       case 'timeline-view':await switchView('timeline');break;
       case 'month-view':await switchView('month');break;
+      case 'list-view':await switchView('list');break;
+      case 'fit-version':await fitVersion();break;
+      case 'reset-filters':await showAll();break;
       case 'sync-button':
         if(await mutate('/api/sync')) toast('正在同步官方公告…');
         break;
@@ -401,7 +450,7 @@
     switch(target.id) {
       case 'version-select':S.version=target.value;S.anchor=Math.floor(civil(activeVersion().maintenance.start||now()));render();break;
       case 'timezone-select':await mutate('/api/settings',{timezone:target.value});break;
-      case 'range-select':S.days=Number(target.value);render();break;
+      case 'range-select':S.fit=false;S.days=Number(target.value);render();break;
       case 'hide-completed':await mutate('/api/settings',{hide_completed:target.checked});break;
       case 'include-pending':S.includePending=target.checked;render();break;
       case 'reminders-enabled':await mutate('/api/settings',{reminders_enabled:target.checked});break;
@@ -444,6 +493,12 @@
       else {$('#source-status').textContent='本地连接已断开，请检查程序是否仍在运行。现有日历保留显示。';$('#source-status').classList.add('warning');}
     }
   }
+  $('#event-search').addEventListener('input',()=>{if(S.data) render();});
+  document.addEventListener('error',event=>{
+    if(event.target instanceof HTMLImageElement&&event.target.classList.contains('activity-art')) {
+      event.target.parentElement?.classList.remove('has-art','with-image');event.target.remove();
+    }
+  },true);
   refresh();
   S.pollTimer=setInterval(refresh,10000);
   setInterval(()=>{if(S.data) renderClock();},30000);

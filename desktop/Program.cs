@@ -30,7 +30,7 @@ public static class Program
             directory = directory.Parent;
         }
         if (root == null) { MessageBox.Show("找不到 app.py，请从项目目录运行 start-desktop.ps1。", "游时"); return; }
-        using var instance = new Mutex(true, "Local\\PlaytimeDesktop-" + StableKey(Path.GetFullPath(root)), out bool first);
+        using var instance = new Mutex(true, "Local\\PlaytimeDesktop-" + StableKey(Path.GetFullPath(root)) + (args.Contains("--smoke-test") ? "-QA-" + Guid.NewGuid().ToString("N") : ""), out bool first);
         if (!first) { MessageBox.Show("游时已在运行，请点击系统托盘中的日历图标。", "游时"); return; }
         var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var window = new CalendarWindow(Path.GetFullPath(root), args.Contains("--offline"), args.Contains("--smoke-test"));
@@ -41,7 +41,7 @@ public static class Program
 }
 
 public record Endpoint(string? At, string State);
-public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source)
+public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source, JsonElement Artwork)
 {
     public DateTimeOffset? Begin => Parse(Start.At);
     public DateTimeOffset? Finish => Parse(End.At);
@@ -72,6 +72,9 @@ public sealed class CalendarWindow : Window
     string csrf = "";
     CalendarEvent[] events = [];
     bool refreshing, exiting, compact = true;
+    bool showAll, dense = true;
+    readonly Button allButton, densityButton;
+    readonly Dictionary<string, ImageSource> pictures = new();
     DateTime? selected;
     DateTimeOffset lastRefresh;
     readonly Button mode;
@@ -105,7 +108,10 @@ public sealed class CalendarWindow : Window
         subtitle.FontSize = 17; subtitle.FontWeight = FontWeights.SemiBold; subtitle.Text = "正在启动本地日历…"; controls.Children.Add(subtitle);
         var toolbar = new WrapPanel { Margin = new Thickness(0, 10, 0, 0) };
         mode = Button("展开月历", ToggleMode); toolbar.Children.Add(mode);
-        toolbar.Children.Add(Button("近期", () => { selected = null; month.SelectedDate = null; Render(); }));
+        toolbar.Children.Add(Button("近期", () => { showAll = false; selected = null; month.SelectedDate = null; Render(); }));
+        allButton = Button("全部活动", () => { showAll = !showAll; selected = null; month.SelectedDate = null; if (showAll && compact) ShowMode(false); Render(); });
+        toolbar.Children.Add(allButton);
+        densityButton = Button("图文模式", () => { dense = !dense; Render(); }); toolbar.Children.Add(densityButton);
         toolbar.Children.Add(Button("同步", async () => await Mutate("/api/sync", new { })));
         toolbar.Children.Add(Button("完整时间轴 ↗", () => Open(address)));
         controls.Children.Add(toolbar); Grid.SetRow(controls, 1); layout.Children.Add(controls);
@@ -255,7 +261,7 @@ public sealed class CalendarWindow : Window
             notificationsMenu.Checked = state.RootElement.GetProperty("settings").GetProperty("native_notifications").GetBoolean();
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
-            events = events.Select(e => e with { Source = e.Source.Clone() }).ToArray();
+            events = events.Select(e => e with { Source = e.Source.Clone(), Artwork = e.Artwork.ValueKind == JsonValueKind.Undefined ? default : e.Artwork.Clone() }).ToArray();
             lastRefresh = DateTimeOffset.Now; Render();
         }
         catch (Exception error) { status.Text = "连接中断，已保留上次数据。"; Log(error.Message); }
@@ -265,40 +271,66 @@ public sealed class CalendarWindow : Window
     {
         clock.Text = DateTime.Now.ToString("M月d日 dddd HH:mm") + " · 本机时区";
         if (events.Length == 0) return;
-        subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : "接下来，别错过";
+        subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + events.Length + " 项" : "接下来，别错过";
+        allButton.Content = showAll ? "仅看近期" : "全部活动";
+        densityButton.Content = dense ? "图文模式" : "紧凑模式";
         cards.Children.Clear();
         var now = DateTimeOffset.Now;
-        var shown = events.Where(e => !e.Completed && !e.Ignored && e.Category != "maintenance");
+        var shown = showAll ? events.AsEnumerable() : events.Where(e => !e.Completed && !e.Ignored && e.Category != "maintenance");
         if (selected is DateTime chosen)
             shown = shown.Where(e => e.Begin != null && e.Begin.Value.LocalDateTime.Date <= chosen.Date && (e.Finish?.LocalDateTime.Date >= chosen.Date || (e.Time_Kind == "point" ? e.Begin.Value.LocalDateTime.Date == chosen.Date : e.Finish == null)));
-        else shown = shown.Where(e => e.Finish > now || e.Begin > now || (e.Finish == null && e.Time_Kind != "point"));
+        else if (!showAll) shown = shown.Where(e => e.Finish > now || e.Begin > now || (e.Finish == null && e.Time_Kind != "point"));
         var ordered = shown.OrderBy(e => e.Next ?? DateTimeOffset.MaxValue).ToArray();
         foreach (var entry in ordered)
         {
-            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(9), Padding = new Thickness(13), Margin = new Thickness(0, 0, 0, 9), BorderBrush = Brush("#E3E8DA"), BorderThickness = new Thickness(1) };
+            string[] palette = ["#69946e", "#5e8ea3", "#ae825d", "#8f7bac", "#9f8f4c", "#668f91", "#b07679", "#7b8e57"];
+            uint hash = 0; foreach (char letter in entry.Id) hash = unchecked(hash * 31 + letter);
+            var color = Brush(palette[hash % 8]);
+            var card = new Border { Background = Brushes.White, CornerRadius = new CornerRadius(6), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = color, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
             var body = new StackPanel();
-            string type = entry.Category switch { "gacha" => "寻访", "exchange" => "兑换", "update" => "更新", _ => "活动" };
-            var tag = Text(type, 10); tag.Foreground = Muted; body.Children.Add(tag);
-            body.Children.Add(Text(entry.Title, 14, true));
+            string type = entry.Category switch { "gacha" => "寻访", "exchange" => "兑换", "update" => "更新", "maintenance" => "维护", _ => "活动" };
+            var heading = new DockPanel();
+            var done = Button(entry.Completed ? "↶" : "✓", async () => await Mutate("/api/events/" + entry.Id, new { completed = !entry.Completed }, true));
+            done.ToolTip = entry.Completed ? "撤销完成" : "标记完成"; done.Padding = new Thickness(6, 2, 6, 2); DockPanel.SetDock(done, Dock.Right); heading.Children.Add(done);
+            var title = new Grid { MinHeight = dense ? 23 : 42 };
+            if (Picture(entry) is ImageSource picture)
+                title.Children.Add(new Image { Source = picture, Width = 170, Height = dense ? 30 : 46, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Stretch = Stretch.UniformToFill, Opacity = .5, OpacityMask = new LinearGradientBrush(Colors.Black, Colors.Transparent, new Point(0, .5), new Point(1, .5)), IsHitTestVisible = false });
+            title.Children.Add(Text(entry.Title, dense ? 12 : 14, true)); heading.Children.Add(title); body.Children.Add(heading);
             bool upcoming = entry.Begin > now;
             var due = upcoming ? entry.Begin : entry.Finish;
             string certainty = (upcoming ? entry.Start.State : entry.End.State) == "estimated" ? "预计 " : "";
             bool point = entry.Time_Kind == "point";
             string remaining = point ? (upcoming ? Countdown(entry.Begin!.Value - now) + "后上线" : "已上线") : due == null ? "截止待定" : (due <= now ? "已结束" : Countdown(due.Value - now) + (upcoming ? "后开始" : "后截止"));
-            var countdown = Text(certainty + remaining, 12, true); countdown.Foreground = Brush(due != null && due - now < TimeSpan.FromDays(1) ? "#BA542E" : "#4B692E"); countdown.Margin = new Thickness(0, 7, 0, 3); body.Children.Add(countdown);
-            var dates = Text((point ? "更新 " : "开始 ") + Format(entry.Begin) + (entry.Start.State == "estimated" ? "（预计）" : "") + (point ? "" : "\n截止 " + Format(entry.Finish) + (entry.End.State == "estimated" ? "（预计）" : "")), 11); dates.Foreground = Muted; body.Children.Add(dates);
+            var countdown = Text(type + " · " + (entry.Completed ? "已完成" : certainty + remaining), dense ? 10 : 12, true); countdown.Foreground = color; countdown.Margin = new Thickness(0, dense ? 3 : 7, 0, 3); body.Children.Add(countdown);
+            var dates = Text((point ? "更新 " : "开始 ") + Format(entry.Begin) + (entry.Start.State == "estimated" ? "（预计）" : "") + (point ? "" : (dense ? " → " : "\n截止 ") + Format(entry.Finish) + (entry.End.State == "estimated" ? "（预计）" : "")), dense ? 10 : 11); dates.Foreground = Muted; body.Children.Add(dates);
             if (entry.Begin != null && entry.Finish > entry.Begin)
             {
                 double progress = Math.Clamp((now - entry.Begin.Value).TotalSeconds / (entry.Finish.Value - entry.Begin.Value).TotalSeconds * 100, 0, 100);
-                body.Children.Add(new ProgressBar { Value = progress, Height = 4, Foreground = Green, Background = Brush("#EDF1E6"), BorderThickness = new Thickness(0), Margin = new Thickness(0, 9, 0, 7) });
+                body.Children.Add(new ProgressBar { Value = progress, Height = 3, Foreground = color, Background = Brush("#EDF1E6"), BorderThickness = new Thickness(0), Margin = new Thickness(0, dense ? 5 : 9, 0, dense ? 0 : 7) });
             }
             var actions = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
             actions.Children.Add(Button("标记完成", async () => await Mutate("/api/events/" + entry.Id, new { completed = true }, true)));
             if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button("公告 ↗", () => Open(source.GetString()!)));
-            body.Children.Add(actions); card.Child = body; cards.Children.Add(card);
+            if (!dense) body.Children.Add(actions); card.Child = body; cards.Children.Add(card);
         }
         if (ordered.Length == 0) cards.Children.Add(Text("这一天没有待办活动，换一天看看。", 13));
-        status.Text = $"终末地国服 · {ordered.Length} 项活动 · {lastRefresh:HH:mm:ss} 更新\n收起窗口后继续运行，右键托盘图标可退出。";
+        status.Text = $"当前 {ordered.Length} / 共 {events.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n{(showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。")}";
+    }
+    ImageSource? Picture(CalendarEvent entry)
+    {
+        try
+        {
+            if (entry.Artwork.ValueKind != JsonValueKind.Object || !entry.Artwork.TryGetProperty("key", out var value)) return null;
+            string key = value.GetString() ?? "";
+            if (!System.Text.RegularExpressions.Regex.IsMatch(key, @"\A[a-f0-9]{32}\.(jpg|png|webp)\z")) return null;
+            if (pictures.TryGetValue(key, out var cached)) return cached;
+            string file = Path.Combine(dataDirectory, "artwork", key);
+            if (!File.Exists(file)) return null;
+            var image = new System.Windows.Media.Imaging.BitmapImage(); image.BeginInit();
+            image.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad; image.DecodePixelWidth = 320;
+            image.UriSource = new Uri(file); image.EndInit(); image.Freeze(); pictures[key] = image; return image;
+        }
+        catch { return null; }
     }
     static string Format(DateTimeOffset? date) => date?.ToLocalTime().ToString("MM/dd HH:mm") ?? "未公布";
     public static string Countdown(TimeSpan span) => span.TotalDays >= 1 ? $"{(int)span.TotalDays}天{span.Hours}小时" : span.TotalHours >= 1 ? $"{(int)span.TotalHours}小时{span.Minutes}分" : $"{Math.Max(1, (int)Math.Ceiling(span.TotalMinutes))}分钟";
@@ -354,7 +386,8 @@ public sealed class CalendarWindow : Window
             if (events.Single(e => e.Id == entry.Id).Completed) throw new Exception("Desktop completion restore failed");
             byte[] ics = await http.GetByteArrayAsync(address + "/api/calendar.ics");
             if (!System.Text.Encoding.UTF8.GetString(ics).StartsWith("BEGIN:VCALENDAR")) throw new Exception("Calendar export failed");
-            SaveRender("widget.png"); ShowMode(false); SaveRender("month.png");
+            SaveRender("widget.png"); ShowMode(false); showAll = true; Render(); SaveRender("month.png");
+            if (cards.Children.Count != events.Length) throw new Exception("All-activities view omitted entries");
             month.SelectedDate = DateTime.Today.AddDays(1);
             if (selected != DateTime.Today.AddDays(1)) throw new Exception("Calendar selection did not update");
             await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, exportBytes = ics.Length, backendPid = backend?.Id }));

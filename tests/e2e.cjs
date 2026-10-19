@@ -100,6 +100,22 @@ const output='logs/demo-qa';
     assert.equal(downloaded.events.length,24);
     assert.equal(downloaded.analysis.ai_used,false);
     await page.locator('#rules-dialog [data-close]').click();
+    await page.locator('#reset-filters').click();
+    await page.waitForFunction(()=>document.querySelectorAll('.catalog-event').length===24);
+    assert.match(await page.locator('#visible-summary').innerText(),/24/);
+    await page.locator('#event-search').fill('卡莉');
+    assert.equal(await page.locator('.catalog-event').count(),1);
+    await page.locator('#event-search').fill('');
+    assert.equal(await page.locator('.catalog-event').count(),24);
+    for(const width of [390,320]){
+      await page.setViewportSize({width,height:1000});
+      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1),'Catalog overflows at '+width);
+    }
+    await page.setViewportSize({width:1440,height:1050});
+    await page.locator('#fit-version').click();
+    await page.waitForFunction(()=>document.querySelector('.fit-version')&&document.querySelectorAll('.timeline-row').length===24);
+    assert.equal(await page.locator('.event-name strong').count(),24);
+    await page.locator('#month-view').click();
     for(const width of [1024,768,390,320]){
       await page.setViewportSize({width,height:1000});
       await page.screenshot({path:`${output}/month-${width}.png`,fullPage:true});

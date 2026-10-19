@@ -10,6 +10,7 @@ import urllib.parse
 import urllib.request
 
 from .parser import AnnouncementParser, ROOT, html_to_text, iso
+from .artwork import ArtworkCache
 
 
 def fetch(url: str) -> str:
@@ -31,6 +32,7 @@ class Collector:
         self.fetcher = fetcher
         self.lock = threading.Lock()
         self.last_attempt = None
+        self.artwork = ArtworkCache(data_dir)
 
     def seed(self):
         if self.store.versions():
@@ -82,6 +84,8 @@ class Collector:
             text = html_to_text(self.fetcher(url))
             published = iso(dt.datetime.fromtimestamp(article["displayTime"], dt.timezone.utc)) if article.get("displayTime") else None
             version = self.parser.parse(text, cid=cid, source_url=url, title=article["title"], published_at=published, fetched_at=fetched_at)
+            previous = next((v for v in self.store.versions() if v["id"] == version["id"]), None)
+            self.artwork.attach(version, listing["data"]["list"], previous)
             collected.append((version, text))
         # Parse every selected source before replacing anything.
         source_dir = self.data_dir / "sources"

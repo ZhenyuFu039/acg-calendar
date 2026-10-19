@@ -120,7 +120,7 @@ class Application:
             raise ValueError("此运行环境暂不支持本机系统通知")
         if "timezone" in patch and (not isinstance(patch["timezone"], str) or not re.fullmatch(r"auto|UTC|[A-Za-z_+-]+(?:/[A-Za-z_+0-9-]+)+", patch["timezone"]) or len(patch["timezone"]) > 100):
             raise ValueError("时区格式无效")
-        if "view" in patch and patch["view"] not in {"timeline", "month"}:
+        if "view" in patch and patch["view"] not in {"timeline", "month", "list"}:
             raise ValueError("不支持的日历视图")
         if "sync_interval_minutes" in patch and (type(patch["sync_interval_minutes"]) is not int or not 10 <= patch["sync_interval_minutes"] <= 1440):
             raise ValueError("同步间隔需为 10–1440 分钟")
@@ -145,12 +145,12 @@ def handler_for(application):
             host = self.headers.get("Host", "").split(":")[0].lower()
             return host in {"127.0.0.1", "localhost"}
 
-        def send(self, data, status=200, content_type="application/json; charset=utf-8", filename=None):
+        def send(self, data, status=200, content_type="application/json; charset=utf-8", filename=None, cache_control="no-store"):
             encoded = json.dumps(data, ensure_ascii=False).encode("utf-8") if not isinstance(data, bytes) else data
             self.send_response(status)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(len(encoded)))
-            self.send_header("Cache-Control", "no-store")
+            self.send_header("Cache-Control", cache_control)
             self.send_header("X-Content-Type-Options", "nosniff")
             self.send_header("Referrer-Policy", "no-referrer")
             self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
@@ -174,6 +174,12 @@ def handler_for(application):
                     return self.send(calendar_bytes(application.versions(), application.store.settings()), content_type="text/calendar; charset=utf-8", filename="playtime-endfield.ics")
                 if path == "/api/health":
                     return self.send({"ok": True, "version": __version__})
+                if path.startswith("/api/artwork/"):
+                    image = application.collector.artwork.path(path.removeprefix("/api/artwork/"))
+                    if image:
+                        content_type = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[image.suffix]
+                        return self.send(image.read_bytes(), content_type=content_type, cache_control="private, max-age=604800, immutable")
+                    return self.send({"error": "图片尚未缓存"}, 404)
                 assets = {"/": "index.html", "/app.js": "app.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg"}
                 if path not in assets:
                     return self.send({"error": "页面不存在"}, 404)
