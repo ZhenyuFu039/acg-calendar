@@ -9,5 +9,9 @@
     <AssemblyName>Playtime</AssemblyName>
     <Version>0.0.1</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>../web/assets/playtime.ico</ApplicationIcon>
   </PropertyGroup>
+  <ItemGroup>
+    <Resource Include="../web/assets/playtime.ico" Link="Assets/playtime.ico" />
+  </ItemGroup>
 </Project>

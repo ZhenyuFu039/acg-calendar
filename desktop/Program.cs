@@ -72,6 +72,7 @@ public sealed class CalendarWindow : Window
     readonly Grid content = new();
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(15) };
     readonly Forms.NotifyIcon tray;
+    readonly System.Drawing.Icon trayIcon;
     readonly Forms.ToolStripMenuItem notificationsMenu;
     readonly string preferences;
     Process? backend;
@@ -94,6 +95,11 @@ public sealed class CalendarWindow : Window
         dataDirectory = smoke ? Path.Combine(root, "logs", "desktop-smoke", DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")) : Path.Combine(root, "data");
         preferences = Path.Combine(dataDirectory, "desktop-window.json");
         Title = "游时 · 桌面日历"; Width = 390; Height = 620;
+        var iconUri = new Uri("pack://application:,,,/Assets/playtime.ico");
+        Icon = System.Windows.Media.Imaging.BitmapDecoder.Create(iconUri, System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad).Frames.Last();
+        Icon.Freeze();
+        using (var iconStream = System.Windows.Application.GetResourceStream(iconUri).Stream)
+        using (var originalIcon = new System.Drawing.Icon(iconStream, 32, 32)) trayIcon = (System.Drawing.Icon)originalIcon.Clone();
         MinWidth = 350; MinHeight = 440; WindowStyle = WindowStyle.None;
         ResizeMode = ResizeMode.CanResizeWithGrip; Background = Brush("#F6F8F1");
         FontFamily = new FontFamily("Microsoft YaHei UI"); FontSize = 13;
@@ -106,6 +112,7 @@ public sealed class CalendarWindow : Window
         var heading = new DockPanel { Margin = new Thickness(0, 0, 0, 16) };
         var close = Button("×", () => Hide()); close.ToolTip = "收起到系统托盘，提醒继续运行"; DockPanel.SetDock(close, Dock.Right); heading.Children.Add(close);
         pin = Button("置顶", () => { Topmost = !Topmost; PinLabel(); SavePreferences(); }); DockPanel.SetDock(pin, Dock.Right); heading.Children.Add(pin); PinLabel();
+        heading.Children.Add(new Image { Source = Icon, Width = 33, Height = 33, Margin = new Thickness(0, 1, 9, 0), VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false });
         var brand = new StackPanel();
         brand.Children.Add(Text("游时  PLAYTIME", 19, true));
         clock.FontSize = 11; clock.Foreground = Muted; clock.Margin = new Thickness(0, 4, 0, 0); brand.Children.Add(clock);
@@ -143,7 +150,7 @@ public sealed class CalendarWindow : Window
         links.Children.Add(Button("导出日历 .ics", async () => await Export()));
         links.Children.Add(Button("系统日历说明", ExplainIntegration)); footer.Children.Add(links);
         Grid.SetRow(footer, 3); layout.Children.Add(footer); shell.Child = layout; Content = shell;
-        tray = new Forms.NotifyIcon { Text = "游时 · 活动日历", Icon = System.Drawing.SystemIcons.Application, Visible = true };
+        tray = new Forms.NotifyIcon { Text = "游时 · 活动日历", Icon = trayIcon, Visible = true };
         var menu = new Forms.ContextMenuStrip();
         menu.Items.Add("显示桌面挂件", null, (_, _) => Dispatcher.Invoke(() => ShowMode(true)));
         menu.Items.Add("显示月历", null, (_, _) => Dispatcher.Invoke(() => ShowMode(false)));
@@ -443,7 +450,7 @@ public sealed class CalendarWindow : Window
     }
     void Exit()
     {
-        exiting = true; timer.Stop(); SavePreferences(); tray.Visible = false; tray.Dispose();
+        exiting = true; timer.Stop(); SavePreferences(); tray.Visible = false; tray.Dispose(); trayIcon.Dispose();
         // Only stop the backend created by this desktop process.
         if (backend != null) { try { if (!backend.HasExited) backend.Kill(true); } catch { } backend.Dispose(); }
         http.Dispose(); Close(); System.Windows.Application.Current.Shutdown(Environment.ExitCode);

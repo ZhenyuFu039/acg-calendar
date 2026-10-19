@@ -51,6 +51,10 @@ Windows 本地日程接口 `Windows.ApplicationModel.Appointments` 需要应用�
 
 ## 构建与验证
 
+软件图标沿用网页中的绿色四格标识，用于 EXE、窗口/任务栏、系统托盘和桌面快捷方式。矢量源为 `web/favicon.svg`；`web/assets/playtime.ico` 包含 16、20、24、32、48、64、128、256px 尺寸，并已作为资源嵌入桌面程序。修改矢量图后运行 `./scripts/build-app-icon.ps1` 重新生成 ICO 与 PNG，再重新构建桌面端。生成过程使用 Windows 自带 WPF，不调用 AI 或外部图片服务。
+
+运行 `./scripts/install-desktop-shortcut.ps1` 可创建或更新本项目的桌面快捷方式。快捷方式的图标指向项目内固定的 ICO 路径，不依赖某次构建目录；启动目标仍会选择最新构建。更新后从托盘退出旧程序，再重新启动即可看到新窗口及托盘图标。
+
 ```powershell
 dotnet publish desktop/Playtime.Desktop.csproj -c Release --no-self-contained -o dist/desktop
 ./dist/desktop/Playtime.exe --project "D:\ACG calendar" --offline --smoke-test

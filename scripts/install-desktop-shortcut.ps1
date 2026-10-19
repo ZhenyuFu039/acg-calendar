@@ -14,7 +14,8 @@ $shortcut.TargetPath = Join-Path $projectDirectory 'Playtime.cmd'
 $shortcut.WorkingDirectory = $projectDirectory
 $shortcut.WindowStyle = 7
 $shortcut.Description = 'Playtime local game calendar and desktop widget'
-$iconPath = Join-Path $projectDirectory 'dist\desktop\Playtime.exe'
-if (Test-Path -LiteralPath $iconPath) { $shortcut.IconLocation = $iconPath + ',0' }
+$iconPath = Join-Path $projectDirectory 'web\assets\playtime.ico'
+if (-not (Test-Path -LiteralPath $iconPath)) { throw 'Missing Playtime icon. Run scripts/build-app-icon.ps1 first.' }
+$shortcut.IconLocation = $iconPath + ',0'
 $shortcut.Save()
 Write-Host "Created: $shortcutPath"
