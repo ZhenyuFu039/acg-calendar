@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "versions": [
+    {
+      "id": "demo-season-1",
+      "name": "插件演示周期",
+      "source_url": "https://example.com/",
+      "events": [
+        {
+          "id": "demo-festival",
+          "title": "示例节日（虚构活动）",
+          "category": "event",
+          "start": {"at": "2026-10-15T10:00:00-04:00", "state": "exact"},
+          "end": {"at": "2026-11-02T10:00:00-05:00", "state": "exact"},
+          "source_url": "https://example.com/",
+          "description": "展示跨时区与夏令时的活动区间，不代表真实奖励或排期。"
+        },
+        {
+          "id": "demo-shop",
+          "parent_id": "demo-festival",
+          "title": "示例兑换处（虚构活动）",
+          "category": "exchange",
+          "start": {"at": "2026-10-15T14:00:00Z", "state": "exact"},
+          "end": {"at": "2026-11-09T15:00:00Z", "state": "exact"},
+          "source_url": "https://example.com/"
+        }
+      ]
+    }
+  ]
+}

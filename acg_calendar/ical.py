@@ -24,11 +24,15 @@ def fold(line):
     return "\r\n".join([*lines, current])
 
 
-def calendar_bytes(versions, settings, now=None):
+def calendar_bytes(versions, settings, now=None, *, games=None):
     now = now or dt.datetime.now(dt.timezone.utc)
     utc = lambda value: stamp(value).astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     identities = {version.get("game", "endfield-cn") for version in versions}
-    label = game_name(next(iter(identities))) + "国服" if len(identities) == 1 else "全部游戏"
+    metadata = {g["id"]: g for g in (games or [])}
+    def identity(game):
+        info = metadata.get(game)
+        return info["name"] + " · " + info["server"] if info else game_name(game) + ("国服" if game in {"endfield-cn", "arknights-cn"} else "")
+    label = identity(next(iter(identities))) if len(identities) == 1 else "所选游戏"
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Playtime//Game Calendar//ZH", "CALSCALE:GREGORIAN", "METHOD:PUBLISH", "X-WR-CALNAME:" + text("游时 · " + label)]
     skipped = 0
     for version in versions:
@@ -44,7 +48,7 @@ def calendar_bytes(versions, settings, now=None):
             lines += ["BEGIN:VEVENT", "UID:" + event["id"] + "@playtime.local", "DTSTAMP:" + now.astimezone(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ"), "DTSTART:" + utc(start["at"])]
             if not point:
                 lines.append("DTEND:" + utc(end["at"]))
-            description = game_name(version.get("game", "endfield-cn")) + "国服 · " + version["name"] + "\n" + event.get("description", "")
+            description = identity(version.get("game", "endfield-cn")) + " · " + version["name"] + "\n" + event.get("description", "")
             if event.get("notes"):
                 description += "\n备注：" + event["notes"]
             description += "\n来源：" + event["source"]["url"] + "\n本文件为导出快照，时间变更需重新导入。"

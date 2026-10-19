@@ -62,7 +62,7 @@ const output='logs/demo-qa';
     await page.locator('#edit-end').fill('2026-11-06T04:00');
     await page.locator('#event-edit-form button[type=submit]').click();
     await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('已手动校正'));
-    assert.match(await page.locator('#detail-content').innerText(),/2026\/11\/06 04:00/);
+    assert.match(await page.locator('#detail-content').innerText(),/2026\/11\/06 12:00/); // Manual correction input is explicitly UTC.
     await page.locator('.edit-section summary').click();
     assert.equal(await page.locator('#edit-notes').inputValue(),'QA 临时备注：重启后应保留');
     await page.locator('#edit-end').fill('2026-10-01T04:00');

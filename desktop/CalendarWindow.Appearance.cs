@@ -119,10 +119,10 @@ public sealed partial class CalendarWindow
         var scroll = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 2); sidebarPanel.Children.Add(scroll);
         Section(navigation, "我的游戏");
-        gameSelect.Items.Add("终末地国服 · 官方"); gameSelect.Items.Add("明日方舟国服 · PRTS"); gameSelect.Items.Add("全部游戏 · 对照排期");
-        gameSelect.SelectedIndex = selectedGame == "arknights-cn" ? 1 : selectedGame == "all" ? 2 : 0;
+        gameSelect.DisplayMemberPath = "Label"; gameSelect.SelectedValuePath = "Id";
         gameSelect.Padding = new Thickness(3, 5, 3, 5); gameSelect.Margin = new Thickness(0, 0, 0, 4); navigation.Children.Add(gameSelect);
-        gameSelect.SelectionChanged += (_, _) => { selectedGame = gameSelect.SelectedIndex == 1 ? "arknights-cn" : gameSelect.SelectedIndex == 2 ? "all" : "endfield-cn"; selected = null; month.SelectedDate = null; Render(); SavePreferences(); };
+        gameSelect.SelectionChanged += (_, _) => { if (updatingProviders || gameSelect.SelectedValue is not string id) return; selectedGame = id; selected = null; month.SelectedDate = null; Render(); SavePreferences(); };
+        navigation.Children.Add(new Expander { Header = "自选游戏组合", Content = gameCombination, FontSize = 11, Margin = new Thickness(0, 5, 0, 7) });
         Section(navigation, "显示与筛选");
         mode = SidebarButton("展开月历", ToggleMode); navigation.Children.Add(mode);
         navigation.Children.Add(SidebarButton("近期活动", () => { showAll = false; selected = null; month.SelectedDate = null; Render(); SavePreferences(); }));
@@ -301,7 +301,7 @@ public sealed partial class CalendarWindow
             sidebarOpen = !bubbleMode && Flag(p, "sidebar_open", false); Topmost = Flag(p, "topmost", false);
             Width = (compact ? widgetWidth : calendarWidth) + VisibleSidebarWidth; Height = compact ? widgetHeight : calendarHeight;
             Left = Number(p, "left", Left, area.Left, Math.Max(area.Left, area.Right - Width)); Top = Number(p, "top", Top, area.Top, Math.Max(area.Top, area.Bottom - Height));
-            if (p.TryGetProperty("game", out var game) && game.GetString() is "endfield-cn" or "arknights-cn" or "all") selectedGame = game.GetString()!;
+            if (p.TryGetProperty("game", out var game) && game.ValueKind == JsonValueKind.String && game.GetString() is string id && id.Length <= 64) selectedGame = id;
         }
         catch { /* Older or damaged preferences use the defaults. */ }
     }

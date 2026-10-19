@@ -260,6 +260,7 @@ def resolve_versions(versions: list[dict], local_state: dict) -> list[dict]:
                     endpoint.update(at=overrides[role + "_override"], state="manual", reference="manual")
             event["completed"] = bool(overrides.get("completed"))
             event["ignored"] = bool(overrides.get("ignored"))
+            event["starred"] = bool(overrides.get("starred"))
             event["reminder_minutes"] = overrides.get("reminder_minutes")
             event["has_overrides"] = bool(overrides.get("start_override") or overrides.get("end_override"))
             event["notes"] = overrides.get("notes", "")

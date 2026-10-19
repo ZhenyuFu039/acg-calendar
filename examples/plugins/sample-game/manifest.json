@@ -1,0 +1,14 @@
+{
+  "api_version": 1,
+  "kind": "local-json",
+  "enabled": true,
+  "game": {
+    "id": "sample-game",
+    "name": "示例游戏（虚构）",
+    "short_name": "示例",
+    "server": "测试服",
+    "timezone": "America/New_York",
+    "source_label": "本地示例数据，非真实游戏公告",
+    "color": "#8873AE"
+  }
+}

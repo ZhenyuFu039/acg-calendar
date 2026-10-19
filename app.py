@@ -17,75 +17,67 @@ import time
 import urllib.parse
 
 from acg_calendar import __version__
-from acg_calendar.collector import Collector
+from acg_calendar.artwork import ArtworkCache
 from acg_calendar.ical import calendar_bytes
-from acg_calendar.parser import ROOT, iso, load_rules, resolve_versions, stamp
+from acg_calendar.parser import ROOT, iso, resolve_versions, stamp
 from acg_calendar.reminders import ReminderEngine, native_available
 from acg_calendar.storage import Store
-from acg_calendar.rewards import summarize_rewards
-from acg_calendar.arknights import ArknightsCollector
-from acg_calendar.games import GAMES, GAME_IDS, game_name
-from acg_calendar.skland import SklandProbe
+from acg_calendar.providers import create_registry
+from acg_calendar.workspace import WorkspaceService, timeline, sort_events
 
 
 class Application:
-    def __init__(self, data_dir: Path, *, auto_sync=True, desktop=True):
+    def __init__(self, data_dir: Path, *, auto_sync=True, desktop=True, registry=None):
         self.data_dir = data_dir
         self.store = Store(data_dir / "calendar.sqlite3")
-        self.collector = Collector(self.store, data_dir)
-        self.collector.seed()
-        self.arknights = ArknightsCollector(self.store, data_dir)
-        self.arknights.seed()
-        self.collectors = {"endfield-cn": self.collector, "arknights-cn": self.arknights}
-        self.skland = SklandProbe(self.store)
+        self.registry = registry or create_registry(self.store, data_dir)
+        self.collectors = {key: p.collector for key, p in self.registry.providers.items()}
+        for collector in self.collectors.values():
+            collector.seed()
+        # Compatibility for existing integrations; host services use the registry.
+        self.collector = self.collectors.get("endfield-cn")
+        self.arknights = self.collectors.get("arknights-cn")
+        self.artwork = ArtworkCache(data_dir)
+        self.workspace = WorkspaceService(self.store, self.registry)
+        self.probes = {key: probe for p in self.registry.providers.values() for key, probe in getattr(p, "probes", {}).items()}
         self.csrf = secrets.token_urlsafe(32)
-        self.reminders = ReminderEngine(self.store)
+        self.reminders = ReminderEngine(self.store, game_names={g["id"]: g["name"] for g in self.registry.games}, enabled_games=self.registry.ids)
         self.stop = threading.Event()
         self.auto_sync = auto_sync
         self.desktop = desktop
 
     def versions(self):
-        versions = self.store.versions()
-        reward_rules = load_rules().get("rewards")
+        versions = [v for v in self.store.versions() if v.get("game") in self.registry.ids]
         for version in versions:
-            if version.get("game") != "endfield-cn":
-                continue
-            # Rebuild legacy local snapshots once from their retained official text.
-            if "reward_mentions" not in version:
-                source = self.data_dir / "sources" / (version["id"] + ".txt")
-                if not source.is_file() and version["source"].get("cid") == "6094":
-                    source = ROOT / "samples/endfield-cn-6094.txt"
-                if source.is_file():
-                    try:
-                        reparsed = self.collector.parser.parse(source.read_text(encoding="utf-8"), cid=version["source"]["cid"], source_url=version["source"]["url"], title=version["source"]["title"], published_at=version["source"].get("published_at"))
-                    except (OSError, ValueError):
-                        reparsed = None
-                    if reparsed:
-                        by_id = {e["id"]: e for e in reparsed["events"]}
-                        version["reward_mentions"] = reparsed["reward_mentions"]
-                        for event in version["events"]:
-                            event["source"]["reward_lines"] = by_id.get(event["id"], {}).get("source", {}).get("reward_lines", [])
-            summarize_rewards(version, reward_rules)
+            self.registry.providers[version["game"]].prepare(version)
         return resolve_versions(versions, self.store.state())
 
     def state(self):
         versions = sorted(self.versions(), key=lambda v: v["maintenance"].get("start") or "", reverse=True)
+        workspace = self.workspace.get()
+        events = [{**event, "version_name": version["name"], "game": version["game"], "game_name": self.registry.name(version["game"])} for version in versions for event in version["events"]]
         return {
-            "games": GAMES,
+            "games": self.registry.games,
+            "provider_api_version": 1, "plugin_errors": self.registry.errors,
+            "workspace": workspace, "plans": self.store.plans(),
+            "event_order": [e["id"] for e in sort_events(events, workspace["view"])],
             "app_version": __version__, "server_time": iso(dt.datetime.now(dt.timezone.utc)),
             "csrf_token": self.csrf, "settings": self.store.settings(),
             "versions": [{k: v for k, v in version.items() if k != "events"} for version in versions],
-            "events": [{**event, "version_name": version["name"], "game": version["game"], "game_name": game_name(version["game"])} for version in versions for event in version["events"]],
+            "events": events,
             "sync": self.store.get_meta("sync", {}), "notifications": self.store.notifications(),
             "native_available": self.desktop and native_available(),
             "desktop_delivery": self.store.get_meta("desktop_delivery"),
             "briefing_previews": self.store.get_meta("briefing_previews", []),
-            "sync_by_game": {"endfield-cn": self.store.get_meta("sync", {}), "arknights-cn": self.store.get_meta("sync:arknights-cn", {})},
-            "source_checks": {"skland": self.store.get_meta("source:skland")},
+            "sync_by_game": {g: self.store.get_meta(p.sync_key, {}) for g, p in self.registry.providers.items()},
+            "source_checks": {key: self.store.get_meta(meta) for key, (meta, _) in self.probes.items()},
         }
 
     def scoped_versions(self, game):
-        if game not in GAME_IDS | {"all"}:
+        if game == "selected":
+            selected = self.workspace.get()["view"]["selected_games"]
+            return [v for v in self.versions() if v["game"] in selected]
+        if game not in self.registry.ids | {"all"}:
             raise ValueError("不支持的游戏")
         return [v for v in self.versions() if game == "all" or v["game"] == game]
 
@@ -94,7 +86,8 @@ class Application:
             if self.auto_sync:
                 for collector in self.collectors.values():
                     collector.start(force=True)
-                threading.Thread(target=self.skland.check, daemon=True, name="skland-availability").start()
+                for key, (_, probe) in self.probes.items():
+                    threading.Thread(target=probe.check, daemon=True, name=key + "-availability").start()
             while not self.stop.is_set():
                 try:
                     self.reminders.tick()
@@ -102,7 +95,7 @@ class Application:
                         now = dt.datetime.now(dt.timezone.utc)
                         interval = self.store.settings()["sync_interval_minutes"] * 60
                         for game, collector in self.collectors.items():
-                            sync = self.store.get_meta("sync" if game == "endfield-cn" else "sync:arknights-cn", {})
+                            sync = self.store.get_meta(self.registry.providers[game].sync_key, {})
                             last = stamp(sync.get("last_attempt"))
                             if not last or (now - last).total_seconds() >= interval:
                                 collector.start()
@@ -115,11 +108,11 @@ class Application:
         event = next((e for v in self.versions() for e in v["events"] if e["id"] == event_id), None)
         if not event:
             raise LookupError("活动不存在")
-        allowed = {"completed", "ignored", "notes", "reminder_minutes", "start_override", "end_override", "clear_overrides"}
+        allowed = {"completed", "ignored", "starred", "notes", "reminder_minutes", "start_override", "end_override", "clear_overrides"}
         if set(payload) - allowed:
             raise ValueError("不支持的活动字段")
         patch, remove = {}, []
-        for flag in ("completed", "ignored"):
+        for flag in ("completed", "ignored", "starred"):
             if flag in payload:
                 if type(payload[flag]) is not bool:
                     raise ValueError("状态字段必须为布尔值")
@@ -154,7 +147,7 @@ class Application:
         allowed = {"active_game", "timezone", "view", "reminders_enabled", "reminder_offsets", "native_notifications", "sync_interval_minutes", "hide_completed"}
         if set(patch) - allowed:
             raise ValueError("不支持的设置字段")
-        if "active_game" in patch and (not isinstance(patch["active_game"], str) or patch["active_game"] not in GAME_IDS | {"all"}):
+        if "active_game" in patch and (not isinstance(patch["active_game"], str) or patch["active_game"] not in self.registry.ids | {"all"}):
             raise ValueError("不支持的游戏")
         for name in ("reminders_enabled", "native_notifications", "hide_completed"):
             if name in patch and type(patch[name]) is not bool:
@@ -208,26 +201,46 @@ def handler_for(application):
             path = urllib.parse.urlsplit(self.path).path
             try:
                 game = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query).get("game", [application.store.settings()["active_game"]])[0]
-                if game not in GAME_IDS | {"all"}:
+                if game not in application.registry.ids | {"all", "selected"}:
+                    game = "all" if "game" not in urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query) else game
+                if game not in application.registry.ids | {"all", "selected"}:
                     raise ValueError("不支持的游戏")
                 if path == "/api/state":
                     return self.send(application.state())
+                if path == "/api/workspace":
+                    return self.send(application.workspace.get())
+                if path == "/api/plugins":
+                    return self.send({"api_version": 1, "games": application.registry.games, "errors": application.registry.errors})
+                if path == "/api/plans":
+                    return self.send({"plans": application.store.plans()})
+                if path == "/api/timeline":
+                    query = urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
+                    workspace = application.workspace.get()
+                    if "games" in query:
+                        selected = query["games"][0].split(",") if query["games"][0] else []
+                        if set(selected) - application.registry.ids:
+                            raise ValueError("不支持的游戏组合")
+                        workspace["view"]["selected_games"] = selected
+                    timezone = query.get("timezone", [application.store.settings()["timezone"]])[0]
+                    if timezone == "auto":
+                        timezone = "UTC"  # Clients pass their actual IANA zone.
+                    return self.send(timeline(application.versions(), workspace, application.store.plans(), timezone=timezone, hide_completed=application.store.settings()["hide_completed"]))
                 if path == "/api/rules":
-                    return self.send({"games": {g: load_rules(ROOT / "rules" / (g + ".json")) for g in sorted(GAME_IDS)}} if game == "all" else load_rules(ROOT / "rules" / (game + ".json")))
+                    return self.send(application.registry.rules("all" if game == "selected" else game))
                 if path == "/api/export":
-                    config = {"games": {g: load_rules(ROOT / "rules" / (g + ".json")) for g in sorted(GAME_IDS)}} if game == "all" else load_rules(ROOT / "rules" / (game + ".json"))
+                    config = application.registry.rules("all" if game == "selected" else game)
                     return self.send({"schema_version": 1, "exported_at": iso(dt.datetime.now(dt.timezone.utc)), "rules": config, "versions": application.scoped_versions(game)}, filename=game + "-calendar.json")
                 if path == "/api/calendar.ics":
-                    return self.send(calendar_bytes(application.scoped_versions(game), application.store.settings()), content_type="text/calendar; charset=utf-8", filename="playtime-" + ("endfield" if game == "endfield-cn" else game) + ".ics")
+                    return self.send(calendar_bytes(application.scoped_versions(game), application.store.settings(), games=application.registry.games), content_type="text/calendar; charset=utf-8", filename="playtime-" + ("endfield" if game == "endfield-cn" else game) + ".ics")
                 if path == "/api/health":
                     return self.send({"ok": True, "version": __version__})
                 if path.startswith("/api/artwork/"):
-                    image = application.collector.artwork.path(path.removeprefix("/api/artwork/"))
+                    image = application.artwork.path(path.removeprefix("/api/artwork/"))
                     if image:
                         content_type = {".jpg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}[image.suffix]
                         return self.send(image.read_bytes(), content_type=content_type, cache_control="private, max-age=604800, immutable")
                     return self.send({"error": "图片尚未缓存"}, 404)
-                assets = {"/": "index.html", "/app.js": "app.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg", "/assets/oroberyl.png": "assets/oroberyl.png", "/assets/arknights-logo.png": "assets/arknights-logo.png", "/assets/endfield-icon-zh.svg": "assets/endfield-icon-zh.svg"}
+                assets = {"/": "index.html", "/app.js": "app.js", "/workspace.js": "workspace.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg", "/assets/oroberyl.png": "assets/oroberyl.png", "/assets/arknights-logo.png": "assets/arknights-logo.png", "/assets/endfield-icon-zh.svg": "assets/endfield-icon-zh.svg"}
                 if path not in assets:
                     return self.send({"error": "页面不存在"}, 404)
                 file = ROOT / "web" / assets[path]
@@ -246,6 +259,9 @@ def handler_for(application):
         def do_PATCH(self):
             self.mutate()
 
+        def do_DELETE(self):
+            self.mutate()
+
         def mutate(self):
             if not self.valid_host():
                 return self.send({"error": "仅允许本机访问"}, 403)
@@ -262,13 +278,25 @@ def handler_for(application):
                 if not isinstance(payload, dict):
                     raise ValueError("请求应为 JSON 对象")
                 path = urllib.parse.urlsplit(self.path).path
+                if self.command == "DELETE":
+                    match = re.fullmatch(r"/api/plans/(plan-[a-f0-9]{32})", path)
+                    if not match:
+                        return self.send({"error": "接口不存在"}, 404)
+                    application.store.delete_plan(match.group(1))
+                    return self.send(application.state())
                 if path == "/api/sync":
                     game = payload.get("game", application.store.settings()["active_game"])
-                    if not isinstance(game, str) or game not in GAME_IDS | {"all"}:
+                    if not isinstance(game, str) or game not in application.registry.ids | {"all", "selected"}:
                         raise ValueError("不支持的游戏")
                     for key, collector in application.collectors.items():
-                        if game in {key, "all"}:
+                        if game in {key, "all"} or (game == "selected" and key in application.workspace.get()["view"]["selected_games"]):
                             collector.start()
+                elif path == "/api/workspace":
+                    application.workspace.update(payload)
+                elif path == "/api/plans":
+                    application.workspace.plan(payload)
+                elif match := re.fullmatch(r"/api/plans/(plan-[a-f0-9]{32})", path):
+                    application.workspace.plan(payload, match.group(1))
                 elif path == "/api/settings":
                     application.update_settings(payload)
                 elif path == "/api/notifications/test":

@@ -27,6 +27,7 @@ class Store:
                 CREATE TABLE IF NOT EXISTS versions (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS local_state (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS meta (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
+                CREATE TABLE IF NOT EXISTS personal_plans (id TEXT PRIMARY KEY, payload TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS notifications (
                     id TEXT PRIMARY KEY, event_id TEXT, created_at TEXT NOT NULL,
                     payload TEXT NOT NULL, is_read INTEGER NOT NULL DEFAULT 0
@@ -57,6 +58,36 @@ class Store:
     def state(self):
         with self.connection() as conn:
             return {row[0]: json.loads(row[1]) for row in conn.execute("SELECT id,payload FROM local_state")}
+
+    def replace_game_versions(self, game, versions):
+        """Replace only a provider's complete snapshot, in one transaction.
+
+        Personal state is never removed, even if a source temporarily omits an ID.
+        """
+        if any(v.get("game") != game for v in versions):
+            raise ValueError("适配器只能写入自己的游戏")
+        with self.connection() as conn:
+            old = [row[0] for row in conn.execute("SELECT id,payload FROM versions") if json.loads(row[1]).get("game") == game]
+            for key in old:
+                conn.execute("DELETE FROM versions WHERE id=?", (key,))
+            for version in versions:
+                existing = conn.execute("SELECT payload FROM versions WHERE id=?", (version["id"],)).fetchone()
+                if existing and json.loads(existing[0]).get("game") != game:
+                    raise ValueError("插件版本 ID 与其他游戏冲突")
+                conn.execute("INSERT INTO versions VALUES (?,?)", (version["id"], json.dumps(version, ensure_ascii=False)))
+
+    def plans(self):
+        with self.connection() as conn:
+            return [json.loads(row[0]) for row in conn.execute("SELECT payload FROM personal_plans ORDER BY id")]
+
+    def save_plan(self, plan):
+        with self.connection() as conn:
+            conn.execute("INSERT INTO personal_plans VALUES (?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload", (plan["id"], json.dumps(plan, ensure_ascii=False)))
+
+    def delete_plan(self, key):
+        with self.connection() as conn:
+            if not conn.execute("DELETE FROM personal_plans WHERE id=?", (key,)).rowcount:
+                raise LookupError("个人计划不存在")
 
     def update_state(self, key, patch, remove=()):
         with self.connection() as conn:

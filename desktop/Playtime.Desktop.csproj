@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>Playtime</AssemblyName>
-    <Version>0.0.4</Version>
+    <Version>0.0.5</Version>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>../web/assets/playtime.ico</ApplicationIcon>
   </PropertyGroup>

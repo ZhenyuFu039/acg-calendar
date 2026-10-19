@@ -43,7 +43,7 @@ public static class Program
 }
 
 public record Endpoint(string? At, string State);
-public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source, JsonElement Artwork, JsonElement Reward, string Game)
+public record CalendarEvent(string Id, string Title, string Category, Endpoint Start, Endpoint End, bool Completed, bool Ignored, string Time_Kind, JsonElement Source, JsonElement Artwork, JsonElement Reward, string Game, bool Starred = false)
 {
     public DateTimeOffset? Begin => Parse(Start.At);
     public DateTimeOffset? Finish => Parse(End.At);
@@ -93,6 +93,12 @@ public sealed partial class CalendarWindow : Window
         this.root = root; this.offline = offline; this.smoke = smoke;
         dataDirectory = smoke ? Path.Combine(root, "logs", "desktop-smoke", DateTime.UtcNow.ToString("yyyyMMdd-HHmmss-fff")) : Path.Combine(root, "data");
         preferences = Path.Combine(dataDirectory, "desktop-window.json");
+        if (smoke)
+        {
+            var sample = Path.Combine(dataDirectory, "plugins", "sample-game"); Directory.CreateDirectory(sample);
+            foreach (var name in new[] { "manifest.json", "events.json" })
+                File.Copy(Path.Combine(root, "examples", "plugins", "sample-game", name), Path.Combine(sample, name));
+        }
         Title = "游时 · 桌面日历"; Width = 390; Height = 620;
         var iconUri = new Uri("pack://application:,,,/Assets/playtime.ico");
         Icon = System.Windows.Media.Imaging.BitmapDecoder.Create(iconUri, System.Windows.Media.Imaging.BitmapCreateOptions.PreservePixelFormat, System.Windows.Media.Imaging.BitmapCacheOption.OnLoad).Frames.Last();
@@ -216,11 +222,12 @@ public sealed partial class CalendarWindow : Window
             csrf = state.RootElement.GetProperty("csrf_token").GetString()!;
             notificationsMenu.Checked = state.RootElement.GetProperty("settings").GetProperty("native_notifications").GetBoolean();
             UpdateReminderControls(state.RootElement.GetProperty("settings"));
+            UpdateProviders(state.RootElement);
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
             events = events.Select(e => e with { Source = e.Source.Clone(), Artwork = e.Artwork.ValueKind == JsonValueKind.Undefined ? default : e.Artwork.Clone(), Reward = e.Reward.ValueKind == JsonValueKind.Undefined ? default : e.Reward.Clone() }).ToArray();
-            var current = state.RootElement.GetProperty("versions").EnumerateArray().First(v => v.GetProperty("game").GetString() == "endfield-cn");
-            if (current.TryGetProperty("reward_summary", out var summary))
+            var current = state.RootElement.GetProperty("versions").EnumerateArray().FirstOrDefault(v => v.TryGetProperty("reward_summary", out _));
+            if (current.ValueKind == JsonValueKind.Object && current.TryGetProperty("reward_summary", out var summary))
             {
                 verifiedRewardTotal = summary.GetProperty("verified_total").GetInt32();
                 rewardTotal.Text = current.GetProperty("name").GetString() + $" · 活动已核实 {verifiedRewardTotal:N0} 玉";
@@ -233,9 +240,9 @@ public sealed partial class CalendarWindow : Window
     void Render()
     {
         clock.Text = DateTime.Now.ToString("M月d日 dddd HH:mm") + " · 本机时区";
-        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("正在加载本地活动…")); return; }
-        var scoped = events.Where(e => selectedGame == "all" || e.Game == selectedGame).ToArray();
-        rewardHeader.Visibility = selectedGame == "arknights-cn" ? Visibility.Collapsed : Visibility.Visible;
+        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("当前没有活动数据，可在侧栏同步或检查插件。")); return; }
+        var scoped = events.Where(e => InScope(e.Game)).ToArray();
+        rewardHeader.Visibility = scoped.Any(e => e.Reward.ValueKind == JsonValueKind.Object) ? Visibility.Visible : Visibility.Collapsed;
         subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + scoped.Length + " 项" : "接下来，别错过";
         allButton.Content = showAll ? "仅看近期" : "全部活动";
         densityButton.Content = dense ? "图文模式" : "紧凑模式";
@@ -245,28 +252,29 @@ public sealed partial class CalendarWindow : Window
         if (selected is DateTime chosen)
             shown = shown.Where(e => e.Begin != null && e.Begin.Value.LocalDateTime.Date <= chosen.Date && (e.Finish?.LocalDateTime.Date >= chosen.Date || (e.Time_Kind == "point" ? e.Begin.Value.LocalDateTime.Date == chosen.Date : e.Finish == null)));
         else if (!showAll) shown = shown.Where(e => e.Finish > now || e.Begin > now || (e.Finish == null && e.Time_Kind != "point"));
-        var ordered = shown.OrderBy(e => e.Next ?? DateTimeOffset.MaxValue).ToArray();
+        if (hideFuture) shown = shown.Where(e => e.Begin != null && e.Begin <= now);
+        var ordered = shown.OrderBy(e => eventOrder.GetValueOrDefault(e.Id, int.MaxValue)).ThenBy(e => e.Id).ToArray();
         foreach (var entry in ordered)
         {
             string[] palette = ["#69946e", "#5e8ea3", "#ae825d", "#8f7bac", "#9f8f4c", "#668f91", "#b07679", "#7b8e57"];
             uint hash = 0; foreach (char letter in entry.Id) hash = unchecked(hash * 31 + letter);
             var color = Brush(palette[hash % 8]);
-            var gameColor = Brush(entry.Game == "arknights-cn" ? "#477E9F" : "#A38337");
+            var gameColor = Brush(GameColor(entry.Game));
             var card = new Border { Background = CardBackground(), CornerRadius = new CornerRadius(8), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = gameColor, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
             AttachBubbleDrag(card);
             var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
-            var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(3), ToolTip = entry.Game == "arknights-cn" ? "明日方舟" : "终末地" };
-            badge.Child = new Image { Source = GamePicture(entry.Game), Stretch = Stretch.Uniform }; layout.Children.Add(badge);
+            var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), Padding = new Thickness(3), ToolTip = GameLabel(entry.Game) };
+            badge.Child = (UIElement)GameIdentity(entry.Game); layout.Children.Add(badge);
             var body = new StackPanel();
             string type = entry.Category switch { "gacha" => "寻访", "exchange" => "兑换", "update" => "更新", "maintenance" => "维护", _ => "活动" };
-            if (selectedGame == "all") type = (entry.Game == "arknights-cn" ? "明日方舟" : "终末地") + " · " + type;
+            if (selectedGame is "all" or "selected") type = GameLabel(entry.Game) + " · " + type;
             var heading = new DockPanel();
             var done = Button(entry.Completed ? "↶" : "✓", async () => await Mutate("/api/events/" + entry.Id, new { completed = !entry.Completed }, true));
             done.ToolTip = entry.Completed ? "撤销完成" : "标记完成"; done.Padding = new Thickness(6, 2, 6, 2); DockPanel.SetDock(done, Dock.Right); heading.Children.Add(done);
             var title = new Grid { MinHeight = dense ? 23 : 42 };
             if (Picture(entry) is ImageSource picture)
                 title.Children.Add(new Image { Source = picture, Width = 170, Height = dense ? 30 : 46, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Stretch = Stretch.UniformToFill, Opacity = .5, OpacityMask = new LinearGradientBrush(Colors.Black, Colors.Transparent, new Point(0, .5), new Point(1, .5)), IsHitTestVisible = false });
-            title.Children.Add(Text(entry.Title, dense ? 12 : 14, true)); heading.Children.Add(title); body.Children.Add(heading);
+            title.Children.Add(Text((entry.Starred ? "★ " : "") + entry.Title, dense ? 12 : 14, true)); heading.Children.Add(title); body.Children.Add(heading);
             bool upcoming = entry.Begin > now;
             var due = upcoming ? entry.Begin : entry.Finish;
             string certainty = (upcoming ? entry.Start.State : entry.End.State) == "estimated" ? "预计 " : "";
@@ -293,6 +301,7 @@ public sealed partial class CalendarWindow : Window
                 body.Children.Add(line);
             }
             var actions = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
+            actions.Children.Add(Button(entry.Starred ? "取消收藏" : "☆ 收藏", async () => await Mutate("/api/events/" + entry.Id, new { starred = !entry.Starred }, true)));
             actions.Children.Add(Button("标记完成", async () => await Mutate("/api/events/" + entry.Id, new { completed = true }, true)));
             if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button(entry.Game == "arknights-cn" ? "PRTS ↗" : "公告 ↗", () => Open(source.GetString()!)));
             if (!dense) body.Children.Add(actions); Grid.SetColumn(body, 1); layout.Children.Add(body); card.Child = layout; cards.Children.Add(card);
@@ -314,7 +323,7 @@ public sealed partial class CalendarWindow : Window
                 bitmap.CacheOption = System.Windows.Media.Imaging.BitmapCacheOption.OnLoad;
                 bitmap.UriSource = new Uri(Path.Combine(root, "web", "assets", "arknights-logo.png")); bitmap.EndInit(); image = bitmap;
             }
-            else
+            else if (game == "endfield-cn")
             {
                 // This bundled icon contains only paths in a 512-square viewBox.
                 using var reader = XmlReader.Create(Path.Combine(root, "web", "assets", "endfield-icon-zh.svg"), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
@@ -324,6 +333,7 @@ public sealed partial class CalendarWindow : Window
                     drawing.Children.Add(new GeometryDrawing(Brushes.Black, null, Geometry.Parse(path.Attribute("d")!.Value)));
                 image = new DrawingImage(drawing);
             }
+            else return null;
             image.Freeze(); gamePictures[game] = image; return image;
         }
         catch { return null; }
@@ -410,11 +420,18 @@ public sealed partial class CalendarWindow : Window
             byte[] ics = await http.GetByteArrayAsync(address + "/api/calendar.ics");
             if (!System.Text.Encoding.UTF8.GetString(ics).StartsWith("BEGIN:VCALENDAR")) throw new Exception("Calendar export failed");
             SaveRender("widget.png"); ShowMode(false); showAll = true; Render(); SaveRender("month.png");
-            gameSelect.SelectedIndex = 1; Render(); SaveRender("arknights.png");
+            gameSelect.SelectedValue = "arknights-cn"; Render(); SaveRender("arknights.png");
             if (cards.Children.Count != events.Count(e => e.Game == "arknights-cn") || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("Arknights filter or currency isolation failed");
             byte[] arkIcs = await http.GetByteArrayAsync(address + "/api/calendar.ics?game=arknights-cn");
             if (!System.Text.Encoding.UTF8.GetString(arkIcs).Contains("PRTS")) throw new Exception("Arknights calendar attribution missing");
-            gameSelect.SelectedIndex = 2; Render(); SaveRender("combined.png");
+            gameSelect.SelectedValue = "sample-game"; Render(); SaveRender("plugin.png");
+            if (cards.Children.Count != 2 || rewardHeader.Visibility != Visibility.Collapsed || GamePicture("sample-game") != null) throw new Exception("Third-party game metadata or currency isolation failed");
+            await Mutate("/api/workspace", new { view = new { selected_games = new[] { "endfield-cn", "sample-game" }, scope = "selected", sort = "remaining" } }, true);
+            gameSelect.SelectedValue = "selected"; Render(); SaveRender("selected-games.png");
+            if (cards.Children.Count != events.Count(e => e.Game != "arknights-cn")) throw new Exception("Custom game combination omitted or leaked entries");
+            byte[] selectedIcs = await http.GetByteArrayAsync(address + "/api/calendar.ics?game=selected");
+            if (System.Text.Encoding.UTF8.GetString(selectedIcs).Contains("PRTS")) throw new Exception("Custom game export leaked unselected games");
+            gameSelect.SelectedValue = "all"; Render(); SaveRender("combined.png");
             if (cards.Children.Count != events.Length) throw new Exception("All-activities view omitted entries");
             bool appearanceVerified = await AppearanceSmokeTest();
             month.SelectedDate = DateTime.Today.AddDays(1);

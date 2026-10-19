@@ -37,9 +37,11 @@ def native_notify(title, body):
 
 
 class ReminderEngine:
-    def __init__(self, store, sender=native_notify):
+    def __init__(self, store, sender=native_notify, *, game_names=None, enabled_games=None):
         self.store = store
         self.sender = sender
+        self.game_names = game_names or {}
+        self.enabled_games = enabled_games
         self.delivery_lock = threading.Lock()
 
     def tick(self, now=None):
@@ -49,6 +51,8 @@ class ReminderEngine:
             return []
         created = []
         for version in resolve_versions(self.store.versions(), self.store.state()):
+            if self.enabled_games is not None and version.get("game") not in self.enabled_games:
+                continue
             for event in version["events"]:
                 if event["completed"] or event["ignored"] or event.get("invalid_interval") or event["time_kind"] == "point":
                     continue
@@ -64,7 +68,7 @@ class ReminderEngine:
                 if threshold is None:
                     continue
                 key = hashlib.sha256(f"{event['id']}|{endpoint['at']}|{threshold}".encode()).hexdigest()
-                payload = {"title": event["title"], "game": version.get("game", "endfield-cn"), "game_name": game_name(version.get("game", "endfield-cn")), "message": "活动已到截止时间" if threshold == 0 else "活动即将结束", "end_at": endpoint["at"], "threshold_minutes": threshold, "kind": "deadline"}
+                payload = {"title": event["title"], "game": version.get("game", "endfield-cn"), "game_name": self.game_names.get(version.get("game"), game_name(version.get("game", "endfield-cn"))), "message": "活动已到截止时间" if threshold == 0 else "活动即将结束", "end_at": endpoint["at"], "threshold_minutes": threshold, "kind": "deadline"}
                 if self.store.add_notification(key, event["id"], payload, iso(now)):
                     created.append(payload)
         if created and settings["native_notifications"]:

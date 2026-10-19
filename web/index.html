@@ -8,6 +8,7 @@
   <title>游时 · 游戏活动日历</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <script src="/workspace.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -19,27 +20,30 @@
   <div class="app-layout">
     <aside class="sidebar" aria-label="日历筛选">
       <div class="sidebar-label">我的游戏</div>
-      <label class="field-label" for="game-select">日历游戏</label><select id="game-select" aria-label="选择游戏"><option value="endfield-cn">明日方舟：终末地</option><option value="arknights-cn">明日方舟</option><option value="all">全部游戏 · 对照排期</option></select>
+      <label class="field-label" for="game-select">日历游戏</label><select id="game-select" aria-label="选择游戏"><option>加载中…</option></select>
+      <details class="game-combination"><summary>自选游戏组合</summary><div id="game-combination"></div><p class="help-text">勾选后共用日期轴，提醒仍覆盖全部已安装游戏。</p></details>
       <div class="game-card"><div class="game-monogram" aria-hidden="true">EF<span>CN</span></div><div><strong id="game-name">明日方舟：终末地</strong><span id="game-source-note">国服 · UTC+8</span></div></div>
       <label class="field-label version-label" for="version-select">版本</label><select id="version-select" aria-label="选择版本"><option>加载中…</option></select>
       <div class="sidebar-section"><div class="sidebar-label">活动类型</div><div id="category-filters"></div></div>
-      <div class="sidebar-section sidebar-options"><label class="check-row"><input id="hide-completed" type="checkbox"><span>隐藏已完成</span></label><label class="check-row"><input id="include-pending" type="checkbox" checked><span>显示截止待定</span></label></div>
+      <div class="sidebar-section sidebar-options"><label class="check-row"><input id="hide-completed" type="checkbox"><span>隐藏已完成</span></label><label class="check-row"><input id="include-pending" type="checkbox" checked><span>显示截止待定</span></label><label class="check-row"><input id="hide-future" type="checkbox"><span>隐藏未开放 / 开始待定</span></label><label class="field-label" for="event-sort">活动行排序</label><select id="event-sort"><option value="start">按开始时间</option><option value="remaining">按剩余时间</option><option value="title">按标题</option></select><label class="field-label" for="event-group">时间轴分组</label><select id="event-group"><option value="category">活动类型</option><option value="game">游戏</option><option value="none">不分组</option></select></div>
       <div class="sidebar-note"><span class="tiny-label">时间标记</span><span><i class="legend-solid"></i>来源明确时间</span><span><i class="legend-estimate"></i>预计 / 待核实</span><span><i class="legend-unknown"></i>结束尚未公布</span></div>
       <div class="sidebar-bottom"><button id="rules-button" class="sidebar-action" type="button"><span aria-hidden="true">{ }</span> 日历解析 JSON <span aria-hidden="true">↗</span></button><button id="settings-button" class="sidebar-action" type="button"><span aria-hidden="true">⚙</span> 日历与提醒设置</button><p><span id="source-caption">官方公告与版本导览 · 无 AI 调用</span><br><span id="app-version">DEMO</span></p></div>
     </aside>
     <main id="main-content" class="main-content">
       <div class="page-heading"><div><div class="eyebrow">ENDFIELD / ACTIVITY CALENDAR</div><h1>把活动排进日历<span class="heading-dot">.</span></h1><p id="version-summary">正在读取本地活动数据…</p></div><div class="heading-controls"><label class="timezone-label" for="timezone-select">显示时区<select id="timezone-select"><option value="auto">跟随系统</option><option value="America/New_York">纽约</option><option value="Asia/Shanghai">北京 / 服务器</option><option value="Asia/Tokyo">东京</option><option value="Europe/London">伦敦</option><option value="UTC">UTC</option></select></label><div id="zone-offset" class="timezone-offset"></div></div></div>
-      <div id="source-status" class="source-status" role="status"></div>
-      <section id="reward-summary" class="reward-summary" aria-label="版本嵌晶玉统计"></section>
-      <section class="calendar-panel" aria-label="活动日历">
+      <div class="workspace-modules">
+      <div data-module="sources" id="source-status" class="source-status" role="status"></div>
+      <section data-module="rewards" id="reward-summary" class="reward-summary" aria-label="版本嵌晶玉统计"></section>
+      <section data-module="calendar" class="calendar-panel" aria-label="活动日历">
         <div class="calendar-toolbar"><div class="date-navigation"><button id="previous-period" class="icon-button" type="button" aria-label="上一段日期">‹</button><button id="next-period" class="icon-button" type="button" aria-label="下一段日期">›</button><h2 id="period-title">加载日历…</h2><button id="today-button" class="button button-small" type="button">今天</button></div><div class="view-controls"><label class="range-control"><span class="sr-only">时间轴显示天数</span><select id="range-select"><option value="7">一周</option><option value="14" selected>两周</option><option value="28">四周</option></select></label><div class="view-switch" role="group" aria-label="日历视图"><button id="timeline-view" type="button" aria-pressed="true">时间轴</button><button id="month-view" type="button" aria-pressed="false">月历</button><button id="list-view" type="button" aria-pressed="false">全部活动</button></div></div></div>
         <div class="calendar-context"><span id="visible-summary"></span><div><button id="maintenance-button" class="text-button" type="button">查看维护时间</button><span class="context-divider">/</span><a class="text-button" href="/api/calendar.ics" download title="仅导出时间已确认的活动。导入日历应用的是快照，不会自动同步到系统时钟面板。">导出日历 .ics ↗</a><span class="context-divider">/</span><button id="export-button" class="text-button" type="button">导出 JSON ↗</button></div></div>
         <div class="catalog-tools"><label class="event-search"><span class="sr-only">搜索活动名称</span><input id="event-search" type="search" placeholder="搜索活动、寻访或玩法…" autocomplete="off"></label><button id="fit-version" class="button button-small" type="button">版本全览</button><button id="reset-filters" class="text-button" type="button">显示全部</button><span id="catalog-count"></span></div>
-        <div id="deadline-strip" class="deadline-strip"></div>
+        <div data-module="deadlines" id="deadline-strip" class="deadline-strip"></div>
         <div id="calendar" class="calendar" aria-live="polite"></div>
         <div class="calendar-legend"><span><i class="progress-sample"></i>深色表示已过去的时间</span><span><i class="open-sample"></i>斜纹表示结束时间待定</span><span>点击活动查看原文与精确时间</span></div>
+        <section id="unscheduled" class="unscheduled" hidden></section>
       </section>
-      <section id="unscheduled" class="unscheduled" hidden></section>
+      </div>
       <footer class="main-footer"><span id="sync-status">本地数据</span><span id="clock-label"></span></footer>
       <div id="load-error" class="load-error" hidden role="alert"></div>
     </main>
