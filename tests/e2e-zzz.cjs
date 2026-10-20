@@ -50,6 +50,7 @@ const fetch=url=>new Promise((resolve,reject)=>{http.get(url,r=>{const b=[];r.on
   for(const game of ['arknights-cn','nikke-global','azurlane-cn'])await page.locator('[data-select-game="'+game+'"]').uncheck();
   await page.waitForFunction(()=>document.body.dataset.game==='selected');
   const selected=await(await fetch(base+'/api/state')).json();assert.deepEqual(new Set(selected.workspace.view.selected_games),new Set(['endfield-cn','zzz-cn']));
+  await page.waitForFunction(()=>document.querySelectorAll('.catalog-event').length===49);
   assert.equal(await page.locator('.catalog-event').count(),49);
   const ics=await(await fetch(base+'/api/calendar.ics?game=zzz-cn')).text();
   assert.equal((ics.match(/BEGIN:VEVENT/g)||[]).length,11);assert.doesNotMatch(ics,/PRTS|倾掷浮生/);

@@ -5,6 +5,9 @@ import urllib.parse
 import urllib.request
 import zlib
 
+from .network import read_response
+from . import __version__
+
 CDN_PREFIX = "/endfield/webview/_version_briefing/"
 
 
@@ -29,10 +32,9 @@ def fetch_text(url):
     if not official_url(url):
         raise ValueError("采集仅支持已配置的游戏官方来源")
     limit = 6_000_000
-    request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (compatible; Playtime/0.0.4)", "Accept": "application/json,text/html,application/javascript;q=0.9", "Accept-Language": "zh-CN,zh;q=0.9", "Accept-Encoding": "identity"})
-    with urllib.request.build_opener(OfficialRedirect()).open(request, timeout=20) as response:
-        raw = response.read(limit + 1)
-        charset = response.headers.get_content_charset() or "utf-8"
+    request = urllib.request.Request(url, headers={"User-Agent": f"Mozilla/5.0 (compatible; Playtime/{__version__})", "Accept": "application/json,text/html,application/javascript;q=0.9", "Accept-Language": "zh-CN,zh;q=0.9", "Accept-Encoding": "identity"})
+    response = read_response(request, OfficialRedirect, limit=limit, timeout=20)
+    raw, charset = response.data, response.charset
     if raw[:2] == b"\x1f\x8b":
         decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
         raw = decoder.decompress(raw, limit + 1)

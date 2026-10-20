@@ -8,6 +8,7 @@ import urllib.parse
 import urllib.request
 
 from . import __version__
+from .network import read_response
 
 HOSTS = {"web.hycdn.cn"}
 MAX_BYTES = 5_000_000
@@ -43,8 +44,7 @@ def download(url):
     if not official_image(url):
         raise ValueError("仅缓存官方图片 CDN")
     request = urllib.request.Request(url, headers={"User-Agent": f"Mozilla/5.0 (compatible; Playtime/{__version__})"})
-    with urllib.request.build_opener(OfficialRedirect()).open(request, timeout=10) as response:
-        data = response.read(MAX_BYTES + 1)
+    data = read_response(request, OfficialRedirect, limit=MAX_BYTES, timeout=10, image=True).data
     if len(data) > MAX_BYTES:
         raise ValueError("图片超过 5MB")
     image_kind(data)

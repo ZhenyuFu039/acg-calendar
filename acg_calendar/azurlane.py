@@ -11,6 +11,7 @@ import urllib.parse
 from .artwork import image_kind
 from .azurlane_http import AzurLaneHTTP, allowed
 from .gamekee import atomic_json
+from .network import network_job
 from .parser import iso, stamp, maintenance_start_estimate
 from .plugin_media import local_file
 from .providers import JsonProvider, bounded_json
@@ -231,6 +232,7 @@ class AzurLaneProvider(JsonProvider):
             raise ValueError('Wiki 接口错误：' + str(result['error'].get('code')))
         return result
 
+    @network_job
     def collect(self, now=None):
         now = now or dt.datetime.now(dt.timezone.utc)
         index = self.api({'action': 'parse', 'page': '游戏活动表', 'prop': 'wikitext|revid'})['parse']

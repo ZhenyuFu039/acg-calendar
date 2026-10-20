@@ -7,6 +7,7 @@ import urllib.parse
 import urllib.request
 
 from . import __version__
+from .network import read_response
 
 
 def secure_url(url):
@@ -49,14 +50,9 @@ class GameKeeHTTP:
                 if not parent.allowed(newurl, image=image) or urllib.parse.urlsplit(newurl).hostname != urllib.parse.urlsplit(req.full_url).hostname:
                     raise ValueError("GameKee 跳转超出配置来源")
                 return super().redirect_request(req, fp, code, msg, headers, newurl)
-        delay = self.interval - (time.monotonic() - self.last)
-        if delay > 0:
-            time.sleep(delay)
-        self.last = time.monotonic()
         headers = {"User-Agent": f"Mozilla/5.0 (compatible; PlaytimeCalendar/{__version__})", "game-alias": self.alias, "Lang": "zh-cn", "X-Requested-With": "XMLHttpRequest", "Referer": f"https://www.gamekee.com/{self.alias}/", "Accept-Encoding": "identity"}
         limit = 5_000_000 if image else 6_000_000
-        with urllib.request.build_opener(Redirect()).open(urllib.request.Request(url, headers=headers), timeout=20) as response:
-            data = response.read(limit + 1)
+        data = read_response(urllib.request.Request(url, headers=headers), Redirect, limit=limit, timeout=20, image=image, min_interval=self.interval).data
         if len(data) > limit:
             raise ValueError("GameKee 响应超过大小限制")
         return data

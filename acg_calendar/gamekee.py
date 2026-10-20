@@ -14,6 +14,7 @@ import unicodedata
 
 from .artwork import image_kind
 from .gamekee_http import GameKeeHTTP, secure_url
+from .network import network_job
 from .parser import iso, stamp
 from .plugin_media import local_file
 from .providers import JsonProvider, bounded_json, date_value, public_url
@@ -410,6 +411,7 @@ class GameKeeProvider(JsonProvider):
         atomic_json(path, notice)
         return notice
 
+    @network_job
     def collect(self, now=None):
         now = now or dt.datetime.now(dt.timezone.utc)
         servers = self.read_json("/v1/gameServer/list")["data"]

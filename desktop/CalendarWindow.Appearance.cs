@@ -16,7 +16,7 @@ public sealed partial class CalendarWindow
     readonly Grid desktopLayout = new();
     readonly ColumnDefinition sidebarColumn = new();
     readonly Border desktopShell = new(), sidebar = new();
-    readonly StackPanel sidebarRail = new(), navigation = new(), desktopSettings = new();
+    readonly StackPanel sidebarRail = new(), navigation = new(), desktopSettings = new(), reminderSettings = new(), networkSettings = new();
     readonly Grid sidebarPanel = new();
     readonly CheckBox bubbleToggle = new(), nativeToggle = new(), reminderToggle = new();
     readonly Slider opacitySlider = new(), widthSlider = new(), heightSlider = new();
@@ -25,7 +25,8 @@ public sealed partial class CalendarWindow
     readonly int[] reminderOffsets = [4320, 1440, 60];
     ScrollViewer cardScroll = null!;
     FrameworkElement heading = null!, summaryPanel = null!, footer = null!;
-    Button navigationTab = null!, settingsTab = null!, collapseSidebar = null!;
+    Button navigationTab = null!, settingsTab = null!, remindersTab = null!, networkTab = null!, collapseSidebar = null!;
+    string sidebarPage = "calendar";
     Forms.ToolStripMenuItem? bubbleMenu;
     bool bubbleMode, sidebarOpen, settingsOpen, applyingAppearance, appearanceReady, updatingSettings;
     double cardOpacity = .85, widgetWidth = 390, widgetHeight = 620, calendarWidth = 820, calendarHeight = 720;
@@ -42,10 +43,11 @@ public sealed partial class CalendarWindow
             layout.RowDefinitions.Add(new RowDefinition { Height = height });
         var titleArea = new StackPanel { Margin = new Thickness(0, 0, 0, 12) }; heading = titleArea;
         var title = new DockPanel();
-        var close = Button("×", () => Hide()); close.ToolTip = "收起到系统托盘，提醒继续运行";
+        var close = Button("×", CloseToDesktop); close.ToolTip = "关闭主窗口，按设置保留桌面挂件或收起托盘";
         DockPanel.SetDock(close, Dock.Right); title.Children.Add(close);
+        pin = PinButton(false); DockPanel.SetDock(pin, Dock.Right); title.Children.Add(pin);
         title.Children.Add(new Image { Source = Icon, Width = 33, Height = 33, Margin = new Thickness(0, 1, 9, 0), VerticalAlignment = VerticalAlignment.Top, IsHitTestVisible = false });
-        var brand = new StackPanel(); brand.Children.Add(Text("游时  PLAYTIME", 18, true));
+        var brand = new StackPanel(); brand.Children.Add(Text("// PLAYTIME", 22, true));
         clock.FontSize = 10; clock.Foreground = Muted; clock.Margin = new Thickness(0, 4, 0, 0); brand.Children.Add(clock);
         brand.MouseLeftButtonDown += (_, e) => { if (e.ClickCount == 2) ToggleMode(); else DragMove(); };
         title.Children.Add(brand); titleArea.Children.Add(title);
@@ -66,7 +68,7 @@ public sealed partial class CalendarWindow
         Grid.SetColumn(cardScroll, 1); content.Children.Add(cardScroll); Grid.SetRow(content, 2); layout.Children.Add(content);
         status.FontSize = 10; status.Foreground = Muted; status.TextWrapping = TextWrapping.Wrap; status.Margin = new Thickness(0, 10, 0, 0); footer = status;
         Grid.SetRow(status, 3); layout.Children.Add(status); desktopShell.Child = layout;
-        Grid.SetColumn(desktopShell, 1); desktopLayout.Children.Add(desktopShell); Content = desktopLayout;
+        Grid.SetColumn(desktopShell, 1); desktopLayout.Children.Add(desktopShell); BuildInteractionShell();
         var menu = new ContextMenu();
         AddContext(menu, "打开侧边栏", () => OpenSidebar(false));
         AddContext(menu, "桌面设置 / 气泡透明度", () => OpenSidebar(true));
@@ -92,6 +94,7 @@ public sealed partial class CalendarWindow
     void Section(StackPanel panel, string label)
     {
         var title = Text(label, 11, true); title.Foreground = Muted; title.Margin = new Thickness(0, 12, 0, 7); panel.Children.Add(title);
+        title.SetValue(MutedRoleProperty, true);
     }
     void BuildSidebar()
     {
@@ -117,8 +120,10 @@ public sealed partial class CalendarWindow
         title.Children.Add(new Image { Source = Icon, Width = 26, Height = 26, Margin = new Thickness(0, 0, 7, 0) }); title.Children.Add(Text("游时", 16, true)); sidebarPanel.Children.Add(title);
         var tabs = new UniformGrid { Columns = 2, Margin = new Thickness(0, 10, 0, 7) };
         navigationTab = Button("日历", () => OpenSidebar(false)); settingsTab = Button("设置", () => OpenSidebar(true)); tabs.Children.Add(navigationTab); tabs.Children.Add(settingsTab);
+        settingsTab.Content = "外观";
+        remindersTab = Button("提醒", () => OpenSidebarPage("reminders")); networkTab = Button("采集", () => OpenSidebarPage("network")); tabs.Children.Add(remindersTab); tabs.Children.Add(networkTab);
         Grid.SetRow(tabs, 1); sidebarPanel.Children.Add(tabs);
-        var body = new Grid(); body.Children.Add(navigation); body.Children.Add(desktopSettings);
+        var body = new Grid(); body.Children.Add(navigation); body.Children.Add(desktopSettings); body.Children.Add(reminderSettings); body.Children.Add(networkSettings);
         var scroll = new ScrollViewer { Content = body, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         Grid.SetRow(scroll, 2); sidebarPanel.Children.Add(scroll);
         Section(navigation, "我的游戏");
@@ -146,10 +151,11 @@ public sealed partial class CalendarWindow
 
     void BuildDesktopSettings()
     {
+        BuildWorkspaceSettings();
         Section(desktopSettings, "桌面外观");
         bubbleToggle.Content = "仅显示活动气泡"; bubbleToggle.Margin = new Thickness(0, 2, 0, 8); bubbleToggle.IsChecked = bubbleMode;
         bubbleToggle.Click += (_, _) => SetBubbleMode(bubbleToggle.IsChecked == true, true); desktopSettings.Children.Add(bubbleToggle);
-        var help = Text("收起侧栏后只保留活动卡片。右键气泡或托盘可重新打开设置，拖动卡片空白处可移动。", 10); help.Foreground = Muted; help.Margin = new Thickness(0, 0, 0, 12); desktopSettings.Children.Add(help);
+        var help = Text("右下角图钉可置顶，菜单按钮唤出侧栏；拖动卡片空白处移动挂件。", 10); help.Foreground = Muted; help.Margin = new Thickness(0, 0, 0, 12); desktopSettings.Children.Add(help);
         opacityLabel.FontSize = 11; desktopSettings.Children.Add(opacityLabel);
         ConfigureSlider(opacitySlider, 35, 100, cardOpacity * 100, 1); desktopSettings.Children.Add(opacitySlider);
         opacitySlider.ValueChanged += (_, _) => { if (updatingSettings) return; cardOpacity = opacitySlider.Value / 100; UpdateAppearanceControls(); Render(); SavePreferences(); };
@@ -158,10 +164,10 @@ public sealed partial class CalendarWindow
         widthSlider.ValueChanged += (_, _) => { if (updatingSettings) return; widgetWidth = widthSlider.Value; ApplyPresentation(); SavePreferences(); };
         heightLabel.FontSize = 11; desktopSettings.Children.Add(heightLabel); ConfigureSlider(heightSlider, 320, 1000, widgetHeight, 10); desktopSettings.Children.Add(heightSlider);
         heightSlider.ValueChanged += (_, _) => { if (updatingSettings) return; widgetHeight = heightSlider.Value; ApplyPresentation(); SavePreferences(); };
-        pin = SidebarButton("置顶", () => { Topmost = !Topmost; PinLabel(); SavePreferences(); }); desktopSettings.Children.Add(pin); PinLabel();
-        Section(desktopSettings, "截止提醒");
+        BuildResidentSettings();
+        Section(reminderSettings, "截止提醒");
         reminderToggle.Content = "开启活动截止提醒"; reminderToggle.IsEnabled = false; reminderToggle.Margin = new Thickness(0, 0, 0, 8);
-        reminderToggle.Click += async (_, _) => { if (!updatingSettings) await Mutate("/api/settings", new { reminders_enabled = reminderToggle.IsChecked == true }); }; desktopSettings.Children.Add(reminderToggle);
+        reminderToggle.Click += async (_, _) => { if (!updatingSettings) await Mutate("/api/settings", new { reminders_enabled = reminderToggle.IsChecked == true }); }; reminderSettings.Children.Add(reminderToggle);
         for (int index = 0; index < offsetToggles.Length; index++)
         {
             var toggle = offsetToggles[index]; toggle.Content = index == 0 ? "提前 3 天" : index == 1 ? "提前 24 小时" : "提前 1 小时";
@@ -172,12 +178,13 @@ public sealed partial class CalendarWindow
                 var offsets = new System.Collections.Generic.List<int>();
                 for (int i = 0; i < offsetToggles.Length; i++) if (offsetToggles[i].IsChecked == true) offsets.Add(reminderOffsets[i]);
                 await Mutate("/api/settings", new { reminder_offsets = offsets });
-            }; desktopSettings.Children.Add(toggle);
+            }; reminderSettings.Children.Add(toggle);
         }
         nativeToggle.Content = "启用 Windows 通知"; nativeToggle.Margin = new Thickness(0, 5, 0, 8); nativeToggle.IsEnabled = false;
-        nativeToggle.Click += async (_, _) => { if (!updatingSettings) await Mutate("/api/settings", new { native_notifications = nativeToggle.IsChecked == true }); }; desktopSettings.Children.Add(nativeToggle);
-        desktopSettings.Children.Add(SidebarButton("发送测试提醒", async () => await Mutate("/api/notifications/test", new { })));
-        var note = Text("提醒需要程序保持运行；关闭窗口会收起到托盘。", 10); note.Foreground = Muted; desktopSettings.Children.Add(note);
+        nativeToggle.Click += async (_, _) => { if (!updatingSettings) await Mutate("/api/settings", new { native_notifications = nativeToggle.IsChecked == true }); }; reminderSettings.Children.Add(nativeToggle);
+        reminderSettings.Children.Add(SidebarButton("发送测试提醒", async () => await Mutate("/api/notifications/test", new { })));
+        reminderSettings.Children.Add(SidebarButton("提醒与收件箱 ↗", () => Open(address + "?appearance=reminders")));
+        var note = Text("提醒需要程序保持运行；关闭后仍可保留挂件，托盘退出才会停止。", 10); note.Foreground = Muted; reminderSettings.Children.Add(note);
         Section(desktopSettings, "程序"); desktopSettings.Children.Add(SidebarButton("退出游时", Exit));
     }
 
@@ -208,15 +215,15 @@ public sealed partial class CalendarWindow
             opacityLabel.Text = $"气泡底色不透明度 · {cardOpacity:P0}";
             widthLabel.Text = $"气泡列宽 · {widgetWidth:0}"; heightLabel.Text = $"挂件高度 · {widgetHeight:0}";
             widthSlider.Value = widgetWidth; heightSlider.Value = widgetHeight;
-            navigationTab.Background = settingsOpen ? Brushes.Transparent : Green; settingsTab.Background = settingsOpen ? Green : Brushes.Transparent;
+            foreach (var pair in new[] { (navigationTab, "calendar"), (settingsTab, "appearance"), (remindersTab, "reminders"), (networkTab, "network") }) pair.Item1.Background = sidebarPage == pair.Item2 ? Green : Surface;
         }
         finally { updatingSettings = false; }
     }
-    void PinLabel() => pin.Content = Topmost ? "已置顶 · 点击取消" : "置顶显示";
-    double VisibleSidebarWidth => bubbleMode && !sidebarOpen ? 0 : sidebarOpen ? PanelWidth : RailWidth;
+    void PinLabel() => UpdatePinButtons();
+    double VisibleSidebarWidth => (bubbleMode || compact) && !sidebarOpen ? 0 : sidebarOpen ? workspacePanelWidth : RailWidth;
     void OpenSidebar(bool settings)
     {
-        sidebarOpen = true; settingsOpen = settings; ApplyPresentation(); Show(); Activate(); SavePreferences();
+        OpenSidebarPage(settings ? "appearance" : "calendar");
     }
     void SetBubbleMode(bool enabled, bool keepSidebar = false)
     {
@@ -227,18 +234,19 @@ public sealed partial class CalendarWindow
     }
     void ApplyPresentation()
     {
-        if (!appearanceReady || applyingAppearance) return;
+        if (!appearanceReady || applyingAppearance || edgeHidden) return;
         applyingAppearance = true;
         try
         {
-            var area = SystemParameters.WorkArea; double right = Left + Width;
+            var area = DesktopWorkArea(); double right = Left + Width;
             sidebarColumn.Width = new GridLength(VisibleSidebarWidth);
             sidebar.Visibility = VisibleSidebarWidth == 0 ? Visibility.Collapsed : Visibility.Visible;
             sidebarRail.Visibility = sidebarOpen ? Visibility.Collapsed : Visibility.Visible; sidebarPanel.Visibility = sidebarOpen ? Visibility.Visible : Visibility.Collapsed;
-            navigation.Visibility = settingsOpen ? Visibility.Collapsed : Visibility.Visible; desktopSettings.Visibility = settingsOpen ? Visibility.Visible : Visibility.Collapsed;
+            navigation.Visibility = sidebarPage == "calendar" ? Visibility.Visible : Visibility.Collapsed; desktopSettings.Visibility = sidebarPage == "appearance" ? Visibility.Visible : Visibility.Collapsed;
+            reminderSettings.Visibility = sidebarPage == "reminders" ? Visibility.Visible : Visibility.Collapsed; networkSettings.Visibility = sidebarPage == "network" ? Visibility.Visible : Visibility.Collapsed;
             heading.Visibility = summaryPanel.Visibility = footer.Visibility = bubbleMode ? Visibility.Collapsed : Visibility.Visible;
             month.Visibility = !bubbleMode && !compact ? Visibility.Visible : Visibility.Collapsed;
-            desktopShell.Background = bubbleMode ? Brushes.Transparent : Brush("#F6F8F1"); desktopShell.BorderThickness = new Thickness(bubbleMode ? 0 : 1);
+            desktopShell.Background = bubbleMode ? Brushes.Transparent : DesktopPageBrush(); desktopShell.BorderBrush = ThemeBorder; desktopShell.BorderThickness = new Thickness(bubbleMode ? 0 : themeBorderWidth);
             desktopShell.Padding = new Thickness(bubbleMode ? 2 : 16);
             ResizeMode = bubbleMode ? ResizeMode.NoResize : ResizeMode.CanResizeWithGrip;
             cardScroll.VerticalScrollBarVisibility = bubbleMode ? ScrollBarVisibility.Hidden : ScrollBarVisibility.Auto;
@@ -250,12 +258,16 @@ public sealed partial class CalendarWindow
             mode.Content = compact ? "展开月历" : "桌面挂件";
             if (bubbleMenu != null) bubbleMenu.Checked = bubbleMode;
             UpdateAppearanceControls();
+            ApplyWorkspaceLayout();
+            UpdateInteractionChrome();
+            desktopLayout.UpdateLayout();
+            ApplyWorkspaceVisuals(desktopLayout);
         }
         finally { applyingAppearance = false; }
     }
     void TrackWindowSize()
     {
-        if (!appearanceReady || applyingAppearance) return;
+        if (!appearanceReady || applyingAppearance || edgeTransition || edgeHidden) return;
         if (compact) { widgetWidth = Math.Clamp(Width - VisibleSidebarWidth, 320, 640); widgetHeight = Math.Clamp(Height, 320, 1000); }
         else { calendarWidth = Width - VisibleSidebarWidth; calendarHeight = Height; }
         UpdateAppearanceControls(); SavePreferences();
@@ -263,11 +275,12 @@ public sealed partial class CalendarWindow
     void ToggleMode() => ShowMode(!compact);
     void ShowMode(bool mini)
     {
+        RevealEdge();
         compact = mini; if (!mini) bubbleMode = false;
         selected = null; month.SelectedDate = null;
         ApplyPresentation(); Show(); Activate(); Render(); SavePreferences();
     }
-    Brush CardBackground() => bubbleMode ? new SolidColorBrush(Color.FromArgb((byte)Math.Round(cardOpacity * 255), 255, 255, 255)) : Brushes.White;
+    Brush CardBackground() => new SolidColorBrush(Color.FromArgb((byte)Math.Round((bubbleMode ? cardOpacity : surfaceOpacity) * 255), Surface.Color.R, Surface.Color.G, Surface.Color.B));
     Border MessageBubble(string message)
     {
         var bubble = new Border { Background = CardBackground(), CornerRadius = new CornerRadius(8), Padding = new Thickness(16), Margin = new Thickness(0, 0, 0, 8), Child = Text(message, 12) };
@@ -302,6 +315,7 @@ public sealed partial class CalendarWindow
             cardOpacity = Number(p, "card_opacity", .85, .35, 1); bubbleMode = Flag(p, "bubble_mode", false);
             compact = bubbleMode || Flag(p, "compact", true); dense = Flag(p, "dense", true); showAll = Flag(p, "show_all", false);
             sidebarOpen = !bubbleMode && Flag(p, "sidebar_open", false); Topmost = Flag(p, "topmost", false);
+            keepWidgetOnClose = Flag(p, "keep_widget_on_close", true); edgeAutoHide = Flag(p, "edge_auto_hide", false);
             Width = (compact ? widgetWidth : calendarWidth) + VisibleSidebarWidth; Height = compact ? widgetHeight : calendarHeight;
             Left = Number(p, "left", Left, area.Left, Math.Max(area.Left, area.Right - Width)); Top = Number(p, "top", Top, area.Top, Math.Max(area.Top, area.Bottom - Height));
             if (p.TryGetProperty("game", out var game) && game.ValueKind == JsonValueKind.String && game.GetString() is string id && id.Length <= 64) selectedGame = id;
@@ -310,12 +324,12 @@ public sealed partial class CalendarWindow
     }
     void SavePreferences()
     {
-        if (!appearanceReady) return;
+        if (!appearanceReady || edgeTransition) return;
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(preferences)!);
             string temporary = preferences + ".tmp";
-            File.WriteAllText(temporary, JsonSerializer.Serialize(new { left = Left, top = Top, topmost = Topmost, game = selectedGame, bubble_mode = bubbleMode, card_opacity = cardOpacity, compact, dense, show_all = showAll, sidebar_open = !bubbleMode && sidebarOpen, widget_width = widgetWidth, widget_height = widgetHeight, calendar_width = calendarWidth, calendar_height = calendarHeight }));
+            File.WriteAllText(temporary, JsonSerializer.Serialize(new { left = edgeHidden ? expandedBounds.Left : Left, top = edgeHidden ? expandedBounds.Top : Top, topmost = Topmost, game = selectedGame, bubble_mode = bubbleMode, card_opacity = cardOpacity, compact, dense, show_all = showAll, sidebar_open = !bubbleMode && sidebarOpen, widget_width = widgetWidth, widget_height = widgetHeight, calendar_width = calendarWidth, calendar_height = calendarHeight, keep_widget_on_close = keepWidgetOnClose, edge_auto_hide = edgeAutoHide }));
             File.Move(temporary, preferences, true);
         }
         catch { /* Appearance persistence must not stop the calendar. */ }

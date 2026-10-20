@@ -7,6 +7,7 @@ import urllib.request
 import zlib
 
 from . import __version__
+from .network import read_response
 
 
 def wiki_url(url):
@@ -39,17 +40,12 @@ class WikiHTTP:
     def read(self, url):
         if not wiki_url(url):
             raise ValueError('Wiki 来源不在允许范围内')
-        delay = self.interval - (time.monotonic() - self.last)
-        if delay > 0:
-            time.sleep(delay)
-        self.last = time.monotonic()
         headers = {'User-Agent': f'PlaytimeCalendar/{__version__} (local calendar; https://github.com/ZhenyuFu039/acg-calendar)', 'Accept-Encoding': 'identity', 'Accept': 'application/json,text/html,image/*;q=0.8'}
         if urllib.parse.urlsplit(url).hostname == 'zonai.skland.com':
             headers['Referer'] = 'https://wiki.skland.com/endfield/'
         request = urllib.request.Request(url, headers=headers)
         limit = 6_000_000
-        with urllib.request.build_opener(WikiRedirect()).open(request, timeout=self.timeout) as response:
-            data = response.read(limit + 1)
+        data = read_response(request, WikiRedirect, limit=limit, timeout=self.timeout, image=urllib.parse.urlsplit(url).path.lower().endswith((".jpg", ".png", ".webp")), min_interval=self.interval).data
         if data[:2] == b'\x1f\x8b':
             decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
             data = decoder.decompress(data, limit + 1)

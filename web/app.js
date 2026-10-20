@@ -149,6 +149,8 @@
   function applyState(data) {
     const first=!S.initialized;
     S.data=data;W.accept(data);
+    $('#workspace-button').disabled=false;
+    $('#fit-version').disabled=false;$('#data-button').disabled=false;
     if(!S.game) { const requested=new URLSearchParams(location.search).get('game'); S.game=['all','selected'].includes(requested)||data.games.some(g=>g.id===requested)?requested:(W.view.scope==='selected'?'selected':W.view.scope==='all'?'all':W.selected()[0])||data.games[0]?.id||'all'; }
     if(!['all','selected'].includes(S.game)&&!W.game(S.game)) S.game=data.games[0]?.id||'all';
     if(combined()) S.version=S.game;
@@ -160,6 +162,8 @@
     }
     deliverBrowserNotices(data.notifications);
     render();
+    window.PlaytimeCustomize.update();
+    if(first&&new URLSearchParams(location.search).has("appearance")){const url=new URL(location.href),panel=url.searchParams.get('appearance');url.searchParams.delete('appearance');history.replaceState(null,'',url);if(panel==='reminders')openReminders();else window.PlaytimeCustomize.open(['layout','theme','network'].includes(panel)?panel:'theme');}
     if($('#reminder-dialog').open) renderInbox();
     $('#load-error').hidden=true;
   }
@@ -220,9 +224,14 @@
   W.register('sources',()=>renderSourceStatus(activeVersion()));
   W.register('rewards',()=>renderRewardSummary(activeVersion()));
   W.register('deadlines',()=>renderDeadline(filteredEvents()));
+  W.register('personal-plans',()=>{const rows=S.data.plans.filter(p=>!p.game_id||S.game==='all'||(S.game==='selected'?W.selected().includes(p.game_id):p.game_id===S.game));$('#personal-plans-panel').hidden=!rows.length;$('#personal-plans-panel').innerHTML=rows.map(p=>`<p><strong>${esc(p.title)}</strong> · ${esc(format(p.start))} → ${esc(format(p.end))}</p>`).join('');});
   W.register('calendar',()=>{
     const [lo,hi]=range(), filtered=filteredEvents(), shown=S.view==='list'?filtered:filtered.filter(e=>overlaps(e,lo,hi));
+    const oldScroll=$('#calendar .timeline-scroll')||$('#calendar');
+    const position=[oldScroll.scrollLeft,oldScroll.scrollTop];
     $('#calendar').innerHTML=S.view==='timeline'?renderTimeline(shown,lo,hi):S.view==='list'?renderList(filtered):renderMonth(filtered,lo,hi);
+    const newScroll=$('#calendar .timeline-scroll')||$('#calendar');
+    [newScroll.scrollLeft,newScroll.scrollTop]=position;
     const unscheduled=filtered.filter(e=>!e.start.at||e.invalid_interval);
     $('#unscheduled').hidden=!unscheduled.length;
     $('#unscheduled').innerHTML=unscheduled.length?`<h3>时间待核对 · ${unscheduled.length} 项</h3>${unscheduled.map(e=>`<button type="button" data-event="${e.id}">${esc(cleanTitle(e))}</button>`).join('')}`:'';
@@ -244,7 +253,7 @@
     if(S.data.source_checks?.skland?.status==='device_validation_required') message+=' · 森空岛接口需设备校验，未参与排期';
     target.innerHTML=`<span class="status-point"></span><span>${esc(message)}</span>`;
     target.classList.toggle('warning',Boolean(sync.error));
-    target.title=sync.error||'';
+    target.title=sync.error||message;
   }
   function renderClock() {
     $('#clock-label').textContent=`${format(now(),{year:true})} · ${zone()}`;
@@ -330,7 +339,7 @@
   }
   function openDialog(selector) {
     const dialog=$(selector);
-    addOfficialTimeNotice(dialog);
+    if(['#detail-dialog','#agenda-dialog','#reward-dialog','#rules-dialog'].includes(selector))addOfficialTimeNotice(dialog);
     if(!dialog.open) dialog.showModal();
   }
   function addOfficialTimeNotice(dialog) {
@@ -417,10 +426,7 @@
   }
   function openReminders() {
     const settings=S.data.settings;
-    $('#reminder-settings').innerHTML=`<label class="setting-row"><span><strong>开启截止提醒</strong><p>只为截止时间已明确、尚未完成的活动生成提醒。</p></span><input id="reminders-enabled" type="checkbox" ${settings.reminders_enabled?'checked':''}></label><div class="offset-choices" role="group" aria-label="提前多久提醒">${[[4320,'提前 3 天'],[1440,'提前 24 小时'],[60,'提前 1 小时']].map(([n,label])=>`<label><input type="checkbox" data-offset="${n}" ${settings.reminder_offsets.includes(n)?'checked':''}>${label}</label>`).join('')}</div><label class="setting-row"><span><strong>系统桌面提醒</strong><p>${S.data.native_available?'本地程序保持运行时，关闭网页后仍可交给系统通知。':'此环境暂不支持本机通知，可使用应用内或浏览器提醒。'}</p></span><input id="native-notifications" type="checkbox" ${settings.native_notifications?'checked':''} ${S.data.native_available?'':'disabled'}></label><div class="setting-row"><span><strong>自动同步活动资料</strong><p>同步失败时保留上次成功的数据。</p></span><select id="sync-interval"><option value="60">每小时</option><option value="180">每 3 小时</option><option value="360">每 6 小时</option><option value="1440">每天</option></select></div><p class="help-text">电脑关机、休眠或本地程序停止时暂停检查。重新运行后补查提醒窗口；同一活动、截止时间和提前量只提醒一次。浏览器提醒需要网页保持打开。</p><div class="settings-actions"><button id="test-reminder" class="button button-primary" type="button">发送测试提醒</button><button id="browser-notifications" class="button" type="button">${browserEnabled()?'关闭浏览器提醒':'开启浏览器提醒'}</button></div><p id="delivery-result" class="help-text"></p>`;
-    const interval=$('#sync-interval');
-    if(![...interval.options].some(option=>Number(option.value)===settings.sync_interval_minutes)) interval.add(new Option(`每 ${settings.sync_interval_minutes} 分钟`,settings.sync_interval_minutes));
-    interval.value=settings.sync_interval_minutes;
+    $('#reminder-settings').innerHTML=`<label class="setting-row"><span><strong>开启截止提醒</strong><p>只为截止时间已明确、尚未完成的活动生成提醒。</p></span><input id="reminders-enabled" type="checkbox" ${settings.reminders_enabled?'checked':''}></label><div class="offset-choices" role="group" aria-label="提前多久提醒">${[[4320,'提前 3 天'],[1440,'提前 24 小时'],[60,'提前 1 小时']].map(([n,label])=>`<label><input type="checkbox" data-offset="${n}" ${settings.reminder_offsets.includes(n)?'checked':''}>${label}</label>`).join('')}</div><label class="setting-row"><span><strong>系统桌面提醒</strong><p>${S.data.native_available?'本地程序保持运行时，关闭网页后仍可交给系统通知。':'此环境暂不支持本机通知，可使用应用内或浏览器提醒。'}</p></span><input id="native-notifications" type="checkbox" ${settings.native_notifications?'checked':''} ${S.data.native_available?'':'disabled'}></label><p class="help-text">电脑关机、休眠或本地程序停止时暂停检查。重新运行后补查提醒窗口；同一活动、截止时间和提前量只提醒一次。浏览器提醒需要网页保持打开。</p><div class="settings-actions"><button id="test-reminder" class="button button-primary" type="button">发送测试提醒</button><button id="browser-notifications" class="button" type="button">${browserEnabled()?'关闭浏览器提醒':'开启浏览器提醒'}</button></div><p id="delivery-result" class="help-text"></p>`;
     renderInbox();openDialog('#reminder-dialog');
   }
   function renderInbox() {
@@ -642,6 +648,7 @@
       event.target.parentElement?.classList.remove('has-art','with-image');event.target.remove();
     }
   },true);
+  window.PlaytimeCustomize.init({state:()=>S.data,mutate,openDialog});
   refresh();
   S.pollTimer=setInterval(refresh,10000);
   setInterval(()=>{if(S.data) renderClock();},30000);

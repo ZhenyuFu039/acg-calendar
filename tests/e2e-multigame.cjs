@@ -32,7 +32,7 @@ const base='http://127.0.0.1:8793';
     assert.match(await page.locator('.detail-time-grid').innerText(),/2026\/10\/22 15:59/);
     await page.locator('#toggle-completed').click();await page.waitForFunction(()=>document.querySelector('#toggle-completed').textContent.includes('撤销'));
     await page.locator('#detail-dialog [data-close]').click();await page.reload();await page.waitForFunction(()=>document.body.dataset.game==='arknights-cn');
-    await page.locator('#rules-button').click();await page.waitForFunction(()=>document.querySelector('#rules-json').textContent.includes('arknights-cn'));
+    await page.locator('.advanced-tools summary').click();await page.locator('#rules-button').click();await page.waitForFunction(()=>document.querySelector('#rules-json').textContent.includes('arknights-cn'));
     assert.match(await page.locator('#rules-json').innerText(),/PRTS/);await page.locator('#rules-dialog [data-close]').click();
     const [download]=await Promise.all([page.waitForEvent('download'),page.locator('a[href^="/api/calendar.ics"]').click()]);
     const ics=await fs.readFile(await download.path(),'utf8');assert.match(ics,/PRTS/);assert.doesNotMatch(ics,/嵌晶玉/);

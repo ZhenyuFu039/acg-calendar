@@ -2,6 +2,7 @@
 import datetime as dt
 import json
 
+from .network import network_job
 from .parser import iso, stamp
 from .wiki_http import WikiHTTP
 
@@ -14,6 +15,7 @@ class SklandProbe:
         self.store = store
         self.fetcher = fetcher or WikiHTTP()
 
+    @network_job
     def check(self, force=False):
         previous = self.store.get_meta('source:skland', {})
         now = dt.datetime.now(dt.timezone.utc)

@@ -98,7 +98,7 @@ const output='logs/demo-qa';
     await page.locator('#read-notifications').click();
     await page.waitForFunction(()=>document.querySelector('#unread-count').hidden);
     await page.locator('#reminder-dialog [data-close]').click();
-    await page.locator('#rules-button').click();
+    await page.locator('.advanced-tools summary').click();await page.locator('#rules-button').click();
     await page.waitForFunction(()=>document.querySelector('#rules-dialog').open && document.querySelector('#rules-json').textContent.includes('numbered_heading_pattern'));
     assert.match(await page.locator('#rules-json').innerText(),/numbered_heading_pattern/);
     await page.locator('#show-analysis').click();

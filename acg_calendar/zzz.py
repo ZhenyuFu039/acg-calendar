@@ -10,6 +10,7 @@ import urllib.parse
 
 from .artwork import image_kind
 from .gamekee import atomic_json
+from .network import network_job
 from .parser import iso, stamp
 from .plugin_media import local_file
 from .providers import JsonProvider, bounded_json
@@ -263,6 +264,7 @@ class ZZZProvider(JsonProvider):
         finally:
             self.lock.release()
 
+    @network_job
     def collect(self, now=None):
         now = now or dt.datetime.now(dt.timezone.utc)
         result = json.loads(self.http.read(API + 'getContentList?' + urllib.parse.urlencode({'iChanId': 296, 'iPageSize': self.config['collection']['page_size'], 'iPage': 1, 'sLangKey': 'zh-cn'})))

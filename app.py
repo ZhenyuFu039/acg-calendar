@@ -24,12 +24,15 @@ from acg_calendar.reminders import ReminderEngine, native_available
 from acg_calendar.storage import Store
 from acg_calendar.providers import create_registry
 from acg_calendar.workspace import WorkspaceService, timeline, sort_events
+from acg_calendar.network import NetworkManager
 
 
 class Application:
     def __init__(self, data_dir: Path, *, auto_sync=True, desktop=True, registry=None):
         self.data_dir = data_dir
         self.store = Store(data_dir / "calendar.sqlite3")
+        self.network = NetworkManager(self.store)
+        self.store.network = self.network
         self.registry = registry or create_registry(self.store, data_dir)
         self.collectors = {key: p.collector for key, p in self.registry.providers.items()}
         for collector in self.collectors.values():
@@ -60,6 +63,7 @@ class Application:
             "games": self.registry.games,
             "provider_api_version": 1, "plugin_errors": self.registry.errors,
             "workspace": workspace, "plans": self.store.plans(),
+            "workspace_defaults": self.workspace.defaults(), "network": self.network.snapshot(),
             "event_order": [e["id"] for e in sort_events(events, workspace["view"])],
             "app_version": __version__, "server_time": iso(dt.datetime.now(dt.timezone.utc)),
             "csrf_token": self.csrf, "settings": self.store.settings(),
@@ -209,6 +213,8 @@ def handler_for(application):
                     return self.send(application.state())
                 if path == "/api/workspace":
                     return self.send(application.workspace.get())
+                if path == "/api/network":
+                    return self.send(application.network.snapshot())
                 if path == "/api/plugins":
                     return self.send({"api_version": 1, "games": application.registry.games, "errors": application.registry.errors})
                 if path == "/api/plans":
@@ -241,7 +247,7 @@ def handler_for(application):
                         return self.send(image.read_bytes(), content_type=content_type, cache_control="private, max-age=604800, immutable")
                     return self.send({"error": "图片尚未缓存"}, 404)
                 assets = {"/": "index.html", "/app.js": "app.js", "/workspace.js": "workspace.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg", "/assets/oroberyl.png": "assets/oroberyl.png", "/assets/arknights-logo.png": "assets/arknights-logo.png", "/assets/endfield-icon-zh.svg": "assets/endfield-icon-zh.svg"}
-                assets.update({"/assets/arknights-app-icon.png": "assets/arknights-app-icon.png", "/assets/endfield-app-icon.png": "assets/endfield-app-icon.png"})
+                assets.update({"/customize.js": "customize.js", "/customize.css": "customize.css", "/design.css": "design.css", "/assets/arknights-app-icon.png": "assets/arknights-app-icon.png", "/assets/endfield-app-icon.png": "assets/endfield-app-icon.png"})
                 if path not in assets:
                     return self.send({"error": "页面不存在"}, 404)
                 file = ROOT / "web" / assets[path]
@@ -292,6 +298,8 @@ def handler_for(application):
                     for key, collector in application.collectors.items():
                         if game in {key, "all"} or (game == "selected" and key in application.workspace.get()["view"]["selected_games"]):
                             collector.start()
+                elif path == "/api/network":
+                    application.network.update(payload)
                 elif path == "/api/workspace":
                     application.workspace.update(payload)
                 elif path == "/api/plans":
@@ -355,6 +363,7 @@ def main():
         pass
     finally:
         application.stop.set()
+        application.network.stop()
         server.server_close()
 
 

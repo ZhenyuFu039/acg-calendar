@@ -4,6 +4,7 @@ import urllib.parse
 import urllib.request
 
 from . import __version__
+from .network import read_response
 
 
 def allowed(url, image=False):
@@ -31,14 +32,9 @@ class AzurLaneHTTP:
                 if not allowed(newurl, image) or urllib.parse.urlsplit(newurl).hostname != urllib.parse.urlsplit(req.full_url).hostname:
                     raise ValueError('Wiki 跳转超出配置范围')
                 return super().redirect_request(req, fp, code, msg, headers, newurl)
-        delay = .6 - (time.monotonic() - self.last)
-        if delay > 0:
-            time.sleep(delay)
-        self.last = time.monotonic()
         request = urllib.request.Request(url, headers={'User-Agent': f'PlaytimeCalendar/{__version__} (https://github.com/ZhenyuFu039/acg-calendar)', 'Accept-Encoding': 'identity'})
         limit = 5_000_000 if image else 2_000_000
-        with urllib.request.build_opener(Redirect()).open(request, timeout=20) as response:
-            result = response.read(limit + 1)
+        result = read_response(request, Redirect, limit=limit, timeout=20, image=image).data
         if len(result) > limit:
             raise ValueError('Wiki 响应超过大小限制')
         return result

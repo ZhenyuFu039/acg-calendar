@@ -12,6 +12,7 @@ import urllib.parse
 
 from .artwork import ArtworkCache
 from .arknights_artwork import OfficialArknightsArtwork
+from .network import network_job
 from .parser import ROOT, iso, stamp
 from .wiki_http import WikiHTTP, wiki_url
 
@@ -314,6 +315,7 @@ class ArknightsCollector:
             except Exception as error:
                 version['official_artwork'] = {'errors': ['官网图片补充失败：' + str(error)[:160]]}
 
+    @network_job
     def collect(self):
         config = rules()
         titles, image_urls = catalog_titles(self.fetcher(config['catalog_url']), config, with_images=True)

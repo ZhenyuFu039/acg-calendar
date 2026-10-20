@@ -84,7 +84,7 @@ public sealed partial class CalendarWindow : Window
     DateTime? selected;
     DateTimeOffset lastRefresh;
     Button mode = null!, pin = null!;
-    static readonly Brush Ink = Brush("#233126"), Muted = Brush("#758073"), Green = Brush("#D8ED9A");
+    static Brush Ink = Brush("#233126"), Muted = Brush("#758073"), Green = Brush("#D8ED9A");
 
     public CalendarWindow(string root, bool offline, bool smoke = false)
     {
@@ -138,9 +138,10 @@ public sealed partial class CalendarWindow : Window
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add("退出游时", null, (_, _) => Dispatcher.Invoke(Exit));
         tray.ContextMenuStrip = menu;
-        tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) Dispatcher.Invoke(() => { if (IsVisible && IsActive) Hide(); else { Show(); Activate(); } }); };
-        Closing += (_, e) => { if (!exiting) { e.Cancel = true; SavePreferences(); Hide(); } };
-        LocationChanged += (_, _) => { if (IsLoaded) SavePreferences(); };
+        tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) Dispatcher.Invoke(() => { if (IsVisible && IsActive && !edgeHidden) Hide(); else { RevealEdge(); Show(); Activate(); } }); };
+        Closing += (_, e) => { if (!exiting) { e.Cancel = true; Dispatcher.BeginInvoke(new Action(CloseToDesktop)); } };
+        LocationChanged += (_, _) => { if (IsLoaded && !edgeHidden && !edgeTransition) SavePreferences(); };
+        StateChanged += (_, _) => { if (WindowState == WindowState.Minimized && keepWidgetOnClose) Dispatcher.BeginInvoke(new Action(() => { WindowState = WindowState.Normal; CloseToDesktop(); })); };
         SizeChanged += (_, _) => TrackWindowSize();
         timer.Tick += async (_, _) => await Refresh();
         Loaded += async (_, _) =>
@@ -231,6 +232,7 @@ public sealed partial class CalendarWindow : Window
             notificationsMenu.Checked = state.RootElement.GetProperty("settings").GetProperty("native_notifications").GetBoolean();
             UpdateReminderControls(state.RootElement.GetProperty("settings"));
             UpdateProviders(state.RootElement);
+            UpdateWorkspace(state.RootElement);
             await UpdateProviderPictures();
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
@@ -249,9 +251,9 @@ public sealed partial class CalendarWindow : Window
     void Render()
     {
         clock.Text = DateTime.Now.ToString("M月d日 dddd HH:mm") + " · 本机时区";
-        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("当前没有活动数据，可在侧栏同步或检查插件。")); return; }
+        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("当前没有活动数据，可在侧栏同步或检查插件。")); ApplyWorkspaceVisuals(desktopLayout); return; }
         var scoped = events.Where(e => InScope(e.Game)).ToArray();
-        rewardHeader.Visibility = scoped.Any(e => e.Reward.ValueKind == JsonValueKind.Object) ? Visibility.Visible : Visibility.Collapsed;
+        rewardHeader.Visibility = !bubbleMode && ModuleVisible("rewards") && scoped.Any(e => e.Reward.ValueKind == JsonValueKind.Object) ? Visibility.Visible : Visibility.Collapsed;
         subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + scoped.Length + " 项" : "接下来，别错过";
         allButton.Content = showAll ? "仅看近期" : "全部活动";
         densityButton.Content = dense ? "图文模式" : "紧凑模式";
@@ -265,11 +267,9 @@ public sealed partial class CalendarWindow : Window
         var ordered = shown.OrderBy(e => eventOrder.GetValueOrDefault(e.Id, int.MaxValue)).ThenBy(e => e.Id).ToArray();
         foreach (var entry in ordered)
         {
-            string[] palette = ["#69946e", "#5e8ea3", "#ae825d", "#8f7bac", "#9f8f4c", "#668f91", "#b07679", "#7b8e57"];
-            uint hash = 0; foreach (char letter in entry.Id) hash = unchecked(hash * 31 + letter);
-            var color = Brush(palette[hash % 8]);
+            var color = categoryBrushes.GetValueOrDefault(entry.Category, LinkInk);
             var gameColor = Brush(GameColor(entry.Game));
-            var card = new Border { Background = CardBackground(), CornerRadius = new CornerRadius(8), Padding = new Thickness(dense ? 9 : 13), Margin = new Thickness(0, 0, 0, dense ? 6 : 9), BorderBrush = gameColor, BorderThickness = new Thickness(3, 0, 0, 0), Opacity = entry.Completed ? .65 : 1 };
+            var card = new Border { Background = CardBackground(), CornerRadius = new CornerRadius(themeRadius), Padding = new Thickness(dense ? 10 : 14), Margin = new Thickness(0, 0, 0, Math.Max(2, (dense ? 6 : 9) + themeSpacing - 14)), BorderBrush = gameColor, BorderThickness = new Thickness(3, themeBorderWidth, themeBorderWidth, themeBorderWidth), Opacity = entry.Completed ? .65 : 1 };
             AttachBubbleDrag(card);
             var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
             var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), ToolTip = GameLabel(entry.Game) };
@@ -282,7 +282,7 @@ public sealed partial class CalendarWindow : Window
             done.ToolTip = entry.Completed ? "撤销完成" : "标记完成"; done.Padding = new Thickness(6, 2, 6, 2); DockPanel.SetDock(done, Dock.Right); heading.Children.Add(done);
             var title = new Grid { MinHeight = dense ? 23 : 42 };
             if (Picture(entry) is ImageSource picture)
-                title.Children.Add(new Image { Source = picture, Width = 170, Height = dense ? 30 : 46, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Stretch = Stretch.UniformToFill, Opacity = .5, OpacityMask = new LinearGradientBrush(Colors.Black, Colors.Transparent, new Point(0, .5), new Point(1, .5)), IsHitTestVisible = false });
+                title.Children.Add(new Image { Source = picture, Width = 170, Height = dense ? 30 : 46, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Stretch = Stretch.UniformToFill, Opacity = workspaceDark ? .25 : .42, OpacityMask = new LinearGradientBrush(Colors.Black, Colors.Transparent, new Point(0, .5), new Point(1, .5)), IsHitTestVisible = false });
             title.Children.Add(Text((entry.Starred ? "★ " : "") + entry.Title, dense ? 12 : 14, true)); heading.Children.Add(title); body.Children.Add(heading);
             bool upcoming = entry.Begin > now;
             var due = upcoming ? entry.Begin : entry.Finish;
@@ -294,7 +294,7 @@ public sealed partial class CalendarWindow : Window
             if (entry.Begin != null && entry.Finish > entry.Begin)
             {
                 double progress = Math.Clamp((now - entry.Begin.Value).TotalSeconds / (entry.Finish.Value - entry.Begin.Value).TotalSeconds * 100, 0, 100);
-                body.Children.Add(new ProgressBar { Value = progress, Height = 3, Foreground = color, Background = Brush("#EDF1E6"), BorderThickness = new Thickness(0), Margin = new Thickness(0, dense ? 5 : 9, 0, dense ? 0 : 7) });
+                body.Children.Add(new ProgressBar { Value = progress, Height = 3, Foreground = color, Background = TrackSurface, BorderThickness = new Thickness(0), Margin = new Thickness(0, dense ? 5 : 9, 0, dense ? 0 : 7) });
             }
             if (entry.Reward.ValueKind == JsonValueKind.Object)
             {
@@ -317,6 +317,7 @@ public sealed partial class CalendarWindow : Window
         }
         if (ordered.Length == 0) cards.Children.Add(MessageBubble("没有符合当前筛选的待办活动。右键打开侧栏，可切换游戏或显示全部活动。"));
         status.Text = $"当前 {ordered.Length} / 共 {scoped.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n" + (selectedGame == "arknights-cn" ? "来源：PRTS 社区 Wiki · 国服 · 可在完整时间轴查看修订。" : showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。");
+        ApplyWorkspaceVisuals(desktopLayout);
     }
     ImageSource? currencyIcon;
     readonly Dictionary<string, ImageSource> gamePictures = new();
@@ -391,7 +392,7 @@ public sealed partial class CalendarWindow : Window
     }
     void Exit()
     {
-        exiting = true; timer.Stop(); SavePreferences(); tray.Visible = false; tray.Dispose(); trayIcon.Dispose();
+        exiting = true; timer.Stop(); edgeTimer.Stop(); SavePreferences(); tray.Visible = false; tray.Dispose(); trayIcon.Dispose();
         // Only stop the backend created by this desktop process.
         if (backend != null) { try { if (!backend.HasExited) backend.Kill(true); } catch { } backend.Dispose(); }
         http.Dispose(); Close(); System.Windows.Application.Current.Shutdown(Environment.ExitCode);
@@ -444,10 +445,12 @@ public sealed partial class CalendarWindow : Window
             if (System.Text.Encoding.UTF8.GetString(selectedIcs).Contains("PRTS")) throw new Exception("Custom game export leaked unselected games");
             gameSelect.SelectedValue = "all"; Render(); SaveRender("combined.png");
             if (cards.Children.Count != events.Length) throw new Exception("All-activities view omitted entries");
+            bool workspaceVerified = await WorkspaceSmokeTest();
             bool appearanceVerified = await AppearanceSmokeTest();
+            bool interactionVerified = await InteractionSmokeTest();
             month.SelectedDate = DateTime.Today.AddDays(1);
             if (selected != DateTime.Today.AddDays(1)) throw new Exception("Calendar selection did not update");
-            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, appearanceVerified, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
+            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, workspaceVerified, appearanceVerified, interactionVerified, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
         }
         catch (Exception error)
         {

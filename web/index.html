@@ -8,41 +8,55 @@
   <title>游时 · 游戏活动日历</title>
   <link rel="icon" href="/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/customize.css">
+  <link rel="stylesheet" href="/design.css">
   <script src="/workspace.js" defer></script>
+  <script src="/customize.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
   <header class="app-header">
     <a class="brand" href="/" aria-label="游时首页"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>游时<span class="brand-en">PLAYTIME</span></span></a>
-    <div class="header-context"><span class="context-dot"></span>你的游戏，有自己的时间。</div>
-    <div class="header-actions"><span class="local-label"><span></span>本地运行</span><button id="inbox-button" class="button button-light" type="button">提醒 <span id="unread-count" class="unread" hidden>0</span></button><button id="sync-button" class="button button-primary" type="button"><span class="sync-icon" aria-hidden="true">↻</span>同步公告</button></div>
+    <div class="header-context"><span class="context-dot"></span>规划你的游戏时间</div>
+    <div class="header-actions"><span class="workspace-id">WORKSPACE / LOCAL</span><button id="finish-layout" class="button" type="button" hidden>完成布局调整</button><button id="sync-button" class="button button-primary" type="button"><span class="sync-icon" aria-hidden="true">↻</span>同步公告</button></div>
   </header>
   <div class="app-layout">
+    <nav class="workspace-rail" aria-label="工作区导航">
+      <div class="rail-index" aria-hidden="true">PT<br>01—</div>
+      <button id="rail-calendar" aria-current="page" class="rail-action" type="button" title="活动日历" aria-label="活动日历"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v16H4zM4 10h16M8 2v6M16 2v6M8 14h3v3H8z"/></svg><span>日程</span></button>
+      <button id="rail-games" class="rail-action" type="button" title="显示或隐藏游戏筛选" aria-label="显示或隐藏游戏筛选" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h7v7H3zM14 4h7v7h-7zM3 15h7v6H3zM14 15h7v6h-7z"/></svg><span>游戏</span></button>
+      <div class="rail-divider"></div>
+      <button id="workspace-button" class="rail-action" type="button" title="外观与布局" aria-label="外观与布局" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 9h18M9 9v12M14 14h3M14 17h3"/></svg><span>外观</span></button>
+      <button id="inbox-button" class="rail-action" type="button" title="提醒与收件箱" aria-label="提醒与收件箱"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9a6 6 0 0 1 12 0v7l2 3H4l2-3zM10 22h4"/></svg><span>提醒</span><span id="unread-count" class="unread" hidden>0</span></button>
+      <button id="data-button" class="rail-action" type="button" title="数据与同步" aria-label="数据与同步" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4M18 16h-2"/></svg><span>数据</span></button>
+      <div class="rail-foot" aria-hidden="true">LOCAL<br>CALENDAR<br><b>↗</b></div>
+    </nav>
     <aside class="sidebar" aria-label="日历筛选">
-      <div class="sidebar-label">我的游戏</div>
+      <div class="sidebar-label"><span class="section-index">01</span> 日历范围</div>
       <label class="field-label" for="game-select">日历游戏</label><select id="game-select" aria-label="选择游戏"><option>加载中…</option></select>
       <details class="game-combination"><summary>自选游戏组合</summary><div id="game-combination"></div><p class="help-text">勾选后共用日期轴，提醒仍覆盖全部已安装游戏。</p></details>
       <div class="game-card"><div class="game-monogram" aria-hidden="true">EF<span>CN</span></div><div><strong id="game-name">明日方舟：终末地</strong><span id="game-source-note">国服 · UTC+8</span></div></div>
       <label class="field-label version-label" for="version-select">版本</label><select id="version-select" aria-label="选择版本"><option>加载中…</option></select>
-      <div class="sidebar-section"><div class="sidebar-label">活动类型</div><div id="category-filters"></div></div>
+      <details id="view-filters" class="filter-options" open><summary>筛选与排序 <span>类型 / 状态 / 排列</span></summary><div class="sidebar-section"><div class="sidebar-label">活动类型</div><div id="category-filters"></div></div>
       <div class="sidebar-section sidebar-options"><label class="check-row"><input id="hide-completed" type="checkbox"><span>隐藏已完成</span></label><label class="check-row"><input id="include-pending" type="checkbox" checked><span>显示截止待定</span></label><label class="check-row"><input id="hide-future" type="checkbox"><span>隐藏未开放 / 开始待定</span></label><label class="field-label" for="event-sort">活动行排序</label><select id="event-sort"><option value="start">按开始时间</option><option value="remaining">按剩余时间</option><option value="title">按标题</option></select><label class="field-label" for="event-group">时间轴分组</label><select id="event-group"><option value="category">活动类型</option><option value="game">游戏</option><option value="none">不分组</option></select></div>
-      <div class="sidebar-note"><span class="tiny-label">时间标记</span><span><i class="legend-solid"></i>来源明确时间</span><span><i class="legend-estimate"></i>预计 / 待核实</span><span><i class="legend-unknown"></i>结束尚未公布</span></div>
-      <div class="sidebar-bottom"><button id="rules-button" class="sidebar-action" type="button"><span aria-hidden="true">{ }</span> 日历解析 JSON <span aria-hidden="true">↗</span></button><button id="settings-button" class="sidebar-action" type="button"><span aria-hidden="true">⚙</span> 日历与提醒设置</button><p><span id="source-caption">官方公告与版本导览 · 无 AI 调用</span><br><span id="app-version">DEMO</span></p></div>
+      </details><div class="sidebar-note"><span class="tiny-label">时间标记</span><span><i class="legend-solid"></i>来源明确时间</span><span><i class="legend-estimate"></i>预计 / 待核实</span><span><i class="legend-unknown"></i>结束尚未公布</span></div>
+      <div class="sidebar-bottom"><button id="settings-button" class="sidebar-action" type="button">提醒设置与收件箱 ↗</button><details class="advanced-tools"><summary>来源与高级工具</summary><button id="rules-button" class="sidebar-action" type="button">日历解析 JSON ↗</button><p><span id="source-caption">官方公告与版本导览 · 无 AI 调用</span><br><span id="app-version">DEMO</span></p></details></div>
     </aside>
     <main id="main-content" class="main-content">
-      <div class="page-heading"><div><div class="eyebrow">ENDFIELD / ACTIVITY CALENDAR</div><h1>把活动排进日历<span class="heading-dot">.</span></h1><p id="version-summary">正在读取本地活动数据…</p></div><div class="heading-controls"><p id="official-time-notice" class="official-time-notice">具体活动情况请参考游戏官方时间</p><label class="timezone-label" for="timezone-select">显示时区<select id="timezone-select"><option value="auto">跟随系统</option><option value="America/New_York">纽约</option><option value="Asia/Shanghai">北京 / 服务器</option><option value="Asia/Tokyo">东京</option><option value="Europe/London">伦敦</option><option value="UTC">UTC</option></select></label><div id="zone-offset" class="timezone-offset"></div></div></div>
+      <div class="page-heading"><div><div class="eyebrow">PERSONAL ACTIVITY PLANNER / 本地日历</div><div class="display-title" aria-hidden="true">// PLAYTIME</div><h1>限时活动周期可视化</h1><p id="version-summary">正在读取本地活动数据…</p></div><div class="heading-controls"><p id="official-time-notice" class="official-time-notice">具体活动情况请参考游戏官方时间</p><label class="timezone-label" for="timezone-select">显示时区<select id="timezone-select"><option value="auto">跟随系统</option><option value="America/New_York">纽约</option><option value="Asia/Shanghai">北京 / 服务器</option><option value="Asia/Tokyo">东京</option><option value="Europe/London">伦敦</option><option value="UTC">UTC</option></select></label><div id="zone-offset" class="timezone-offset"></div></div></div>
       <div class="workspace-modules">
+      <div data-module="deadlines" id="deadline-strip" class="deadline-strip"></div>
       <div data-module="sources" id="source-status" class="source-status" role="status"></div>
       <section data-module="rewards" id="reward-summary" class="reward-summary" aria-label="版本嵌晶玉统计"></section>
       <section data-module="calendar" class="calendar-panel" aria-label="活动日历">
-        <div class="calendar-toolbar"><div class="date-navigation"><button id="previous-period" class="icon-button" type="button" aria-label="上一段日期">‹</button><button id="next-period" class="icon-button" type="button" aria-label="下一段日期">›</button><h2 id="period-title">加载日历…</h2><button id="today-button" class="button button-small" type="button">今天</button></div><div class="view-controls"><label class="range-control"><span class="sr-only">时间轴显示天数</span><select id="range-select"><option value="7">一周</option><option value="14" selected>两周</option><option value="28">四周</option></select></label><div class="view-switch" role="group" aria-label="日历视图"><button id="timeline-view" type="button" aria-pressed="true">时间轴</button><button id="month-view" type="button" aria-pressed="false">月历</button><button id="list-view" type="button" aria-pressed="false">全部活动</button></div></div></div>
+        <div class="calendar-toolbar"><div class="date-navigation"><button id="previous-period" class="icon-button" type="button" aria-label="上一段日期">‹</button><button id="next-period" class="icon-button" type="button" aria-label="下一段日期">›</button><h2 id="period-title">加载日历…</h2><button id="today-button" class="button button-small" type="button">今天</button></div><button id="calendar-expand" class="icon-button calendar-expand" type="button" aria-label="展开时间轴" title="展开时间轴" aria-pressed="false" aria-controls="main-content"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6-6 6 6M6 15l6 6 6-6"/></svg></button><div class="view-controls"><label class="range-control"><span class="sr-only">时间轴显示天数</span><select id="range-select"><option value="7">一周</option><option value="14" selected>两周</option><option value="28">四周</option></select></label><div class="view-switch" role="group" aria-label="日历视图"><button id="timeline-view" type="button" aria-pressed="true">时间轴</button><button id="month-view" type="button" aria-pressed="false">月历</button><button id="list-view" type="button" aria-pressed="false">全部活动</button></div></div></div>
         <div class="calendar-context"><span id="visible-summary"></span><div><button id="maintenance-button" class="text-button" type="button">查看维护时间</button><span class="context-divider">/</span><a class="text-button" href="/api/calendar.ics" download title="仅导出时间已确认的活动。导入日历应用的是快照，不会自动同步到系统时钟面板。">导出日历 .ics ↗</a><span class="context-divider">/</span><button id="export-button" class="text-button" type="button">导出 JSON ↗</button></div></div>
-        <div class="catalog-tools"><label class="event-search"><span class="sr-only">搜索活动名称</span><input id="event-search" type="search" placeholder="搜索活动、寻访或玩法…" autocomplete="off"></label><button id="fit-version" class="button button-small" type="button">版本全览</button><button id="reset-filters" class="text-button" type="button">显示全部</button><span id="catalog-count"></span></div>
-        <div data-module="deadlines" id="deadline-strip" class="deadline-strip"></div>
+        <div class="catalog-tools"><label class="event-search"><span class="sr-only">搜索活动名称</span><input id="event-search" type="search" placeholder="搜索活动、寻访或玩法…" autocomplete="off"></label><button id="fit-version" class="button button-small" type="button" disabled>版本全览</button><button id="reset-filters" class="text-button" type="button">显示全部</button><span id="catalog-count"></span></div>
         <div id="calendar" class="calendar" aria-live="polite"></div>
         <div class="calendar-legend"><span><i class="progress-sample"></i>深色表示已过去的时间</span><span><i class="open-sample"></i>斜纹表示结束时间待定</span><span>点击活动查看原文与精确时间</span></div>
         <section id="unscheduled" class="unscheduled" hidden></section>
       </section>
+      <section data-module="personal-plans" id="personal-plans-panel" class="calendar-panel" hidden></section>
       </div>
       <footer class="main-footer"><span id="sync-status">本地数据</span><span id="clock-label"></span></footer>
       <div id="load-error" class="load-error" hidden role="alert"></div>
@@ -53,6 +67,35 @@
   <dialog id="rules-dialog" class="rules-dialog" aria-labelledby="rules-title"><div class="dialog-header"><div><div class="eyebrow">SOURCE → RULES → CALENDAR</div><h2 id="rules-title">日历解析 JSON</h2></div><button class="icon-button" type="button" data-close aria-label="关闭规则">×</button></div><div class="dialog-body"><p class="help-text">按章节识别独立活动，再关联维护时间。每个条目保留原文和时间依据。</p><div class="rules-tabs" role="group" aria-label="JSON 内容"><button id="show-config" class="button" type="button" aria-pressed="true">规则配置</button><button id="show-analysis" class="button" type="button" aria-pressed="false">版本解析结果</button><button id="download-rules" class="button button-small" type="button">下载 JSON</button></div><pre id="rules-json"></pre></div></dialog>
   <dialog id="agenda-dialog" class="agenda-dialog" aria-labelledby="agenda-title"><div class="dialog-header"><h2 id="agenda-title">当日活动</h2><button class="icon-button" type="button" data-close aria-label="关闭当日日程">×</button></div><div id="agenda-content" class="dialog-body"></div></dialog>
   <dialog id="reward-dialog" aria-labelledby="reward-title"><div class="dialog-header"><div><div class="eyebrow">OROBERYL / OFFICIAL SOURCES</div><h2 id="reward-title">版本奖励明细</h2></div><button class="icon-button" type="button" data-close aria-label="关闭奖励明细">×</button></div><div id="reward-content" class="dialog-body"></div></dialog>
+  <dialog id="preferences-dialog" aria-labelledby="preferences-title"><div class="dialog-header"><div><div class="eyebrow">MY WORKSPACE</div><h2 id="preferences-title">布局、主题与采集</h2></div><button type="button" class="icon-button" data-close aria-label="关闭页面设置">×</button></div><div class="dialog-body">
+    <nav class="preference-tabs" role="tablist" aria-label="设置分类"><button type="button" role="tab" data-preference-tab="theme" aria-selected="false">主题配色</button><button type="button" role="tab" data-preference-tab="layout" aria-selected="true">模块布局</button><button type="button" role="tab" data-preference-tab="network" aria-selected="false">数据采集</button></nav>
+    <section data-preference-panel="layout"><p class="help-text">拖动模块行或使用上下按钮排序。修改布局不会改变活动日期、收藏或主题。</p><div id="layout-rows"></div><div class="preference-grid"><label><input id="sidebar-visible" type="checkbox"> 显示筛选侧栏</label><label>侧栏位置<select id="sidebar-position"><option value="left">左侧</option><option value="right">右侧</option></select></label><label>侧栏宽度<input id="sidebar-width" type="number" min="180" max="360"></label><label>桌面展开月历位置<select id="desktop-calendar-position"><option value="left">活动左侧</option><option value="top">活动上方</option></select></label></div><div class="settings-actions"><button type="button" id="save-layout" class="button button-primary">保存布局</button><button type="button" id="edit-layout" class="button">直接调整页面</button><button type="button" id="reset-layout" class="button">恢复默认布局</button></div></section>
+    <section data-preference-panel="theme" hidden>
+  <div id="theme-fields">
+    <label class="field-label theme-preset-label">视觉预设<select id="theme-preset"></select></label>
+    <p class="help-text">预设同时定义颜色分工、几何与字重。可独立调整，不影响活动数据、游戏组合或模块布局。</p>
+    <div id="theme-preview"><div class="preview-nav">// PLAYTIME <span>01 / 日程</span></div><article><span class="preview-signal">进行中 / ACTIVE</span><strong>限时活动周期可视化</strong><p class="preview-track">10/21 10:00 ━━━━━ 11/05 03:59</p><small>来源明确 · 预计时间另行标记</small></article></div>
+    <details class="theme-group" open><summary>01 / 表面与文字</summary><div id="theme-surfaces" class="preference-grid"></div></details>
+    <details class="theme-group"><summary>02 / 强调与导航</summary><div id="theme-signals" class="preference-grid"></div></details>
+    <details class="theme-group"><summary>03 / 时间轴与活动类型</summary><div id="theme-events" class="preference-grid"></div></details>
+    <details class="theme-group"><summary>04 / 几何与排版</summary><div class="preference-grid">
+      <label>字号<input id="theme-font_size" type="number" min="12" max="18"></label>
+      <label>标题字重<input id="theme-heading_weight" type="number" min="600" max="900" step="100"></label>
+      <label>网页面板圆角<input id="theme-radius" type="number" min="0" max="28"></label>
+      <label>网页按钮圆角<input id="theme-control_radius" type="number" min="0" max="40"></label>
+      <label>桌面气泡圆角<input id="theme-desktop_radius" type="number" min="0" max="16"></label>
+      <label>桌面按钮圆角<input id="theme-desktop_control_radius" type="number" min="0" max="12"></label>
+      <label>间距<input id="theme-spacing" type="number" min="8" max="24"></label>
+      <label>边框粗细<input id="theme-border_width" type="number" min="0" max="2"></label>
+      <label>背景纹理<select id="theme-texture"><option value="none">无</option><option value="grid">工程网格</option><option value="diagonal">斜线</option><option value="dots">点阵</option></select></label>
+      <label>纹理强度 %<input id="theme-texture_opacity" type="number" min="0" max="12"></label>
+      <label>卡片底色不透明度 %<input id="theme-card_opacity" type="number" min="35" max="100"></label>
+    </div></details>
+  </div>
+  <p class="help-text">强调色用于色块，其文字单独校验对比度；支持亮黄、荧光绿。网页与桌面的圆角分别设置，软件标识保持固定形状；桌面气泡透明度独立保存。</p>
+  <div class="settings-actions"><button type="button" id="save-theme" class="button button-primary">应用主题</button><button type="button" id="reset-theme" class="button">恢复标准</button><button type="button" id="export-theme" class="button">导出主题</button><label class="button">导入主题<input id="import-theme" type="file" accept="application/json,.json" class="sr-only"></label></div>
+</section><section data-preference-panel="network" hidden><p class="help-text">所有插件共用站点配额。暂停会停止后续请求，正在执行的请求将在超时范围内完成；本地日历和提醒继续运行。恢复不会清除站点冷却或请求额度。</p><label class="field-label">自动同步周期<select id="sync-interval"><option value="60">每小时</option><option value="180">每 3 小时</option><option value="360">每 6 小时</option><option value="1440">每天</option></select></label><p id="network-summary" role="status"></p><button type="button" id="network-toggle" class="button">暂停联网</button><div class="preference-grid"><label>同站请求间隔（秒）<input id="network-interval_seconds" type="number" min="2" max="60"></label><label>每站每小时请求上限<input id="network-hourly_limit" type="number" min="20" max="600"></label><label>每轮每站请求上限<input id="network-round_limit" type="number" min="5" max="100"></label></div><button type="button" id="save-network" class="button button-primary">保存采集限制</button><div id="network-sites"></div></section>
+    <p id="preferences-error" role="status"></p></div></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
   <noscript><div class="load-error">请开启 JavaScript 以使用日历。公告解析在本地 Python 程序中运行。</div></noscript>
 </body>

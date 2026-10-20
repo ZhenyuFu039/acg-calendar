@@ -8,6 +8,7 @@ import re
 import threading
 import urllib.parse
 
+from .network import network_job
 from .parser import AnnouncementParser, ROOT, html_to_text, iso
 from .artwork import ArtworkCache
 from .briefing import BriefingReader, merge_briefing, normalize
@@ -58,6 +59,7 @@ class Collector:
         finally:
             self.lock.release()
 
+    @network_job
     def collect(self):
         rules = self.parser.rules
         sources = rules["sources"]
