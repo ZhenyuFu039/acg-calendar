@@ -59,13 +59,18 @@ const output='logs/demo-qa';
     assert.match(await page.locator('#toggle-completed').innerText(),/撤销/);
     await page.locator('.edit-section summary').click();
     await page.locator('#edit-notes').fill('QA 临时备注：重启后应保留');
-    await page.locator('#edit-end').fill('2026-11-06T04:00');
+    const correctedId=await page.evaluate(()=>document.querySelector('#toggle-completed')&&document.querySelector('#detail-content [data-plan-for-event]')?.dataset.planForEvent);
+    const before=(await(await fetch(base+'/api/state')).json()).events.find(e=>e.id===correctedId);
+    await page.locator('#edit-end').fill('2026-11-06T12:00'); // Typed in the display time zone (Asia/Shanghai here).
     await page.locator('#event-edit-form button[type=submit]').click();
     await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('已手动校正'));
-    assert.match(await page.locator('#detail-content').innerText(),/2026\/11\/06 12:00/); // Manual correction input is explicitly UTC.
+    assert.match(await page.locator('#detail-content').innerText(),/2026\/11\/06 12:00/);
+    const after=(await(await fetch(base+'/api/state')).json()).events.find(e=>e.id===correctedId);
+    assert.equal(after.end.at,'2026-11-06T04:00:00Z','Stored in UTC');
+    assert.equal(after.start.at,before.start.at,'The untouched start keeps its exact stored value');
     await page.locator('.edit-section summary').click();
     assert.equal(await page.locator('#edit-notes').inputValue(),'QA 临时备注：重启后应保留');
-    await page.locator('#edit-end').fill('2026-10-01T04:00');
+    await page.locator('#edit-end').fill('2026-10-01T12:00');
     await page.locator('#event-edit-form button[type=submit]').click();
     await page.waitForFunction(()=>!document.querySelector('#toast').hidden&&document.querySelector('#toast').textContent.includes('结束时间必须晚于开始时间'));
     await page.locator('#reset-event-times').click();
@@ -147,7 +152,7 @@ const output='logs/demo-qa';
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+1));
     await page.setViewportSize({width:1440,height:1050});
     await page.locator('#maintenance-button').click();
-    await page.locator('#actual-maintenance-end').fill('2026-10-15T12:15');
+    await page.locator('#actual-maintenance-end').fill('2026-10-15T20:15'); // 12:15 UTC in the Shanghai display zone.
     await page.locator('#maintenance-form button[type=submit]').click();
     await page.waitForFunction(()=>document.querySelector('#detail-content').textContent.includes('开服已确认'));
     await page.locator('#clear-maintenance').click();

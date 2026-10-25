@@ -27,7 +27,7 @@ from acg_calendar.providers import create_registry
 from acg_calendar.workspace import WorkspaceService, timeline, sort_events
 from acg_calendar.network import NetworkManager, check_policy
 from acg_calendar.scheduling import SyncSchedule
-from acg_calendar.presentation import context
+from acg_calendar.presentation import context, local_instant
 
 
 def plugin_folder(name):
@@ -141,9 +141,18 @@ class Application:
         event = next((e for v in self.versions() for e in v["events"] if e["id"] == event_id), None)
         if not event:
             raise LookupError("活动不存在")
-        allowed = {"completed", "ignored", "starred", "notes", "reminder_minutes", "start_override", "end_override", "clear_overrides"}
+        allowed = {"completed", "ignored", "starred", "notes", "reminder_minutes", "start_override", "end_override", "clear_overrides",
+                   "start_local", "end_local", "timezone", "fold_start", "fold_end"}
         if set(payload) - allowed:
             raise ValueError("不支持的活动字段")
+        # Corrections may be typed in the display time zone; repeated or missing local times
+        # get the same checks as personal plans. Only the endpoints sent here change.
+        for role in ("start", "end"):
+            if role + "_local" in payload:
+                if role + "_override" in payload:
+                    raise ValueError("当地时间和 UTC 校正不能同时填写")
+                local = payload[role + "_local"]
+                payload = {**payload, role + "_override": None if local is None else local_instant(local, payload.get("timezone"), payload.get("fold_" + role))}
         patch, remove = {}, []
         for flag in ("completed", "ignored", "starred"):
             if flag in payload:
@@ -460,7 +469,10 @@ def handler_for(application):
                 length = int(self.headers.get("Content-Length", "0"))
                 if not 0 <= length <= (backup.MAX_BYTES if path == "/api/backups/restore" else 16000):
                     return self.send({"error": "请求过大"}, 413)
-                payload = json.loads(self.rfile.read(length) or b"{}")
+                try:
+                    payload = json.loads(self.rfile.read(length) or b"{}")
+                except (UnicodeDecodeError, json.JSONDecodeError):
+                    raise ValueError("请求内容不是有效的 JSON") from None
                 if not isinstance(payload, dict):
                     raise ValueError("请求应为 JSON 对象")
                 if self.command == "DELETE":
@@ -510,6 +522,10 @@ def handler_for(application):
                 elif match := re.fullmatch(r"/api/events/([a-zA-Z0-9_-]+)", path):
                     application.update_event(match.group(1), payload)
                 elif match := re.fullmatch(r"/api/versions/([a-zA-Z0-9_-]+)/maintenance", path):
+                    if "actual_local" in payload:
+                        if set(payload) - {"actual_local", "timezone", "fold"}:
+                            raise ValueError("请提供 actual_local、timezone，可选 fold")
+                        payload = {"actual_end": None if payload["actual_local"] is None else local_instant(payload["actual_local"], payload.get("timezone"), payload.get("fold"))}
                     if set(payload) != {"actual_end"} or (payload["actual_end"] is not None and not isinstance(payload["actual_end"], str)):
                         raise ValueError("请明确提供 actual_end 时间或 null")
                     version = next((v for v in application.versions() if v["id"] == match.group(1)), None)

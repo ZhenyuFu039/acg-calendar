@@ -49,7 +49,8 @@ const base='http://127.0.0.1:8793';
       const box=await icon.locator('..').boundingBox();assert.ok(Math.abs(box.width-box.height)<1,'Game icon should occupy a square');
     }
     assert.match(await page.locator('.timeline-row').filter({hasText:'卡莉的芳菲童话'}).locator('.reward-cell').innerText(),/1,500/);
-    assert.match(await page.locator('.timeline-row').filter({hasText:'昨日海'}).first().locator('.reward-cell').innerText(),/—/);
+    // Games without a reward currency get an empty, unlabeled placeholder instead of a reward button (F20).
+    assert.deepEqual(await page.locator('.timeline-row').filter({hasText:'昨日海'}).first().locator('.reward-cell').evaluate(n=>[n.tagName,n.textContent,n.getAttribute('aria-hidden')]),['SPAN','','true']);
     for(const width of [320,390,768,1440,1920]){await page.setViewportSize({width,height:1000});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Page overflow '+width);}
     await page.setViewportSize({width:1440,height:1050});await page.screenshot({path:'logs/multigame-e2e/combined.png',fullPage:false});
     await page.locator('#game-select').selectOption('endfield-cn');await page.waitForFunction(()=>document.querySelector('#reward-total')?.textContent==='11,000嵌晶玉');

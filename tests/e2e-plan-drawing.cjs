@@ -22,11 +22,12 @@ const base='http://127.0.0.1:8804',DAY=86400000;
     await page.locator('#plans-button').click();assert.equal(await page.locator('[data-plan-summary]').count(),3);
     assert.equal(await page.locator(`[data-plan-summary="${first.id}"] .plan-coverage [data-event]`).count(),2);
     assert.equal(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage [data-event]`).count(),1);
-    assert.match(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage`).innerText(),/示例兑换处/);assert.match(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage`).innerText(),/预计 \/ 待定/);
+    assert.match(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage`).textContent(),/示例兑换处/);assert.match(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage`).textContent(),/预计 \/ 待定/);
     assert.equal(await page.locator(`[data-plan-summary="${outside.id}"] .plan-coverage [data-event]`).count(),0);
     await page.locator(`[data-plan-summary="${exchange.id}"] summary`).click();
     await Promise.all([page.waitForResponse(r=>r.url().endsWith('/api/state')),page.evaluate(()=>window.dispatchEvent(new Event('focus')))]);
-    assert.equal(await page.locator(`[data-plan-summary="${exchange.id}"] details`).evaluate(e=>e.open),false,'Polling must preserve disclosure state');
+    // The list starts folded (F20); the user's opening must survive a poll.
+    assert.equal(await page.locator(`[data-plan-summary="${exchange.id}"] details`).evaluate(e=>e.open),true,'Polling must preserve disclosure state');
     await page.locator(`[data-plan-summary="${exchange.id}"] summary`).click();
     await page.screenshot({path:path.join(output,'all-plans-and-activities.png')});
     await page.locator('#plans-dialog [data-close]').click();await page.locator('[data-fold-parent]').first().click();await page.waitForFunction(()=>document.querySelector('[data-fold-parent]').getAttribute('aria-expanded')==='false');

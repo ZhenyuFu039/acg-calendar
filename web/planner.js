@@ -92,9 +92,10 @@ window.PlaytimePlanner = (() => {
     });
   }
   function planSummary(p,events,lo,hi){
-    const covered=matches(p,events,lo,hi),linked=state().events.find(e=>e.id===p.event_id);
+    const rank=e=>e.id===p.event_id?0:p.game_id&&e.game===p.game_id?1:2;
+    const covered=matches(p,events,lo,hi).sort((a,b)=>rank(a.event)-rank(b.event)),linked=state().events.find(e=>e.id===p.event_id);
     const items=covered.map(({event:e,label})=>`<li><button type="button" class="text-button" data-event="${E(e.id)}">${E(W.game(e.game)?.short_name||e.game)} · ${E(e.title)} ↗</button><small>${E(label)} · ${E(H.format(e.start.at,{year:true}))} → ${e.time_kind==='point'?'更新节点':e.end.at?E(H.format(e.end.at,{year:true})):'结束待定'}</small></li>`).join('');
-    return `<article class="plan-summary" data-plan-summary="${E(p.id)}"><header><button type="button" class="plan-summary-title" data-plan="${E(p.id)}"><strong>◇ ${E(p.title)}</strong><span>编辑 / 移动 ↗</span></button></header><p class="plan-summary-time">${E(H.format(p.start,{year:true}))} → ${E(H.format(p.end,{year:true}))}</p><p class="help-text">${E(W.game(p.game_id)?.name||p.game_id||'未限定游戏')} · 计划时区 ${E(p.timezone)}${p.event_id?' · 手动关联：'+E(linked?.title||'来源活动已不可用'):''}</p>${p.notes?`<p class="plan-summary-notes">${E(p.notes)}</p>`:''}<details class="plan-coverage" ${covered.length?'open':''}><summary>当前时间轴内重叠活动 · ${covered.length} 项</summary>${items?'<ul>'+items+'</ul>':'<p class="help-text">当前显示的游戏、日期和筛选范围内没有重叠活动；规划仍完整保存。</p>'}</details></article>`;
+    return `<article class="plan-summary" data-plan-summary="${E(p.id)}"><header><button type="button" class="plan-summary-title" data-plan="${E(p.id)}"><strong>◇ ${E(p.title)}</strong><span>编辑 / 移动 ↗</span></button></header><p class="plan-summary-time">${E(H.format(p.start,{year:true}))} → ${E(H.format(p.end,{year:true}))}</p><p class="help-text">${E(W.game(p.game_id)?.name||p.game_id||'未限定游戏')} · 计划时区 ${E(p.timezone)}${p.event_id?' · 手动关联：'+E(linked?.title||'来源活动已不可用'):''}</p>${p.notes?`<p class="plan-summary-notes">${E(p.notes)}</p>`:''}<details class="plan-coverage"><summary>期间可参与活动 · ${covered.length} 项${p.event_id||p.game_id?'（手动关联的排在前面）':''}</summary>${items?'<ul>'+items+'</ul>':'<p class="help-text">当前显示的游戏、日期和筛选范围内没有重叠活动；规划仍完整保存。</p>'}</details></article>`;
   }
   function closeDialogs(){for(const d of document.querySelectorAll('dialog[open]'))d.close();}
   function localValue(at,timezone){const p=H.dateParts(at,timezone);return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;}
@@ -112,7 +113,7 @@ window.PlaytimePlanner = (() => {
     $('#plan-game').value=p?.game_id||event?.game||(selection&&W.game(H.game())?H.game():'');eventOptions(p?.event_id||eventId);
     H.openDialog('#plan-editor-dialog');
   }
-  function eventOptions(selected=null){const g=$('#plan-game').value;$('#plan-event').innerHTML='<option value="">不关联</option>'+state().events.filter(e=>!g||e.game===g).map(e=>`<option value="${E(e.id)}">${E((W.game(e.game)?.short_name||e.game)+' · '+e.title)}</option>`).join('');if(selected&&!state().events.some(e=>e.id===selected))$('#plan-event').insertAdjacentHTML('beforeend',`<option value="${E(selected)}">来源活动已不可用（保留关联）</option>`);$('#plan-event').value=selected||'';}
+  function eventOptions(selected=null){const g=$('#plan-game').value,rows=state().events.filter(e=>!g||e.game===g),label=e=>(W.game(e.game)?.short_name||e.game)+' · '+e.title,seen=new Map();for(const e of rows)seen.set(label(e),(seen.get(label(e))||0)+1);$('#plan-event').innerHTML='<option value="">不关联</option>'+rows.map(e=>`<option value="${E(e.id)}">${E(label(e)+(seen.get(label(e))>1?' · '+(e.version_name||'')+(e.start.at?' '+H.format(e.start.at,{dateOnly:true}):''):''))}</option>`).join('');if(selected&&!state().events.some(e=>e.id===selected))$('#plan-event').insertAdjacentHTML('beforeend',`<option value="${E(selected)}">来源活动已不可用（保留关联）</option>`);$('#plan-event').value=selected||'';}
   async function save(move=null){
     if(!$('#plan-form').reportValidity())return;
     const body={title:$('#plan-title').value,local_start:$('#plan-start').value,local_end:$('#plan-end').value,timezone:$('#plan-timezone').value.trim(),game_id:$('#plan-game').value||null,event_id:$('#plan-event').value||null,notes:$('#plan-notes').value};
@@ -144,6 +145,8 @@ window.PlaytimePlanner = (() => {
     for(const d of document.querySelectorAll('.feature-dialog'))d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();});
     document.addEventListener('submit',e=>{if(e.target.id==='plan-form'){e.preventDefault();save();}});
     document.addEventListener('change',e=>{if(e.target.id==='plan-game')eventOptions();});
+    // An error describes the input it was raised for; any edit clears it until the next save is checked.
+    for(const type of ['input','change'])document.addEventListener(type,e=>{if(e.target.closest('#plan-form')&&!$('#plan-error').hidden){$('#plan-error').hidden=true;$('#plan-error').textContent='';}});
     document.addEventListener('click',async e=>{
       const b=e.target.closest('button');if(!b||!state())return;
       if(b.hasAttribute('data-clear-focus')||b.hasAttribute('data-clear-selection'))await clearFocus();
