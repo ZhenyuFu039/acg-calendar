@@ -30,7 +30,14 @@ from acg_calendar.scheduling import SyncSchedule
 from acg_calendar.presentation import context
 
 
-SETTING_FIELDS = {"active_game", "timezone", "view", "reminders_enabled", "reminder_offsets", "native_notifications", "sync_interval_minutes", "hide_completed", "reminder_scope"}
+def plugin_folder(name):
+    """A single plugin folder name as found in data/plugins (any language, spaces allowed)."""
+    if not isinstance(name, str) or not 1 <= len(name) <= 100 or name in {".", ".."} or name != name.strip() or any(c in '<>:"/\\|?*' or ord(c) < 32 for c in name):
+        raise ValueError("停用插件列表无效")
+    return name
+
+
+SETTING_FIELDS = {"active_game", "timezone", "view", "reminders_enabled", "reminder_offsets", "native_notifications", "sync_interval_minutes", "hide_completed", "reminder_scope", "disabled_plugins"}
 
 
 class Application:
@@ -295,7 +302,40 @@ class Application:
             if not isinstance(scope, dict) or set(scope) != {"mode", "games"} or scope["mode"] not in {"all", "follow", "custom"} or (games is not None and (not isinstance(games, list) or len(games) > 100 or len(set(games)) != len(games) or any(not isinstance(g, str) or not g or len(g) > 100 for g in games))):
                 raise ValueError("提醒游戏范围无效")
             patch["reminder_scope"] = {"mode": scope["mode"], "games": None if games is None else list(games)}
+        if "disabled_plugins" in patch:
+            folders = patch["disabled_plugins"]
+            # Folder names only; removed folders may stay listed and simply have no effect.
+            if not isinstance(folders, list) or len(folders) > 200 or len(set(folders)) != len(folders):
+                raise ValueError("停用插件列表无效")
+            patch["disabled_plugins"] = sorted(plugin_folder(f) for f in folders)
         return patch
+
+    def set_plugin_enabled(self, payload):
+        """Turn one plugin folder on or off; read-modify-write under the store lock so
+        quick successive toggles of different plugins never overwrite each other."""
+        if not isinstance(payload, dict) or set(payload) != {"folder", "enabled"} or type(payload["enabled"]) is not bool:
+            raise ValueError("请提供插件文件夹 folder 和布尔值 enabled")
+        folder = plugin_folder(payload["folder"])
+        with self.store.lock:
+            disabled = set(self.store.settings()["disabled_plugins"])
+            if payload["enabled"]:
+                disabled.discard(folder)
+            else:
+                disabled.add(folder)
+            self.update_settings({"disabled_plugins": sorted(disabled)})
+
+    def plugin_report(self):
+        """Installed plugins as loaded at startup, plus what changes after the next restart."""
+        disabled = set(self.store.settings()["disabled_plugins"])
+        rows = []
+        for row in self.registry.plugins:
+            row = dict(row)
+            wanted_off = row["folder"] in disabled
+            row["enabled_setting"] = not wanted_off
+            row["restart_required"] = (row["status"] == "disabled") != wanted_off and row["status"] in {"loaded", "disabled", "error"}
+            rows.append(row)
+        builtins = [{"id": g["id"], "name": g["name"], "server": g.get("server"), "source_label": g.get("source_label")} for g in self.registry.games if g.get("plugin_kind") == "builtin"]
+        return {"api_version": 1, "directory": str((self.data_dir / "plugins").resolve()), "plugins": rows, "builtins": builtins, "games": self.registry.games, "errors": self.registry.errors}
 
     def update_settings(self, patch):
         self.store.update_settings(self.check_settings(patch))
@@ -345,7 +385,7 @@ def handler_for(application):
                 if path == "/api/network":
                     return self.send(application.network.snapshot())
                 if path == "/api/plugins":
-                    return self.send({"api_version": 1, "games": application.registry.games, "errors": application.registry.errors})
+                    return self.send(application.plugin_report())
                 if path == "/api/plans":
                     return self.send({"plans": application.store.plans()})
                 if path == "/api/backups":
@@ -429,6 +469,11 @@ def handler_for(application):
                         return self.send({"error": "接口不存在"}, 404)
                     application.store.delete_plan(match.group(1))
                     return self.send(application.state())
+                if path == "/api/plugins/state":
+                    if self.command != "POST":
+                        raise ValueError("切换插件需使用 POST")
+                    application.set_plugin_enabled(payload)
+                    return self.send({**application.state(), "plugins_report": application.plugin_report()})
                 if path == '/api/plugins/open-directory':
                     if self.command != 'POST' or payload:
                         raise ValueError('此入口仅用于打开当前插件目录，不接受路径参数')

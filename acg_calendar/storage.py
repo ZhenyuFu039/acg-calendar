@@ -16,6 +16,8 @@ DEFAULT_SETTINGS = {
     # all: every installed game (also future ones); follow: the current game combination; custom: listed games.
     # games is null until a custom list is first saved, so an explicitly empty list stays empty.
     "reminder_scope": {"mode": "all", "games": None},
+    # Plugin folders the user turned off; applied when the program next starts (F15).
+    "disabled_plugins": [],
 }
 
 

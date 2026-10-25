@@ -70,12 +70,20 @@ window.PlaytimeCustomize=(()=>{
       backupStatus(`已恢复：收藏 ${c.starred} · 完成 ${c.completed} · 备注 ${c.notes} · 校正 ${c.corrections} · 计划 ${c.plans}。恢复前的数据已另存为备份。`+(result.warnings.length?' 注意：'+result.warnings.join('；'):''));
     }catch(error){backupStatus('恢复失败：'+error.message,true);}
   }
-  function select(value){tab=value;for(const node of document.querySelectorAll('[data-preference-panel]'))node.hidden=node.dataset.preferencePanel!==tab;for(const b of document.querySelectorAll('[data-preference-tab]'))b.setAttribute('aria-selected',String(b.dataset.preferenceTab===tab));$('#preferences-title').textContent=tab==='network'?'数据与同步':'外观与布局';}
+  // F15: installed plugins as loaded at startup; changes apply after a restart.
+  const pluginStatus={loaded:'已加载',disabled:'已停用',manifest_disabled:'插件自身设为停用（manifest 中 enabled:false）',error:'加载失败'};
+  async function plugins(){
+    try{
+      const report=await host.api('/api/plugins'),rows=report.plugins;
+      $('#plugin-list').innerHTML=`<p class="help-text">内置：${report.builtins.map(g=>escape(g.name)).join('、')}（随程序提供，不能停用）。插件目录：${escape(report.directory)}</p>`+(rows.length?rows.map(p=>`<div class="backup-row plugin-row"><strong>${escape(p.name||p.folder)}${p.server?' · '+escape(p.server):''}</strong><span>${escape(pluginStatus[p.status]||p.status)}${p.restart_required?` · ${p.enabled_setting?'已设为启用':'已设为停用'}，重启游时后生效`:''}${p.error?' · '+escape(p.error):''}</span><span>文件夹 ${escape(p.folder)}${p.version?' · 版本 '+escape(p.version):''}${p.api_version?' · 插件 API '+escape(p.api_version):''}${p.source_label?' · '+escape(p.source_label):''}</span>${p.status==='manifest_disabled'?'':`<button type="button" class="button button-small" data-plugin-toggle="${escape(p.folder)}" data-enable="${!p.enabled_setting}">${p.enabled_setting?'停用':'启用'}</button>`}</div>`).join(''):'<p class="help-text">插件目录中还没有插件。</p>');
+    }catch(error){$('#plugins-status').textContent='无法读取插件：'+error.message;}
+  }
+  function select(value){tab=value;for(const node of document.querySelectorAll('[data-preference-panel]'))node.hidden=node.dataset.preferencePanel!==tab;for(const b of document.querySelectorAll('[data-preference-tab]'))b.setAttribute('aria-selected',String(b.dataset.preferenceTab===tab));$('#preferences-title').textContent=tab==='network'?'数据与同步':tab==='plugins'?'日历插件':'外观与布局';}
   function open(value='layout'){
     if(!host.state())return;
     layout=structuredClone(host.state().workspace.layout);paintLayout();paintTheme(host.state().workspace.theme);
     const n=host.state().network;for(const key of Object.keys(n.policy))$('#network-'+key).value=n.policy[key];
-    $('#preferences-error').textContent='';backupStatus('');opened=true;select(value);network();if(value==='network')backups();host.openDialog('#preferences-dialog');
+    $('#preferences-error').textContent='';backupStatus('');opened=true;select(value);network();if(value==='network')backups();if(value==='plugins')plugins();host.openDialog('#preferences-dialog');
     $('#workspace-button').setAttribute('aria-expanded',String(value!=='network'));$('#data-button').setAttribute('aria-expanded',String(value==='network'));
   }
   function download(value){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));a.download='playtime-theme.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
@@ -91,7 +99,16 @@ window.PlaytimeCustomize=(()=>{
         if(b.id==='data-button'){open('network');return;}
         if(b.id==='rail-calendar'){document.querySelector('#calendar-expand').focus({preventScroll:true});return;}
         if(b.id==='rail-games'){const next=structuredClone(host.state().workspace.layout);next.sidebar.visible=!next.sidebar.visible;await host.mutate('/api/workspace',{layout:next},'PATCH');return;}
-        if(b.dataset.preferenceTab){select(b.dataset.preferenceTab);if(tab==='network')backups();return;}
+        if(b.dataset.preferenceTab){select(b.dataset.preferenceTab);if(tab==='network')backups();if(tab==='plugins')plugins();return;}
+        if(b.id==='manage-plugins'){open('plugins');return;}
+        if(b.dataset.pluginToggle){
+          // One plugin per request, and the whole list waits for it, so quick successive clicks cannot overwrite each other.
+          const list=$('#plugin-list');list.setAttribute('aria-busy','true');list.querySelectorAll('button').forEach(x=>{x.disabled=true;});
+          try{if(await host.mutate('/api/plugins/state',{folder:b.dataset.pluginToggle,enabled:b.dataset.enable==='true'}))$('#plugins-status').textContent='已保存。退出并重新启动游时后生效；个人记录不会被删除。';}
+          finally{list.removeAttribute('aria-busy');await plugins();}
+          return;
+        }
+        if(b.id==='plugins-open-directory'){try{const r=await host.api('/api/plugins/open-directory','POST',{});$('#plugins-status').textContent='已打开：'+r.directory;}catch(error){$('#plugins-status').textContent=error.message;}return;}
         if(b.dataset.restoreBackup){await restore({name:b.dataset.restoreBackup},b.closest('.backup-row').querySelector('strong').textContent);return;}
         if(b.dataset.layoutMove){layoutFields();const i=Number(b.dataset.layoutMove),to=i+Number(b.dataset.step);layout.modules.splice(to,0,layout.modules.splice(i,1)[0]);paintLayout();return;}
         if(b.dataset.networkSite){await host.mutate('/api/network',{site:b.dataset.networkSite,paused:b.dataset.paused==='true'},'PATCH');network();return;}

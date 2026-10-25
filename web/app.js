@@ -604,7 +604,7 @@
   }
   function reminderScopeFields() {
     const scope=S.data.settings.reminder_scope||{mode:'all',games:null},chosen=scope.games||[];
-    const games=[...S.data.games.map(g=>[g.id,g.short_name+' · '+g.server]),...chosen.filter(id=>!W.game(id)).map(id=>[id,id+'（未安装，重新安装后恢复）'])];
+    const games=[...S.data.games.map(g=>[g.id,g.short_name+' · '+g.server]),...chosen.filter(id=>!W.game(id)).map(id=>[id,id+'（当前不可用：未安装或已停用，保留选择）'])];
     const current=W.selected().map(id=>W.game(id)?.short_name||id).join('、')||'无';
     const option=(mode,label)=>`<label><input type="radio" name="reminder-scope" value="${mode}" ${scope.mode===mode?'checked':''}>${label}</label>`;
     return `<fieldset class="reminder-scope"><legend>提醒的游戏</legend>${option('all','全部已安装游戏（含以后安装的）')}${option('follow','跟随当前游戏组合（当前：'+esc(current)+'）')}${option('custom','自选游戏')}<div class="reminder-scope-games" ${scope.mode==='custom'?'':'hidden'}>${games.map(([id,label])=>`<label><input type="checkbox" data-reminder-game="${esc(id)}" ${chosen.includes(id)?'checked':''}>${esc(label)}</label>`).join('')}</div>${scope.mode==='custom'&&!chosen.length?'<p class="help-text warning">未选择任何游戏，截止提醒不会发送。</p>':''}<p class="help-text">只决定哪些游戏发送截止提醒，不受页面的搜索、类型或日期筛选影响；选“跟随当前游戏组合”时，切换日历游戏会一起改变提醒范围。单个活动的提醒设置仍然有效。</p></fieldset>`;

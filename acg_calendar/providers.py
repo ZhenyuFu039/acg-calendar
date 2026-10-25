@@ -225,6 +225,8 @@ class JsonProvider:
 class ProviderRegistry:
     def __init__(self):
         self.providers, self.errors = {}, []
+        # One row per plugin folder found at startup, for the plugin management page (F15).
+        self.plugins = []
 
     @property
     def ids(self):
@@ -246,15 +248,28 @@ class ProviderRegistry:
     def name(self, game):
         return self.providers[game].descriptor["name"] if game in self.providers else game
 
-    def discover(self, root, store):
+    def discover(self, root, store, disabled=()):
+        """Load plugin folders; folders the user disabled are listed but not loaded."""
         if not root.exists():
             return
         for path in sorted(root.glob("*/manifest.json")):
+            manifest, row = None, {"folder": path.parent.name}
+            # A folder the user turned off is never loaded, even when its manifest is unreadable.
+            user_off = path.parent.name in disabled
             try:
                 if not path.resolve().is_relative_to(root.resolve()):
                     raise ValueError("插件文件不得指向插件目录外")
                 manifest = bounded_json(path)
+                if isinstance(manifest, dict):
+                    game = manifest.get("game") if isinstance(manifest.get("game"), dict) else {}
+                    row.update({k: str(v)[:120] for k, v in (("id", game.get("id")), ("name", game.get("name")), ("server", game.get("server")),
+                                ("source_label", game.get("source_label")), ("version", manifest.get("version")), ("api_version", manifest.get("api_version")),
+                                ("kind", (manifest.get("source") or {}).get("type") if isinstance(manifest.get("source"), dict) else manifest.get("kind"))) if v is not None})
                 if isinstance(manifest, dict) and manifest.get("enabled") is False:
+                    self.plugins.append({**row, "status": "manifest_disabled"})
+                    continue
+                if user_off:
+                    self.plugins.append({**row, "status": "disabled"})
                     continue
                 source = manifest.get("source", {}) if isinstance(manifest, dict) else {}
                 if source and (not isinstance(source, dict) or source.get("type") not in {"gamekee", "azurlane-wiki", "zzz-official"}):
@@ -270,8 +285,13 @@ class ProviderRegistry:
                     self.add(GameKeeProvider(path.parent, manifest, store))
                 else:
                     self.add(JsonProvider(path.parent, manifest, store))
+                self.plugins.append({**row, "status": "loaded"})
             except (OSError, ValueError, TypeError, KeyError) as error:
+                if user_off:
+                    self.plugins.append({**row, "status": "disabled", "error": str(error)[:400]})
+                    continue
                 self.errors.append({"plugin": path.parent.name, "error": str(error)[:400]})
+                self.plugins.append({**row, "status": "error", "error": str(error)[:400]})
 
 
 def create_registry(store, data_dir):
@@ -282,5 +302,5 @@ def create_registry(store, data_dir):
     registry = ProviderRegistry()
     registry.add(EndfieldProvider(GAMES[0], Collector(store, data_dir), data_dir))
     registry.add(BuiltinProvider(GAMES[1], ArknightsCollector(store, data_dir), "sync:arknights-cn"))
-    registry.discover(data_dir / "plugins", store)
+    registry.discover(data_dir / "plugins", store, set(store.settings().get("disabled_plugins", [])))
     return registry
