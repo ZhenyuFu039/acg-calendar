@@ -56,7 +56,7 @@ class NetworkStageTests(TempStoreTest):
                            {'id': 'b', 'title': 'B', 'start': {'at': None}, 'end': {'at': None}}]}]
         new = [{'events': [{'id': 'a', 'title': 'A', 'start': {'at': '2026-01-02T00:00:00Z'}, 'end': {'at': None}},
                            {'id': 'c', 'title': 'C', 'start': {'at': None}, 'end': {'at': None}, 'artwork': {'file': 'x'}}]}]
-        self.assertEqual(calendar_changes(old, new), {'added': 1, 'removed': 1, 'updated': 1, 'total': 2})
+        self.assertEqual(calendar_changes(old, new), {'added': 1, 'removed': 1, 'updated': 1, 'total': 2, 'added_ids': ['c']})
         progress.calendar_saved(old, new)
         progress.images_done(new + [{'events': [{'id': 'd', 'artwork': {'file': 'y'}}]}], failed=2)
         final = progress.finish({'running': False, 'message': 'ok'})

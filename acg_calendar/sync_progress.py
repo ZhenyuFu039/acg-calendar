@@ -33,8 +33,11 @@ def calendar_changes(old_versions, new_versions):
         return (e.get("title"), (e.get("start") or {}).get("at"), (e.get("start") or {}).get("state"),
                 (e.get("end") or {}).get("at"), (e.get("end") or {}).get("state"), e.get("category"), phases)
     old, new = index(old_versions), index(new_versions)
-    return {"added": len(new.keys() - old.keys()), "removed": len(old.keys() - new.keys()),
-            "updated": sum(shape(new[k]) != shape(old[k]) for k in new.keys() & old.keys()), "total": len(new)}
+    added = sorted(new.keys() - old.keys())
+    # added_ids lets the page explain when a new activity is hidden by the current filters (F16).
+    return {"added": len(added), "removed": len(old.keys() - new.keys()),
+            "updated": sum(shape(new[k]) != shape(old[k]) for k in new.keys() & old.keys()), "total": len(new),
+            "added_ids": added[:200]}
 
 
 def artwork_count(versions):

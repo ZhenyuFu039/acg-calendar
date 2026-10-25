@@ -133,18 +133,19 @@ window.PlaytimePlanner = (() => {
     $('#deadlines-content').innerHTML=`<p class="help-text">${E(H.zone())} · 活动 ${d.activity} / 兑换 ${d.exchange}。节点按活动与时刻去重；折叠不减少计数。数量不代表游玩时长。</p>${d.rows.map(n=>`<button type="button" class="agenda-event" data-event="${E(n.event_id)}"><strong>${n.kind==='exchange'?'兑换关闭':'活动 / 阶段关闭'} · ${E(n.title)}</strong><span>${E(H.format(n.at,{year:true}))}</span></button>`).join('')||'<p>这一天没有已明确的未完成截止节点。</p>'}<button type="button" class="button" data-agenda-date="${day}">查看当天活动与计划</button>`;
     H.openDialog('#deadlines-dialog');
   }
-  function update(){if(!state())return;D.update();banner();if($('#plans-dialog')?.open)manager();document.querySelectorAll('[data-event]').forEach(el=>el.classList.toggle('event-focused',el.dataset.event===view().focus.event_id));}
+  // Entry points stay disabled until the first local state arrives (they all read it).
+  function update(){if(!state())return;if($('#plans-button').disabled){$('#plans-button').disabled=$('#uncertain-deadlines').disabled=false;$('#plans-button').removeAttribute('title');}D.update();banner();if($('#plans-dialog')?.open)manager();document.querySelectorAll('[data-event]').forEach(el=>el.classList.toggle('event-focused',el.dataset.event===view().focus.event_id));}
   function detail(event){$('#detail-content .detail-actions')?.insertAdjacentHTML('beforeend',`<button type="button" class="button" data-plan-for-event="${E(event.id)}">◇ 安排游玩</button>`);const parent=state().events.find(e=>e.id===meta().parents?.[event.id]);if(parent)$('#detail-content .detail-actions')?.insertAdjacentHTML('beforebegin',`<p class="help-text">所属主活动：<button type="button" class="text-button" data-event="${E(parent.id)}">${E(parent.title)} ↗</button> · 具体截止沿用此子活动时间</p>`);}
   function init(host){
     H=host;
-    const tools=$('.catalog-tools');tools.insertAdjacentHTML('afterend','<div id="focus-context" class="focus-context" hidden></div>');tools.insertAdjacentHTML('beforeend','<button type="button" id="uncertain-deadlines" class="text-button" title="预计或待定时间不计入精确截止密度">预计 / 待定</button><button type="button" id="clear-activity-focus" class="text-button" data-clear-selection hidden title="清除活动选择">清除选择 ×</button><button type="button" class="button button-small" id="plans-button" data-plans-manager>◇ 个人规划</button>');
+    const tools=$('.catalog-tools');tools.insertAdjacentHTML('afterend','<div id="focus-context" class="focus-context" hidden></div>');tools.insertAdjacentHTML('beforeend','<button type="button" id="uncertain-deadlines" class="text-button" title="预计或待定时间不计入精确截止密度" disabled>预计 / 待定</button><button type="button" id="clear-activity-focus" class="text-button" data-clear-selection hidden title="清除活动选择">清除选择 ×</button><button type="button" class="button button-small" id="plans-button" data-plans-manager disabled title="正在读取本地数据…">◇ 个人规划</button>');
     D.init({...host,closeDialogs,onSelection:selection=>editor(null,{selection}),onManual:()=>editor()});
     for(const [id,title,content]of [['plans','个人游玩计划','plans-content'],['plan-editor','个人计划','plan-editor-content'],['deadlines','截止明细','deadlines-content']])document.body.insertAdjacentHTML('beforeend',`<dialog id="${id}-dialog" class="feature-dialog" aria-labelledby="${id}-title"><div class="dialog-header"><h2 id="${id}-title">${title}</h2><button type="button" class="icon-button" data-close="${id}-dialog" aria-label="关闭">×</button></div><div class="dialog-body" id="${content}"></div></dialog>`);
     for(const d of document.querySelectorAll('.feature-dialog'))d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();});
     document.addEventListener('submit',e=>{if(e.target.id==='plan-form'){e.preventDefault();save();}});
     document.addEventListener('change',e=>{if(e.target.id==='plan-game')eventOptions();});
     document.addEventListener('click',async e=>{
-      const b=e.target.closest('button');if(!b)return;
+      const b=e.target.closest('button');if(!b||!state())return;
       if(b.hasAttribute('data-clear-focus')||b.hasAttribute('data-clear-selection'))await clearFocus();
       else if(b.dataset.foldParent){const collapsed=new Set(view().collapsed_parents);if(collapsed.has(b.dataset.foldParent))collapsed.delete(b.dataset.foldParent);else collapsed.add(b.dataset.foldParent);await H.mutate('/api/workspace',{view:{collapsed_parents:[...collapsed]}},'PATCH');}
       else if(b.dataset.deadlineDay)await deadlines(b.dataset.deadlineDay);

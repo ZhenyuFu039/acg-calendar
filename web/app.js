@@ -79,11 +79,15 @@
     const compact=headingCompact();document.body.classList.toggle('heading-compact',compact);
     const b=$('#heading-toggle');b.textContent=compact?'展开标题':'收起标题';b.setAttribute('aria-expanded',String(!compact));
   }
-  function renderUpcoming(events) {
-    const byId=new Map(events.map(e=>[e.id,e])),seen=new Set(),current=now(),today=Math.floor(civil(current));
+  function upcomingRows(events) {
+    const byId=new Map(events.map(e=>[e.id,e])),seen=new Set(),current=now();
     const nodes=(S.data.presentation.deadline_nodes||[]).filter(n=>byId.has(n.event_id)&&Date.parse(n.at)>current&&!seen.has(n.event_id+'|'+n.at+'|'+n.kind)&&seen.add(n.event_id+'|'+n.at+'|'+n.kind))
       .sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)||a.title.localeCompare(b.title));
     const uncertain=(S.data.presentation.uncertain_deadlines||[]).map(id=>byId.get(id)).filter(e=>e&&e.time_kind!=='point'&&(!e.end.at||Date.parse(e.end.at)>current));
+    return {byId,nodes,uncertain};
+  }
+  function renderUpcoming(events) {
+    const {byId,nodes,uncertain}=upcomingRows(events),today=Math.floor(civil(now()));
     if(!nodes.length&&!uncertain.length)return emptyCalendar();
     const item=(e,kind,when,extra)=>`<button type="button" class="upcoming-item ${e.completed?'completed':''}" data-event="${e.id}" style="--event-accent:${accent(e)}"><span class="event-avatar">${gameIcon(e.game)}</span><span class="upcoming-text"><strong>${e.starred?'★ ':''}${esc(cleanTitle(e))}</strong><small>${esc(gameLabel(e))} · ${kind}</small></span><span class="upcoming-time"><strong>${esc(when)}</strong>${extra}</span></button>`;
     // Only a confirmed overall end is labelled as such. An exact phase can coincide with
@@ -172,9 +176,55 @@
     $('#reward-content').innerHTML=`<div class="reward-dialog-total">${rewardIcon}<strong>${rewardNumber(r.verified_total)}</strong><span>已核实小计</span></div><p class="help-text">${esc(r.scope)}<br>统计活动可获得总量，非账号未领取余额。公告未列明数量的条目不按零计算；导览数量为 1 的展示占位不计数。</p>${rows}${conflicts?'<h3>来源数量差异</h3><ul class="reward-sources">'+conflicts+'</ul>':''}<h3>公告未列明数量 · ${r.unlisted.length} 项</h3><p class="help-text">${r.unlisted.map(e=>esc(e.title)).join('；')||'无'}。未列明不代表奖励为零。</p>${other?'<h3>未纳入活动小计</h3><ul class="reward-sources">'+other+'</ul>':''}`;
     openDialog('#reward-dialog');
   }
+  const searchQuery=()=>($('#event-search')?.value||'').trim().toLocaleLowerCase();
+  const matchesSearch=(event,query)=>!query||(event.title+' '+event.subtype+' '+event.section+' '+(event.game_name||'')).toLocaleLowerCase().includes(query);
+  // Each display filter, by id; baseFilteredEvents and the hidden-activity summary share these rules.
+  function filterRules() {
+    const query=searchQuery(),current=now();
+    return [
+      ['future','未开放',e=>W.view.hide_future&&!(e.start.at&&Date.parse(e.start.at)<=current)],
+      ['category','类型筛选',e=>!S.categories.has(e.category)],
+      ['completed','已完成',e=>S.data.settings.hide_completed&&e.completed],
+      ['pending','截止待定',e=>!S.includePending&&e.time_kind!=='point'&&!e.end.at],
+      ['search','搜索',e=>!matchesSearch(e,query)],
+    ];
+  }
   function baseFilteredEvents() {
-    const query=($('#event-search')?.value||'').trim().toLocaleLowerCase();
-    return scopeEvents().filter(event => (!W.view.hide_future||(event.start.at&&Date.parse(event.start.at)<=now())) && S.categories.has(event.category) && !event.ignored && (!S.data.settings.hide_completed || !event.completed) && (S.includePending || event.time_kind==='point' || event.end.at) && (!query||(event.title+' '+event.subtype+' '+event.section+' '+(event.game_name||'')).toLocaleLowerCase().includes(query)));
+    const rules=filterRules();
+    return scopeEvents().filter(event=>!event.ignored&&!rules.some(([,,hides])=>hides(event)));
+  }
+  // [activities the view selects before folding, activities it actually draws], each by id once.
+  // What the current view selects and what it really draws, each by activity id once.
+  // folded: children collapsed under a parent; overflow: month bars beyond three lanes.
+  function viewProjection(filtered,shown,lo,hi) {
+    const tree=list=>{const drawn=P.arrange(list);return {inView:list,visible:drawn,folded:list.length-drawn.length,overflow:0};};
+    if(S.view==='timeline')return tree(shown);
+    if(S.view==='list')return tree(filtered);
+    if(S.view==='upcoming'){const {byId,nodes,uncertain}=upcomingRows(filtered),ids=new Set([...nodes.map(n=>n.event_id),...uncertain.map(e=>e.id)]);const drawn=[...ids].map(id=>byId.get(id));return {inView:drawn,visible:drawn,folded:0,overflow:0};}
+    const [first,last]=monthGrid(lo,hi),inView=filtered.filter(e=>overlaps(e,first,last)),drawn=new Map();
+    for(let week=first;week<last;week+=7)for(const [event] of monthWeek(inView,week,week+7).placed)drawn.set(event.id,event);
+    return {inView,visible:[...drawn.values()],folded:0,overflow:inView.length-drawn.size};
+  }
+  // F16: explain what the current filters hide, per reason and by stable id, so a hidden
+  // activity is not mistaken for a failed sync. Buttons clear only their own filter.
+  function renderHiddenSummary(filtered,{inView,visible,folded,overflow}) {
+    const scope=scopeEvents().filter(e=>!e.ignored),rules=filterRules(),visibleIds=new Set(visible.map(e=>e.id));
+    const base=new Set(baseFilteredEvents().map(e=>e.id)),afterFocus=new Set(filtered.map(e=>e.id)),inRange=new Set(inView.map(e=>e.id));
+    const counts=rules.map(([id,label,hides])=>[id,label,scope.filter(hides).length]).filter(([,,n])=>n);
+    const focus=[...base].filter(id=>!afterFocus.has(id)).length,range=[...afterFocus].filter(id=>!inRange.has(id)).length;
+    const games=S.game==='all'?S.data.games.map(g=>g.id):S.game==='selected'?W.selected():[gameInfo()?.id||S.game];
+    const added=new Set(games.flatMap(g=>S.data.sync_by_game?.[g]?.result?.calendar?.added_ids||[]));
+    const newHidden=scope.filter(e=>added.has(e.id)&&!visibleIds.has(e.id)).length;
+    // A version picker can hide a whole new version; count those per version, without switching.
+    const scopeIds=new Set(scope.map(e=>e.id)),otherVersions=new Map();
+    for(const e of allEvents())if(games.includes(e.game)&&!e.ignored&&added.has(e.id)&&!scopeIds.has(e.id))otherVersions.set(e.version_id,(otherVersions.get(e.version_id)||0)+1);
+    const hidden=scope.length-afterFocus.size;
+    const el=$('#hidden-summary');
+    if(!hidden&&!newHidden&&!otherVersions.size){el.hidden=true;patch(el,'');return;}
+    el.hidden=false;
+    const versionName=id=>S.data.versions.find(v=>v.id===id)?.name||id;
+    const outside={timeline:'日期范围外',month:'本月网格外',upcoming:'近期截止只列未来截止，其余'}[S.view];
+    patch(el,`${[...otherVersions].map(([id,n])=>`<strong>「${esc(versionName(id))}」有 ${n} 条上次同步新增的活动</strong><button type="button" class="text-button" data-unhide="version" data-version="${esc(id)}">查看该版本</button>`).join('')}${newHidden?`<strong>上次同步新增的 ${newHidden} 条活动未显示</strong>`:''}<span>当前显示 ${visible.length} / 本范围 ${scope.length} 项${hidden?`，筛选隐藏 ${hidden} 项`:''}${counts.length>1?'（各原因可能重叠）':''}：</span>${counts.map(([id,label,n])=>`<button type="button" class="text-button" data-unhide="${id}">${label} ${n} · 显示</button>`).join('')}${focus?`<button type="button" class="text-button" data-unhide="focus">日期聚焦 ${focus} · 取消聚焦</button>`:''}${range&&outside?`<button type="button" class="text-button" data-unhide="range">${outside} ${range} · 在全部活动中查看</button>`:''}${overflow>0?`<button type="button" class="text-button" data-unhide="range">月历每格最多 3 条，另有 ${overflow} 项收在“+N 项”中 · 在全部活动中查看</button>`:''}${folded>0?`<span>另有 ${folded} 条子活动已折叠</span>`:''}`);
   }
   function filteredEvents() {return P.filterFocus(baseFilteredEvents());}
   function range() {
@@ -318,6 +368,7 @@
       const newScroll=$('#calendar .timeline-scroll')||$('#calendar');
       [newScroll.scrollLeft,newScroll.scrollTop]=position;
     }
+    renderHiddenSummary(filtered,viewProjection(filtered,shown,lo,hi));
     const unscheduled=filtered.filter(e=>!e.start.at||e.invalid_interval);
     $('#unscheduled').hidden=!unscheduled.length;
     patch($('#unscheduled'),unscheduled.length?`<h3>时间待核对 · ${unscheduled.length} 项</h3>${unscheduled.map(e=>`<button type="button" data-event="${e.id}">${esc(cleanTitle(e))}</button>`).join('')}`:'');
@@ -412,20 +463,32 @@
       return `<div class="catalog-family" style="--tree-depth:${event._tree_depth||0}"><button data-game="${event.game}" class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)};--game-color:${esc(W.game(event.game)?.color||'#6D8658')}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span class="catalog-game-badge">${gameIcon(event.game)}</span></span><span class="catalog-info"><small>${combined()?esc(gameLabel(event))+' · ':''}${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${event.starred?'★ ':''}${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':countdownSlot(event.end.at)}</span>${rewardBadge(event)}</span><span class="catalog-arrow" aria-hidden="true">↗</span></button>${P.familyControls(event)}</div>`;
     }).join('')+'</div>';
   }
+  // The month grid starts on Monday and pads with days of the neighbouring months.
+  function monthGrid(monthStart,monthEnd) {
+    const first=monthStart-(serialDate(monthStart).getUTCDay()+6)%7;
+    return [first,first+Math.ceil((monthEnd-first)/7)*7];
+  }
+  // Lanes for one week: at most three bars are drawn, the rest are reached through "+N 项".
+  // Shared with the hidden-activity summary so it counts what is really drawn.
+  function monthWeek(events,lo,hi) {
+    const visible=events.filter(e=>overlaps(e,lo,hi)).sort((a,b)=>civil(a.start.at)-civil(b.start.at)||a.title.localeCompare(b.title,'zh'));
+    const ends=[],placed=[];
+    for(const event of visible) {
+      const start=Math.max(lo,civil(event.start.at)),end=Math.min(hi,event.time_kind==='point'?Math.floor(civil(event.start.at))+1:(event.end.at?civil(event.end.at):hi));
+      let lane=ends.findIndex(value=>value<=start);
+      if(lane<0) lane=ends.length;
+      ends[lane]=end;
+      if(lane<3) placed.push([event,lane]);
+    }
+    return {visible,placed};
+  }
   function renderMonth(events,monthStart,monthEnd) {
-    const d=serialDate(monthStart), first=monthStart-(d.getUTCDay()+6)%7, weeks=Math.ceil((monthEnd-first)/7), today=Math.floor(civil(now()));
+    const first=monthGrid(monthStart,monthEnd)[0], weeks=Math.ceil((monthEnd-first)/7), today=Math.floor(civil(now()));
     let html='<div class="month-head">'+['一','二','三','四','五','六','日'].map(day=>`<span>周${day}</span>`).join('')+'</div>';
     for(let week=0;week<weeks;week++) {
       const lo=first+week*7,hi=lo+7;
-      const visible=events.filter(e=>overlaps(e,lo,hi)).sort((a,b)=>civil(a.start.at)-civil(b.start.at)||a.title.localeCompare(b.title,'zh'));
-      const ends=[], bars=[],drawn=[];
-      for(const event of visible) {
-        const start=Math.max(lo,civil(event.start.at)),end=Math.min(hi,event.time_kind==='point'?Math.floor(civil(event.start.at))+1:(event.end.at?civil(event.end.at):hi));
-        let lane=ends.findIndex(value=>value<=start);
-        if(lane<0) lane=ends.length;
-        ends[lane]=end;
-        if(lane>=3) continue;
-        drawn.push(event.id);
+      const {visible,placed}=monthWeek(events,lo,hi),bars=[],drawn=placed.map(([e])=>e.id);
+      for(const [event,lane] of placed) {
         if(event.time_kind==='point') {
           const serial=Math.floor(civil(event.start.at)),left=(serial-lo)/7*100;
           bars.push(`<button type="button" class="event-bar" style="--category:${categories[event.category].color};--bar-left:${left}%;--bar-width:${100/7}%;--progress:0%;--bar-top:${38+lane*25}px" data-event="${event.id}" title="${esc(cleanTitle(event)+' '+format(event.start.at))}"><span class="bar-label">◆ ${esc(cleanTitle(event))}</span></button>`);
@@ -642,6 +705,19 @@
       openEvent(target.dataset.event);return;
     }
     if(target.dataset.day) {if(await P.focusDay(Number(target.dataset.day)))openAgenda(Number(target.dataset.day));return;}
+    if(target.dataset.unhide) {
+      switch(target.dataset.unhide){
+        case 'category':S.categories=new Set(Object.keys(categories));buildFilters();render();break;
+        case 'search':$('#event-search').value='';render();break;
+        case 'pending':S.includePending=true;$('#include-pending').checked=true;render();break;
+        case 'completed':await mutate('/api/settings',{hide_completed:false});break;
+        case 'future':await mutate('/api/workspace',{view:{hide_future:false}},'PATCH');break;
+        case 'focus':await P.clearFocus();break;
+        case 'range':await switchView('list');break;
+        case 'version':S.version=target.dataset.version;S.anchor=Math.floor(civil(activeVersion().maintenance.start||now()));render();break;
+      }
+      return;
+    }
     if(target.hasAttribute('data-focus-version')) {
       const start=activeVersion()?.maintenance.start;
       if(start) {S.anchor=Math.floor(civil(start));render();}
