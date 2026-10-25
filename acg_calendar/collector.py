@@ -1,6 +1,8 @@
 """Read only the official public Endfield list and selected version articles."""
 from __future__ import annotations
 
+from contextlib import nullcontext
+import copy
 import datetime as dt
 import json
 from pathlib import Path
@@ -8,7 +10,8 @@ import re
 import threading
 import urllib.parse
 
-from .network import network_job
+from .network import deferring_images, network_job
+from .sync_progress import SyncProgress
 from .parser import AnnouncementParser, ROOT, html_to_text, iso
 from .artwork import ArtworkCache
 from .briefing import BriefingReader, merge_briefing, normalize
@@ -55,12 +58,18 @@ class Collector:
             self.collect()
         except Exception as error:
             previous = self.store.get_meta("sync", {})
-            self.store.set_meta("sync", {**previous, "running": False, "error": str(error)[:400], "message": "同步失败，保留本地数据"})
+            self.store.set_meta("sync", {**previous, "running": False, "stage": None, "waiting": None, "error": str(error)[:400], "message": "同步失败，保留本地数据"})
         finally:
             self.lock.release()
 
     @network_job
     def collect(self):
+        progress = SyncProgress(self.store, "sync")
+        with progress.active():
+            return self._collect(progress)
+
+    def _collect(self, progress):
+        progress.stage("fetch")
         rules = self.parser.rules
         sources = rules["sources"]
         listing_items, seen, pages = [], set(), 0
@@ -110,24 +119,42 @@ class Collector:
                 guides[normalize(guide["name"])] = guide
             except Exception as error:
                 errors.append({"news_cid": str(article.get("cid")), "title": article.get("title"), "message": str(error)[:300]})
+        progress.stage("parse")
         previous_versions = self.store.versions()
-        for version, _ in collected:
-            previous = next((v for v in previous_versions if v["id"] == version["id"]), None)
-            self.artwork.attach(version, listing_items, previous)
-            guide = guides.get(normalize(version["name"]))
-            if guide:
-                merge_briefing(version, guide, self.artwork)
-                version["briefing"]["cache_reused"] = bool(guide.get("cache_reused", True))
-            else:
-                version["briefing_status"] = "not_found"
+
+        def build(defer):
+            # Each pass starts from the parsed announcement; the first pass only uses
+            # images already on disk so dates are published without waiting for downloads.
+            built = []
+            for parsed, _ in collected:
+                version = copy.deepcopy(parsed)
+                previous = next((v for v in previous_versions if v["id"] == version["id"]), None)
+                with deferring_images() if defer else nullcontext():
+                    self.artwork.attach(version, listing_items, previous)
+                    guide = guides.get(normalize(version["name"]))
+                    if guide:
+                        merge_briefing(version, guide, self.artwork)
+                        version["briefing"]["cache_reused"] = bool(guide.get("cache_reused", True))
+                    else:
+                        version["briefing_status"] = "not_found"
+                built.append(version)
+            return built
         # Parse every selected source before replacing anything.
         source_dir = self.data_dir / "sources"
         source_dir.mkdir(parents=True, exist_ok=True)
-        for version, text in collected:
+        drafts = build(True)
+        for version, (_, text) in zip(drafts, collected):
             (source_dir / (version["id"] + ".txt")).write_text(text, encoding="utf-8")
             self.store.save_version(version)
+        progress.calendar_saved([v for v in previous_versions if v["id"] in {d["id"] for d in drafts}], drafts)
+        progress.stage("images")
+        finals = build(False)
+        for version in finals:
+            self.store.save_version(version)
+        progress.images_done(finals, sum(v.get("artwork_summary", {}).get("errors", 0) for v in finals))
+        collected = [(version, text) for version, (_, text) in zip(finals, collected)]
         known = {normalize(v["name"]) for v in previous_versions} | {normalize(v["name"]) for v, _ in collected}
         previews = [{key: guide[key] for key in ("name", "version_tag", "source_url", "news_url", "fetched_at")} | {"activity_count": len(guide["entries"])} for name, guide in guides.items() if name not in known]
         self.store.set_meta("briefing_previews", previews)
-        self.store.set_meta("sync", {"running": False, "last_attempt": fetched_at, "last_success": fetched_at, "error": None, "mode": "live", "message": "已同步官方更新公告与版本导览" if any(v.get("briefing") for v, _ in collected) else "已同步官方公告", "article_count": len(collected), "list_pages": pages, "briefing_count": sum(bool(v.get("briefing")) for v, _ in collected), "briefing_errors": errors, "pending_briefings": len(previews)})
+        self.store.set_meta("sync", progress.finish({"running": False, "last_attempt": fetched_at, "last_success": fetched_at, "error": None, "mode": "live", "message": "已同步官方更新公告与版本导览" if any(v.get("briefing") for v, _ in collected) else "已同步官方公告", "article_count": len(collected), "list_pages": pages, "briefing_count": sum(bool(v.get("briefing")) for v, _ in collected), "briefing_errors": errors, "pending_briefings": len(previews)}))
         return [version for version, _ in collected]

@@ -61,9 +61,12 @@ public sealed partial class CalendarWindow
         windowRoot.Children.Add(desktopRoot);
         edgeHandle.Background = Green; edgeHandle.CornerRadius = new CornerRadius(5); edgeHandle.Visibility = Visibility.Collapsed;
         edgeHandle.Child = new TextBlock { Text = "游\n时\n‹", TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 11, Foreground = Ink };
-        edgeHandle.ToolTip = "移入展开游时"; edgeHandle.MouseEnter += (_, _) => RevealEdge();
+        edgeHandle.ToolTip = "移入展开游时"; edgeHandle.MouseEnter += (_, _) => RevealEdge(true);
         AutomationProperties.SetName(edgeHandle, "游时边缘唤出区");
         windowRoot.Children.Add(edgeHandle); Content = windowRoot;
+        windowRoot.ClipToBounds = true;
+        desktopRoot.RenderTransform = edgeSlide;
+        PreviewMouseLeftButtonDown += (_, _) => { if (edgeTransition) RevealEdge(false); };
         edgeTimer.Tick += (_, _) =>
         {
             if (exiting || !IsVisible) return;
@@ -132,7 +135,7 @@ public sealed partial class CalendarWindow
     {
         if (!edgeAutoHide || !compact || sidebarOpen || edgeTransition || Mouse.LeftButton == MouseButtonState.Pressed || IsMouseCaptureWithin) { edgeLeaveSince = null; return; }
         var window = new Rect(Left, Top, ActualWidth, ActualHeight);
-        if (edgeHidden) { if (window.Contains(cursor)) RevealEdge(); return; }
+        if (edgeHidden) { if (window.Contains(cursor)) RevealEdge(true); return; }
         var area = DesktopWorkArea();
         if (window.Contains(cursor) || (Left > area.Left + 16 && Left + Width < area.Right - 16)) { edgeLeaveSince = null; return; }
         edgeLeaveSince ??= now;
@@ -141,39 +144,20 @@ public sealed partial class CalendarWindow
 
     void CollapseEdge()
     {
-        if (edgeHidden || !edgeAutoHide || !compact || sidebarOpen) return;
-        var area = DesktopWorkArea(); expandedBounds = new Rect(Left, Top, Width, Height);
-        edgeSide = Left + Width / 2 < area.Left + area.Width / 2 ? "left" : "right";
-        expandedBounds.X = edgeSide == "left" ? area.Left : area.Right - Width;
-        edgeTransition = true;
-        try
-        {
-            edgeHidden = true; desktopRoot.Visibility = Visibility.Collapsed; edgeHandle.Visibility = Visibility.Visible;
-            edgeHandle.Background = Green; ((TextBlock)edgeHandle.Child).Foreground = AccentInk;
-            MinWidth = 16; MinHeight = 80; Width = 16; Height = Math.Min(132, area.Height);
-            Left = edgeSide == "left" ? area.Left : area.Right - Width; Top = Math.Clamp(expandedBounds.Top, area.Top, area.Bottom - Height);
-            ShowInTaskbar = false;
-        }
-        finally { edgeTransition = false; }
-        edgeLeaveSince = null;
+        StartEdgeCollapse();
     }
 
-    void RevealEdge()
+    void RevealEdge(bool animate = false)
     {
-        if (!edgeHidden) return;
-        edgeTransition = true;
-        try
-        {
-            edgeHidden = false; edgeHandle.Visibility = Visibility.Collapsed; desktopRoot.Visibility = Visibility.Visible;
-            Width = expandedBounds.Width; Height = expandedBounds.Height; Left = expandedBounds.Left; Top = expandedBounds.Top;
-            ApplyPresentation();
-        }
-        finally { edgeTransition = false; }
-        edgeLeaveSince = null;
+        StartEdgeReveal(animate);
     }
 
     async Task<bool> InteractionSmokeTest()
     {
+        OpenSidebarPage("calendar");
+        var loadCalendar = navigation.Children.OfType<Button>().SingleOrDefault(b => b.Name == "LoadCalendarButton");
+        if (loadCalendar == null || !loadCalendar.IsVisible || loadCalendar.ToolTip as string != "打开插件目录：" + PluginDirectory) throw new Exception("Calendar plugin entry is missing or points to the wrong data directory");
+        SaveRender("plugin-directory-entry.png");
         ShowMode(false); OpenSidebarPage("reminders");
         if (reminderSettings.Visibility != Visibility.Visible || desktopSettings.Visibility != Visibility.Collapsed || networkSettings.Visibility != Visibility.Collapsed) throw new Exception("Reminder page was mixed with other settings");
         OpenSidebarPage("network");
@@ -205,12 +189,45 @@ public sealed partial class CalendarWindow
         edgeAutoHide = true; var area = DesktopWorkArea(); Left = area.Right - Width;
         var outside = new Point(area.Left + 30, area.Top + 30); var now = DateTime.UtcNow;
         UpdateEdge(outside, now); UpdateEdge(outside, now.AddSeconds(2));
+        if (edgeTransition)
+        {
+            await Task.Delay(80);
+            if (!edgeTransition || Width < 320 || Math.Abs(edgeSlide.X) < 1) throw new Exception("Edge collapse skipped its visible sliding frames");
+            SaveRender("ux-edge-collapsing.png");
+        }
+        await edgeAnimationTask;
         if (!edgeHidden || Width > 20 || !IsVisible) throw new Exception("Edge auto-hide failed");
         SaveRender("ux-edge-tab.png"); SavePreferences();
         using (var doc = JsonDocument.Parse(File.ReadAllText(preferences)))
             if (doc.RootElement.GetProperty("widget_width").GetDouble() < 320 || !doc.RootElement.GetProperty("edge_auto_hide").GetBoolean()) throw new Exception("Edge tab damaged saved widget size");
         UpdateEdge(new Point(Left + Width / 2, Top + Height / 2), now.AddSeconds(3));
+        if (edgeTransition)
+        {
+            await Task.Delay(80);
+            if (!edgeTransition || Math.Abs(edgeSlide.X) < 1) throw new Exception("Edge reveal skipped its visible sliding frames");
+            SaveRender("ux-edge-revealing.png");
+        }
+        await edgeAnimationTask;
         if (edgeHidden || Width < 320) throw new Exception("Hover did not reveal the widget");
+        // Moving back over the tag during collapse reverses from the current
+        // frame, and opening a sidebar can finish that transition immediately.
+        CollapseEdge();
+        if (edgeTransition) await Task.Delay(60);
+        RevealEdge(true); OpenSidebarPage("calendar");
+        if (edgeHidden || edgeTransition || Math.Abs(edgeSlide.X) > .1 || !sidebarOpen) throw new Exception("Interrupted edge animation did not restore the interactive widget");
+        sidebarOpen = false; ApplyPresentation();
+        area = DesktopWorkArea(); Left = area.Left;
+        var outsideLeft = new Point(area.Right - 30, area.Bottom - 30);
+        UpdateEdge(outsideLeft, now.AddSeconds(5)); UpdateEdge(outsideLeft, now.AddSeconds(7));
+        if (edgeTransition)
+        {
+            await Task.Delay(80);
+            if (edgeSlide.X >= -1) throw new Exception("Left-edge collapse moved in the wrong direction");
+        }
+        await edgeAnimationTask;
+        if (!edgeHidden || Width > 20 || Math.Abs(Left - area.Left) > 1) throw new Exception("Left-edge tab did not stay inside the display");
+        RevealEdge(true); await edgeAnimationTask;
+        if (edgeHidden || edgeTransition || Width < 320 || Math.Abs(Left - area.Left) > 1) throw new Exception("Left-edge reveal did not restore the window bounds");
         OpenSidebarPage("appearance"); UpdateEdge(outside, now.AddSeconds(8));
         if (edgeHidden) throw new Exception("Sidebar interaction was auto-hidden");
         edgeAutoHide = false; keepWidgetOnClose = false; CloseToDesktop();

@@ -12,7 +12,10 @@ DEFAULT_SETTINGS = {
     "active_game": "endfield-cn",
     "timezone": "auto", "view": "timeline", "reminders_enabled": True,
     "reminder_offsets": [1440, 60], "native_notifications": False,
-    "sync_interval_minutes": 180, "hide_completed": False,
+    "sync_interval_minutes": 1440, "hide_completed": False,
+    # all: every installed game (also future ones); follow: the current game combination; custom: listed games.
+    # games is null until a custom list is first saved, so an explicitly empty list stays empty.
+    "reminder_scope": {"mode": "all", "games": None},
 }
 
 

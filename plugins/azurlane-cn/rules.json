@@ -3,6 +3,21 @@
   "ruleset_version": "azurlane-cn-2",
   "strategy": "bwiki_cn_bulletins_with_verified_wiki_artwork",
   "ai_used": false,
+  "bulletin_artwork": {
+    "enabled": true,
+    "footer_marker": "From 司令部",
+    "file_pattern": "\\[\\[(?:File|Image|文件):(?P<file>[^|\\]\\n]+\\.(?:jpg|jpeg|png|webp))(?:\\|[^\\]]*)?\\]\\]",
+    "require_activity_title": true,
+    "minimum_width": 400,
+    "minimum_aspect_ratio": 1.2,
+    "maximum_aspect_ratio": 4,
+    "cache": "sources/cn-bulletin-artwork.json"
+  },
+  "artwork_alignment": {
+    "rules": "artwork-alignment.json",
+    "snapshot": "sources/en-artwork.json",
+    "live_snapshot": "sources/en-artwork-live.json"
+  },
   "sources": {
     "calendar_url": "https://wiki.biligame.com/blhx/%E6%B8%B8%E6%88%8F%E6%B4%BB%E5%8A%A8%E8%A1%A8",
     "news_reference": "https://azurlane.koumakan.jp/wiki/Recent_News",

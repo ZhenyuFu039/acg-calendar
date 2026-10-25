@@ -26,6 +26,7 @@ public sealed partial class CalendarWindow
     ScrollViewer cardScroll = null!;
     FrameworkElement heading = null!, summaryPanel = null!, footer = null!;
     Button navigationTab = null!, settingsTab = null!, remindersTab = null!, networkTab = null!, collapseSidebar = null!;
+    readonly TextBlock reminderScopeLine = Text("提醒的游戏：全部已安装游戏", 11);
     string sidebarPage = "calendar";
     Forms.ToolStripMenuItem? bubbleMenu;
     bool bubbleMode, sidebarOpen, settingsOpen, applyingAppearance, appearanceReady, updatingSettings;
@@ -55,6 +56,7 @@ public sealed partial class CalendarWindow
         titleArea.Children.Add(officialTimeNotice); layout.Children.Add(titleArea);
         var summary = new StackPanel { Margin = new Thickness(0, 0, 0, 12) }; summaryPanel = summary;
         subtitle.FontSize = 16; subtitle.FontWeight = FontWeights.SemiBold; subtitle.Text = "正在启动本地日历…"; summary.Children.Add(subtitle);
+        summary.Children.Add(nativeFocusLabel); nativeDeadlineBand.Margin = new Thickness(0,5,0,0); summary.Children.Add(nativeDeadlineBand);
         rewardHeader.Orientation = Orientation.Horizontal; rewardHeader.Margin = new Thickness(0, 5, 0, 0);
         rewardHeader.ToolTip = "终末地活动已核实小计，不含地图、信用商店、维护补偿及通行证。完整明细见时间轴。";
         if (RewardIcon() is ImageSource currency) rewardHeader.Children.Add(new Image { Source = currency, Width = 25, Height = 25 });
@@ -62,7 +64,7 @@ public sealed partial class CalendarWindow
         rewardHeader.Children.Add(rewardTotal); summary.Children.Add(rewardHeader); Grid.SetRow(summary, 1); layout.Children.Add(summary);
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto }); content.ColumnDefinitions.Add(new ColumnDefinition());
         month.Margin = new Thickness(0, 0, 16, 0); month.VerticalAlignment = VerticalAlignment.Top;
-        month.SelectedDatesChanged += (_, _) => { selected = month.SelectedDate; Render(); };
+        month.SelectedDatesChanged += async (_, _) => { if (updatingFocus) return; selected = month.SelectedDate; Render(); await (dateUpdate = SaveDateFocus(selected)); };
         content.Children.Add(month);
         cardScroll = new ScrollViewer { Content = cards, VerticalScrollBarVisibility = ScrollBarVisibility.Auto, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled, Background = null, PanningMode = PanningMode.VerticalOnly };
         Grid.SetColumn(cardScroll, 1); content.Children.Add(cardScroll); Grid.SetRow(content, 2); layout.Children.Add(content);
@@ -129,13 +131,20 @@ public sealed partial class CalendarWindow
         Section(navigation, "我的游戏");
         gameSelect.DisplayMemberPath = "Label"; gameSelect.SelectedValuePath = "Id";
         gameSelect.Padding = new Thickness(3, 5, 3, 5); gameSelect.Margin = new Thickness(0, 0, 0, 4); navigation.Children.Add(gameSelect);
-        gameSelect.SelectionChanged += (_, _) => { if (updatingProviders || gameSelect.SelectedValue is not string id) return; selectedGame = id; selected = null; month.SelectedDate = null; Render(); SavePreferences(); };
+        gameSelect.SelectionChanged += async (_, _) => { if (updatingProviders || gameSelect.SelectedValue is not string id) return; selectedGame = id; Render(); SavePreferences(); if(csrf!="") await (scopeUpdate = SaveGameScope(id)); };
         navigation.Children.Add(new Expander { Header = "自选游戏组合", Content = gameCombination, FontSize = 11, Margin = new Thickness(0, 5, 0, 7) });
+        var loadCalendar = SidebarButton("＋ 加载新的日历", OpenPluginDirectory);
+        loadCalendar.Name = "LoadCalendarButton"; loadCalendar.ToolTip = "打开插件目录：" + PluginDirectory;
+        navigation.Children.Add(loadCalendar);
+        var pluginHelp = Text("放入完整插件文件夹以安装，移出以卸载。完成后从托盘退出并重启。", 10);
+        pluginHelp.Foreground = Muted; pluginHelp.TextWrapping = TextWrapping.Wrap; pluginHelp.SetValue(MutedRoleProperty, true);
+        navigation.Children.Add(pluginHelp);
         Section(navigation, "显示与筛选");
         mode = SidebarButton("展开月历", ToggleMode); navigation.Children.Add(mode);
-        navigation.Children.Add(SidebarButton("近期活动", () => { showAll = false; selected = null; month.SelectedDate = null; Render(); SavePreferences(); }));
-        allButton = SidebarButton("全部活动", () => { showAll = !showAll; selected = null; month.SelectedDate = null; Render(); SavePreferences(); }); navigation.Children.Add(allButton);
+        navigation.Children.Add(SidebarButton("近期活动", async () => { showAll = false; await SaveDateFocus(null); Render(); SavePreferences(); }));
+        allButton = SidebarButton("全部活动", async () => { showAll = !showAll; await SaveDateFocus(null); Render(); SavePreferences(); }); navigation.Children.Add(allButton);
         densityButton = SidebarButton("图文模式", () => { dense = !dense; Render(); SavePreferences(); }); navigation.Children.Add(densityButton);
+        BuildPlannerControls();
         Section(navigation, "资料与导出");
         navigation.Children.Add(SidebarButton("同步当前游戏", async () => await Mutate("/api/sync", new { game = selectedGame })));
         navigation.Children.Add(SidebarButton("完整时间轴 ↗", () => Open(address + "?game=" + selectedGame)));
@@ -183,6 +192,8 @@ public sealed partial class CalendarWindow
         nativeToggle.Content = "启用 Windows 通知"; nativeToggle.Margin = new Thickness(0, 5, 0, 8); nativeToggle.IsEnabled = false;
         nativeToggle.Click += async (_, _) => { if (!updatingSettings) await Mutate("/api/settings", new { native_notifications = nativeToggle.IsChecked == true }); }; reminderSettings.Children.Add(nativeToggle);
         reminderSettings.Children.Add(SidebarButton("发送测试提醒", async () => await Mutate("/api/notifications/test", new { })));
+        // The reminder game scope is shared with the web page and edited there.
+        reminderScopeLine.Margin = new Thickness(0, 4, 0, 6); reminderSettings.Children.Add(reminderScopeLine);
         reminderSettings.Children.Add(SidebarButton("提醒与收件箱 ↗", () => Open(address + "?appearance=reminders")));
         var note = Text("提醒需要程序保持运行；关闭后仍可保留挂件，托盘退出才会停止。", 10); note.Foreground = Muted; reminderSettings.Children.Add(note);
         Section(desktopSettings, "程序"); desktopSettings.Children.Add(SidebarButton("退出游时", Exit));
@@ -203,6 +214,9 @@ public sealed partial class CalendarWindow
             nativeToggle.IsChecked = settings.GetProperty("native_notifications").GetBoolean();
             var offsets = new System.Collections.Generic.HashSet<int>(); foreach (var offset in settings.GetProperty("reminder_offsets").EnumerateArray()) offsets.Add(offset.GetInt32());
             for (int i = 0; i < offsetToggles.Length; i++) { offsetToggles[i].IsEnabled = true; offsetToggles[i].IsChecked = offsets.Contains(reminderOffsets[i]); }
+            var mode = settings.TryGetProperty("reminder_scope", out var scope) ? scope.GetProperty("mode").GetString() : "all";
+            var count = mode == "custom" && scope.GetProperty("games").ValueKind == JsonValueKind.Array ? scope.GetProperty("games").GetArrayLength() : 0;
+            reminderScopeLine.Text = "提醒的游戏：" + (mode == "follow" ? "跟随当前游戏组合" : mode == "custom" ? (count == 0 ? "未选择，不会发送截止提醒" : $"自选 {count} 款") : "全部已安装游戏") + "（在“提醒与收件箱”中修改）";
         }
         finally { updatingSettings = false; }
     }
@@ -228,13 +242,13 @@ public sealed partial class CalendarWindow
     void SetBubbleMode(bool enabled, bool keepSidebar = false)
     {
         bubbleMode = enabled;
-        if (enabled) { compact = true; selected = null; month.SelectedDate = null; }
+        if (enabled) compact = true;
         if (!keepSidebar) sidebarOpen = false;
         ApplyPresentation(); Render(); SavePreferences();
     }
     void ApplyPresentation()
     {
-        if (!appearanceReady || applyingAppearance || edgeHidden) return;
+        if (!appearanceReady || applyingAppearance || edgeHidden || edgeTransition) return;
         applyingAppearance = true;
         try
         {
@@ -277,7 +291,6 @@ public sealed partial class CalendarWindow
     {
         RevealEdge();
         compact = mini; if (!mini) bubbleMode = false;
-        selected = null; month.SelectedDate = null;
         ApplyPresentation(); Show(); Activate(); Render(); SavePreferences();
     }
     Brush CardBackground() => new SolidColorBrush(Color.FromArgb((byte)Math.Round((bubbleMode ? cardOpacity : surfaceOpacity) * 255), Surface.Color.R, Surface.Color.G, Surface.Color.B));

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.IO;
 using System.Text.Json;
@@ -27,6 +28,19 @@ public sealed partial class CalendarWindow
     string combinationSignature = "";
     readonly Dictionary<string, string> providerPicturePaths = new();
 
+    string PluginDirectory => Path.GetFullPath(Path.Combine(dataDirectory, "plugins"));
+
+    void OpenPluginDirectory()
+    {
+        try
+        {
+            Directory.CreateDirectory(PluginDirectory);
+            Process.Start(new ProcessStartInfo(PluginDirectory) { UseShellExecute = true });
+            status.Text = "已打开日历插件目录。放入或移出完整插件文件夹后，从托盘退出并重新启动游时。";
+        }
+        catch (Exception error) { status.Text = "无法打开插件目录：" + error.Message; }
+    }
+
     async Task UpdateProviderPictures()
     {
         foreach (var game in games)
@@ -53,6 +67,14 @@ public sealed partial class CalendarWindow
     {
         var next = state.GetProperty("games").Deserialize<GameDescriptor[]>(json) ?? [];
         var view = state.GetProperty("workspace").GetProperty("view");
+        var scopeSignature = view.GetProperty("scope").GetString() + view.GetProperty("selected_games").GetRawText();
+        if (scopeSignature != sharedScopeSignature)
+        {
+            sharedScopeSignature = scopeSignature;
+            var firstSelected = view.GetProperty("selected_games").EnumerateArray().FirstOrDefault();
+            selectedGame = view.GetProperty("scope").GetString() == "single" ? (firstSelected.ValueKind == JsonValueKind.String ? firstSelected.GetString()! : "selected") : view.GetProperty("scope").GetString()!;
+            updatingProviders = true; gameSelect.SelectedValue = selectedGame; updatingProviders = false;
+        }
         selectedGames = view.GetProperty("selected_games").EnumerateArray().Select(g => g.GetString()!).ToHashSet();
         hideFuture = view.GetProperty("hide_future").GetBoolean();
         eventOrder = state.GetProperty("event_order").EnumerateArray().Select((e, i) => (id: e.GetString()!, index: i)).ToDictionary(e => e.id, e => e.index);

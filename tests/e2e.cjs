@@ -88,6 +88,7 @@ const output='logs/demo-qa';
     const more=page.locator('.month-more').first();
     assert.ok(await more.count()>0);
     await more.click();
+    await page.locator('#agenda-dialog[open]').waitFor();
     assert.ok(await page.locator('.agenda-event').count()>3);
     await page.locator('.agenda-event').first().click();
     assert.equal(await page.locator('#detail-dialog').evaluate(node=>node.open),true);

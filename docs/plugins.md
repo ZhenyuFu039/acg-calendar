@@ -1,5 +1,7 @@
 # 本地游戏插件 API 1
 
+在桌面侧栏“日历 → 我的游戏”或网页侧栏“日历游戏”下，点击 **＋ 加载新的日历**，即可打开当前实际使用的 `data/plugins/` 文件夹（自定义数据目录时跟随该目录）。把已解压的完整插件文件夹放入此处以安装；将对应文件夹移出以卸载。完成后从系统托盘“退出游时”，重新运行 `Playtime.cmd` 生效。此入口不会自动删除文件、清除个人记录或刷新注册表。
+
 当前源码的采集限制、布局与主题更新保持 API 1、manifest 与活动 JSON 格式不变，现有包无需修改。主程序可信引擎及其图片请求共用同实例站点限流/缓存/冷却；纯本地 JSON 包不联网，软件外独立采集程序需自行限制。偏好与网络策略归主程序所有，不加入游戏数据包。详见 [设置说明](preferences.md)。
 
 本阶段支持随主程序发布的可信采集器，以及无需改源码的 `local-json` 数据插件。外部插件不执行 Python/JS，也不安装依赖。普通插件只读取本地 `events.json`；可选 `source.type:gamekee` 或 `azurlane-wiki` 会使用主程序内置、限域的公开资料采集引擎。自行编写的其他网站采集程序可以在软件外运行并生成该文件。所有现有采集器均不依赖 AI。
@@ -87,7 +89,7 @@ python -m pip install -r requirements.txt
 
 `Provider` 的接口是 `descriptor / sync_key / collector / rules() / prepare(version)`；采集器提供 `seed()` 和 `start(force=False)`。描述中声明 ID、名称、来源、图标、时区与能力。新可信采集器只在 `create_registry` 注册，主窗口和网页不必添加新的游戏分支。
 
-`azurlane-wiki` 实例见 [碧蓝航线国服包](../plugins/azurlane-cn/README.md)。可信引擎固定读取 BWIKI 国服活动表及其改建公告，规则 JSON 提供已核对的中英文头图映射，只允许对应 Wiki 图片 CDN。英文日期不进入国服时间字段。此引擎同样已包含于 V0.0.7（旧 V0.0.5 不支持）。
+`azurlane-wiki` 实例见 [碧蓝航线国服包](../plugins/azurlane-cn/README.md)。可信引擎读取 BWIKI 国服活动表及其改建公告，旧规则提供明确图片映射；当前源码新增可选 `artwork_alignment` 规则，使用英文 Wiki 公开只读 parse API 发现候选、按更新批次及独立身份依据对齐，图片仍只允许对应 Wiki CDN。英文日期不进入国服时间字段，插件 API 1 不变。基础引擎已包含于 V0.0.7，新的可选对齐功能需升级主程序，详见 [算法与回测](azurlane-artwork-alignment.md)。
 
 当前内置采集器仍在主程序进程中运行，并使用现有 Store，因此属于可信代码边界。未来若开放外部可执行插件，应增加独立进程协议、权限策略和故障处理；进程隔离本身不能称作安全沙箱。
 

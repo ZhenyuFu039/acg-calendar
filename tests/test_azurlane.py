@@ -96,6 +96,10 @@ class PluginTests(TempStoreTest):
         self.plugin = self.directory / 'plugins/azurlane-cn'
         shutil.copytree(PACKAGE, self.plugin)
         self.provider = AzurLaneProvider(self.plugin, read(self.plugin / 'manifest.json'), self.store)
+        # No integration unit test may contact a real site implicitly.
+        offline = patch.object(self.provider.http, 'read', side_effect=OSError('offline test'))
+        offline.start()
+        self.addCleanup(offline.stop)
 
     def test_offline_discovery_media_and_source_attribution(self):
         app = Application(self.directory, auto_sync=False, desktop=False)

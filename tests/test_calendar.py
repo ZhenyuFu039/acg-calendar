@@ -9,6 +9,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 import urllib.error
 import urllib.request
 
@@ -291,6 +292,18 @@ class HttpTests(TempStoreTest):
     def test_mutations_require_session_token(self):
         self.assertEqual(self.request("/api/settings", {"timezone": "UTC"}, token=False)[0], 403)
         self.assertEqual(self.app.store.settings()["timezone"], "auto")
+
+    def test_plugin_directory_action_only_opens_real_data_folder(self):
+        with patch('app.os.startfile', create=True) as opener:
+            self.assertEqual(self.request('/api/plugins/open-directory', {}, token=False)[0], 403)
+            self.assertEqual(self.request('/api/plugins/open-directory', {}, origin='https://other.example')[0], 403)
+            self.assertEqual(self.request('/api/plugins/open-directory', {'path': 'C:\\Windows'})[0], 400)
+            opener.assert_not_called()
+            status, result = self.request('/api/plugins/open-directory', {})
+            self.assertEqual(status, 200)
+            opener.assert_called_once_with(str((self.directory / 'plugins').resolve()))
+            self.assertEqual(result['directory'], str((self.directory / 'plugins').resolve()))
+            self.assertTrue((self.directory / 'plugins').is_dir())
 
     def test_ical_download_is_a_snapshot_attachment(self):
         with urllib.request.urlopen(self.base + "/api/calendar.ics") as response:

@@ -70,7 +70,7 @@ def complete_theme(saved):
     for key in THEME_COLORS:
         if isinstance(result.get(key),str) and re.fullmatch(r'#[0-9a-fA-F]{6}',result[key]): result[key] = result[key].upper()
     return result
-DEFAULT_VIEW = {"selected_games": [], "scope": "single", "sort": "start", "starred_first": True, "hide_future": False, "group_by": "category", "collapsed_groups": [], "focus": {"date": None, "event_id": None}}
+DEFAULT_VIEW = {"selected_games": [], "scope": "single", "sort": "start", "starred_first": True, "hide_future": False, "group_by": "category", "collapsed_groups": [], "collapsed_parents": [], "focus_timezone": "UTC", "focus": {"date": None, "event_id": None}}
 
 
 def contrast(first, second):
@@ -137,6 +137,12 @@ class WorkspaceService:
             if not isinstance(p, dict) or set(p) - set(DEFAULT_VIEW):
                 raise ValueError("不支持的视图字段")
             v = {**value["view"], **p}
+            if 'focus' in p:
+                if not isinstance(p['focus'],dict) or set(p['focus'])-{'date','event_id'}:
+                    raise ValueError('焦点格式无效')
+                v['focus'] = {**value['view']['focus'], **p['focus']}
+            elif {'scope','selected_games'} & set(p):
+                v['focus'] = {**value['view']['focus'], 'event_id':None}
             if v["scope"] not in {"single", "all", "selected"}:
                 raise ValueError("选择范围无效")
             games = v["selected_games"]
@@ -148,11 +154,19 @@ class WorkspaceService:
                 raise ValueError("视图开关必须为布尔值")
             if not isinstance(v["collapsed_groups"], list) or len(v["collapsed_groups"]) > 100 or any(not isinstance(g, str) or len(g) > 100 for g in v["collapsed_groups"]):
                 raise ValueError("折叠组格式无效")
+            if not isinstance(v['collapsed_parents'], list) or len(v['collapsed_parents']) > 1000 or any(not isinstance(g,str) or len(g)>200 for g in v['collapsed_parents']):
+                raise ValueError('父活动折叠列表无效')
+            try:
+                ZoneInfo(v['focus_timezone'])
+            except (ZoneInfoNotFoundError, TypeError, ValueError):
+                raise ValueError('日期聚焦时区无效') from None
             focus = v["focus"]
             if not isinstance(focus, dict) or set(focus) != {"date", "event_id"}:
                 raise ValueError("焦点格式无效")
             if focus["date"] is not None:
                 try:
+                    if not isinstance(focus['date'],str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}',focus['date']):
+                        raise ValueError()
                     dt.date.fromisoformat(focus["date"])
                 except (TypeError, ValueError):
                     raise ValueError("焦点日期无效") from None
@@ -191,13 +205,33 @@ class WorkspaceService:
         return value
 
     def plan(self, payload, key=None):
-        allowed = {"title", "start", "end", "timezone", "game_id", "event_id", "notes"}
+        with self.store.lock:
+            return self._plan(payload, key)
+
+    def _plan(self, payload, key=None):
+        allowed = {"title", "start", "end", "timezone", "game_id", "event_id", "notes", "local_start", "local_end", "fold_start", "fold_end", "move_minutes"}
         if set(payload) - allowed:
             raise ValueError("不支持的个人计划字段")
         existing = next((p for p in self.store.plans() if p["id"] == key), None)
         if key and not existing:
             raise LookupError("个人计划不存在")
-        plan = {**(existing or {"schema_version": 1, "id": "plan-" + uuid.uuid4().hex, "game_id": None, "event_id": None, "notes": "", "timezone": "UTC"}), **payload}
+        from .presentation import local_instant
+        fields = {k:v for k,v in payload.items() if k not in {'local_start','local_end','fold_start','fold_end','move_minutes'}}
+        plan = {**(existing or {"schema_version": 1, "id": "plan-" + uuid.uuid4().hex, "game_id": None, "event_id": None, "notes": "", "timezone": "UTC"}), **fields}
+        for role in ('start','end'):
+            if 'local_'+role in payload:
+                if role in payload:
+                    raise ValueError('当地时间和 UTC 时间不能同时填写')
+                plan[role] = local_instant(payload['local_'+role], plan['timezone'], payload.get('fold_'+role))
+        if 'move_minutes' in payload:
+            delta = payload['move_minutes']
+            if type(delta) is not int or abs(delta)>525600 or not existing:
+                raise ValueError('移动量需为一年内的整数分钟，且计划已保存')
+            for role in ('start','end'):
+                try:
+                    plan[role] = iso(stamp(date_value(plan.get(role))) + dt.timedelta(minutes=delta))
+                except OverflowError:
+                    raise ValueError('移动后的计划日期超出支持范围') from None
         plan["title"] = text_value(plan.get("title"), "计划标题")
         plan["start"], plan["end"] = date_value(plan.get("start")), date_value(plan.get("end"))
         if stamp(plan["end"]) <= stamp(plan["start"]):
@@ -208,18 +242,19 @@ class WorkspaceService:
             ZoneInfo(plan["timezone"])
         except (ZoneInfoNotFoundError, ValueError):
             raise ValueError("计划时区无效") from None
-        if plan["game_id"] is not None and (not isinstance(plan["game_id"], str) or plan["game_id"] not in self.registry.ids):
+        if plan["game_id"] is not None and (not isinstance(plan["game_id"], str) or (plan["game_id"] not in self.registry.ids and (not existing or plan['game_id']!=existing['game_id']))):
             raise ValueError("计划关联游戏不存在")
         if not isinstance(plan["notes"], str) or len(plan["notes"]) > 2000:
             raise ValueError("计划备注最多 2000 字")
         if plan["event_id"] is not None:
             event = next((e for v in self.store.versions() for e in v["events"] if e["id"] == plan["event_id"]), None)
-            if not event:
+            if not event and (not existing or plan['event_id'] != existing['event_id']):
                 raise ValueError("关联活动不存在")
-            game = next(v["game"] for v in self.store.versions() if any(e["id"] == plan["event_id"] for e in v["events"]))
-            if plan["game_id"] and plan["game_id"] != game:
-                raise ValueError("计划的游戏和活动不匹配")
-            plan["game_id"] = game
+            if event:
+                game = next(v["game"] for v in self.store.versions() if any(e["id"] == plan["event_id"] for e in v["events"]))
+                if plan["game_id"] and plan["game_id"] != game:
+                    raise ValueError("计划的游戏和活动不匹配")
+                plan["game_id"] = game
         plan["updated_at"] = iso(dt.datetime.now(dt.timezone.utc))
         self.store.save_plan(plan)
         return plan
@@ -264,15 +299,21 @@ def timeline(versions, workspace, plans=(), now=None, timezone="UTC", hide_compl
                 continue
             events.append({**event, "game": version["game"], "version_name": version["name"]})
     events = sort_events(events, view, now)
-    groups, density, seen = {}, {}, set()
+    from .presentation import context, in_focus
+    presentation = context(versions, view)
+    eligible = {e['id'] for e in events}
+    density = {}
+    for node in presentation['deadline_nodes']:
+        if node['event_id'] not in eligible:
+            continue
+        day = stamp(node['at']).astimezone(tz).date().isoformat()
+        bucket = density.setdefault(day, {'activities':0, 'exchanges':0})
+        bucket['exchanges' if node['kind']=='exchange' else 'activities'] += 1
+    events = [e for e in events if in_focus(e, presentation['focus_bounds'])]
+    groups = {}
     for event in events:
         group = event["game"] if view["group_by"] == "game" else event["category"] if view["group_by"] == "category" else "all"
         groups.setdefault(group, []).append(event["id"])
-        end = event["end"]
-        if event["id"] not in seen and not event.get("completed") and not event.get("invalid_interval") and event["time_kind"] != "point" and end.get("at") and end["state"] in {"exact", "confirmed", "manual"}:
-            seen.add(event["id"])
-            day = stamp(end["at"]).astimezone(tz).date().isoformat()
-            bucket = density.setdefault(day, {"activities": 0, "exchanges": 0})
-            bucket["exchanges" if event["category"] == "exchange" else "activities"] += 1
-    visible_plans = [p for p in plans if p.get("game_id") is None or p["game_id"] in selected]
-    return {"schema_version": 1, "events": events, "groups": [{"id": key, "event_ids": ids, "collapsed": key in view["collapsed_groups"]} for key, ids in groups.items()], "deadline_density": density, "plans": visible_plans, "timezone": timezone}
+    bounds = presentation['focus_bounds']
+    visible_plans = [p for p in plans if (p.get('game_id') is None or p['game_id'] in selected) and (not bounds or (stamp(p['start']) < stamp(bounds['end']) and stamp(p['end']) > stamp(bounds['start'])))]
+    return {"schema_version": 1, "events": events, "groups": [{"id": key, "event_ids": ids, "collapsed": key in view["collapsed_groups"]} for key, ids in groups.items()], "deadline_density": density, "plans": visible_plans, "timezone": timezone, 'presentation':presentation}

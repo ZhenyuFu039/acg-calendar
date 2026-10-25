@@ -10,10 +10,11 @@ import urllib.parse
 
 from .artwork import image_kind
 from .gamekee import atomic_json
-from .network import network_job
+from .network import deferring_images, network_job
 from .parser import iso, stamp
 from .plugin_media import local_file
 from .providers import JsonProvider, bounded_json
+from .sync_progress import SyncProgress
 from .zzz_http import API, WIKI, ZZZHTTP, allowed
 
 ZONE = dt.timezone(dt.timedelta(hours=8))
@@ -260,13 +261,19 @@ class ZZZProvider(JsonProvider):
         try:
             self.collect()
         except Exception as error:
-            self.store.set_meta(self.sync_key, {**self.store.get_meta(self.sync_key, {}), 'running': False, 'error': str(error)[:400], 'message': '同步失败，保留上次成功日历'})
+            self.store.set_meta(self.sync_key, {**self.store.get_meta(self.sync_key, {}), 'running': False, 'stage': None, 'waiting': None, 'error': str(error)[:400], 'message': '同步失败，保留上次成功日历'})
         finally:
             self.lock.release()
 
     @network_job
     def collect(self, now=None):
+        progress = SyncProgress(self.store, self.sync_key)
+        with progress.active():
+            return self._collect(progress, now)
+
+    def _collect(self, progress, now=None):
         now = now or dt.datetime.now(dt.timezone.utc)
+        progress.stage('fetch')
         result = json.loads(self.http.read(API + 'getContentList?' + urllib.parse.urlencode({'iChanId': 296, 'iPageSize': self.config['collection']['page_size'], 'iPage': 1, 'sLangKey': 'zh-cn'})))
         if result.get('retcode') != 0 or not isinstance(result.get('data', {}).get('list'), list):
             raise ValueError('官方公告接口格式发生变化')
@@ -286,22 +293,39 @@ class ZZZProvider(JsonProvider):
         if len(articles) > 100:
             raise ValueError('保留公告超出上限')
         warnings = []
+        cached_wiki = self.directory / 'sources/wiki-calendar.json'
+        # The live Wiki index only adds exactly matched images, so dates are first published
+        # from the official bulletins with the last cached index; the live index is read once,
+        # in the image stage.
+        local_wiki = bounded_json(cached_wiki) if cached_wiki.is_file() else {}
+        progress.stage('parse')
+        old = [v for v in self.store.versions() if v.get('game') == 'zzz-cn']
+        draft = compile_feed(articles, local_wiki, self.config, iso(now))
+        with deferring_images():
+            self.attach_images(draft)
+        versions = self.normalize(draft)
+        atomic_json(self.directory / 'sources/official-news.json', {'articles': articles, 'fetched_at': iso(now)})
+        atomic_json(self.directory / 'events.json', draft)
+        self.store.replace_game_versions('zzz-cn', versions)
+        progress.calendar_saved(old, versions)
+        progress.stage('images')
         try:
             wiki = json.loads(self.http.read(WIKI + 'api.php?' + urllib.parse.urlencode({'action': 'parse', 'page': '活动一览', 'prop': 'text|revid', 'format': 'json', 'formatversion': 2})))['parse']
+            atomic_json(cached_wiki, wiki)
         except (OSError, ValueError, KeyError) as error:
-            wiki = bounded_json(self.directory / 'sources/wiki-calendar.json') if (self.directory / 'sources/wiki-calendar.json').is_file() else {}
+            wiki = local_wiki
             warnings.append('Wiki 暂不可用，继续采用官方公告：' + str(error)[:100])
         feed = compile_feed(articles, wiki, self.config, iso(now))
-        warnings += self.attach_images(feed)
+        image_errors = self.attach_images(feed)
+        warnings += image_errors
         versions = self.normalize(feed)
-        atomic_json(self.directory / 'sources/official-news.json', {'articles': articles, 'fetched_at': iso(now)})
-        atomic_json(self.directory / 'sources/wiki-calendar.json', wiki)
         atomic_json(self.directory / 'events.json', feed)
         self.store.replace_game_versions('zzz-cn', versions)
+        progress.images_done(versions, len(image_errors))
         latest = feed['versions'][0]['analysis']['wiki_latest_end']
         if latest and stamp(latest) < now - dt.timedelta(days=14):
             warnings.append('Wiki 最新活动已滞后，未将历史条目当作当前活动。')
-        self.store.set_meta(self.sync_key, {'running': False, 'last_success': iso(now), 'last_attempt': iso(now), 'mode': 'official', 'error': None, 'message': '绝区零官网公告已同步；Wiki 仅补充完全匹配的头图', 'warnings': warnings})
+        self.store.set_meta(self.sync_key, progress.finish({'running': False, 'last_success': iso(now), 'last_attempt': iso(now), 'mode': 'official', 'error': None, 'message': '绝区零官网公告已同步；Wiki 仅补充完全匹配的头图', 'warnings': warnings}))
         return feed
 
     def attach_images(self, feed):

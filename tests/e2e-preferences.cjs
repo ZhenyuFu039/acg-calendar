@@ -16,6 +16,7 @@ const request=(route,method='GET',data=null,token='')=>new Promise((resolve,reje
   browser=await chromium.launch({channel:'msedge',headless:true});const page=await browser.newPage({viewport:{width:1440,height:1050},locale:'zh-CN',timezoneId:'America/New_York'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base);await page.locator('#game-select option[value="zzz-cn"]').waitFor({state:'attached'});
   const before=(await request('/api/state')).data;assert.equal(before.provider_api_version,1);assert.equal(before.games.length,5);
+  assert.equal(before.settings.sync_interval_minutes,1440);assert.equal(before.network.policy.interval_seconds,10);
   assert.match(await page.locator('h1').innerText(),/限时活动周期可视化/);assert.match(await page.locator('.header-context').innerText(),/规划你的游戏时间/);
   for(const preset of ['arknights','endfield','nikke','azurlane','zzz','dark','light']){
     await page.locator('#workspace-button').click();assert.equal(await page.locator('[data-preference-panel="theme"]').isVisible(),true);
@@ -50,13 +51,22 @@ const request=(route,method='GET',data=null,token='')=>new Promise((resolve,reje
       assert.ok((await page.locator('#calendar').boundingBox()).height>normalHeight+150);
       assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1));
       await page.screenshot({path:path.join(output,'timeline-expanded.png'),animations:'disabled'});
+      const focusedEvent=await page.locator('.event-name').first().getAttribute('data-event');
       await page.locator('.event-name').first().click();await page.locator('#detail-dialog').waitFor({state:'visible'});
+      await page.waitForFunction(id=>PlaytimeWorkspace.view.focus.event_id===id,focusedEvent);
+      saved.view.focus.event_id=focusedEvent; // Opening details now records the shared event focus.
       await page.keyboard.press('Escape');assert.equal(await page.locator('#calendar-expand').getAttribute('aria-pressed'),'true','Closing a detail must not close focus mode');
       await page.keyboard.press('Escape');assert.equal(await page.locator('#calendar-expand').getAttribute('aria-pressed'),'false');
       assert.equal(await page.locator('.sidebar').isVisible(),true);assert.deepEqual((await request('/api/state')).data.workspace,saved);
       for(const viewport of [{width:1440,height:720},{width:320,height:720}]){
         await page.setViewportSize(viewport);
-        assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1 && document.documentElement.scrollWidth<=innerWidth+1),'The page itself must not scroll');
+        if(viewport.width<=850){
+          // F19: phones scroll as one document, open the upcoming-deadline list and keep no nested vertical scrollers.
+          assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'No horizontal page overflow');
+          assert.equal(await page.locator('#upcoming-view').getAttribute('aria-pressed'),'true','Phones open the upcoming-deadline list by default');
+          assert.deepEqual(await page.evaluate(()=>[...document.querySelectorAll('body *')].filter(e=>{const s=getComputedStyle(e);return /(auto|scroll)/.test(s.overflowY)&&e.scrollHeight>e.clientHeight+2&&e.clientHeight>30&&!e.closest('dialog')}).map(e=>e.className)),[],'No nested vertical scrolling on phones');
+          await page.locator('#timeline-view').click();await page.locator('.timeline-scroll').waitFor();
+        } else assert.ok(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight+1 && document.documentElement.scrollWidth<=innerWidth+1),'The page itself must not scroll');
         const toggle=await page.locator('#calendar-expand').boundingBox();assert.ok(toggle.y>=0&&toggle.y+toggle.height<=viewport.height,'Expand remains reachable on short screens');
         await page.screenshot({path:path.join(output,`workspace-short-${viewport.width}.png`),animations:'disabled'});
         const shortHeight=(await page.locator('.timeline-scroll').boundingBox()).height;
@@ -69,7 +79,7 @@ const request=(route,method='GET',data=null,token='')=>new Promise((resolve,reje
     }
     if(preset==='zzz')assert.equal(await page.locator('#sync-button').evaluate(n=>getComputedStyle(n).borderRadius),'32px');
   }
-  await page.locator('#data-button').click();assert.equal(await page.locator('[data-preference-panel="network"]').isVisible(),true);assert.equal(await page.locator('#sync-interval').isVisible(),true);await page.locator('#sync-interval').selectOption('360');await page.waitForFunction(()=>document.querySelector('#sync-interval').value==='360');await page.locator('#preferences-dialog [data-close]').click();
+  await page.locator('#data-button').click();assert.equal(await page.locator('[data-preference-panel="network"]').isVisible(),true);assert.equal(await page.locator('#sync-interval').isVisible(),true);assert.match(await page.locator('#sync-schedule').innerText(),/下次自动复查/);assert.equal(await page.locator('#sync-interval option').count(),2);await page.locator('#sync-interval').selectOption('1080');await page.waitForFunction(()=>document.querySelector('#sync-interval').value==='1080');await page.locator('#preferences-dialog [data-close]').click();assert.equal((await request('/api/state')).data.settings.sync_interval_minutes,1080);
   await page.locator('#workspace-button').click();await page.locator('[data-preference-tab="layout"]').click();await page.locator('[data-layout-visible="sources"]').uncheck();
   await page.locator('[data-layout-move="0"][data-step="1"]').click();
   await page.locator('#sidebar-position').selectOption('right');await page.locator('#sidebar-width').fill('280');await page.locator('#desktop-calendar-position').selectOption('top');await page.locator('#save-layout').click();
@@ -98,13 +108,13 @@ const request=(route,method='GET',data=null,token='')=>new Promise((resolve,reje
   await page.goto(base+'/?appearance=reminders');await page.locator('#reminder-dialog').waitFor({state:'visible'});await page.locator('#reminder-dialog [data-close]').click();
   for(const width of [320,768,1440]){await page.setViewportSize({width,height:1050});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Custom theme overflow at '+width);}
   await page.locator('#workspace-button').click();await page.locator('[data-preference-tab="theme"]').click();await page.locator('#reset-theme').click();await page.waitForFunction(()=>document.documentElement.dataset.theme==='light');
-  await page.locator('[data-preference-tab="network"]').click();await page.locator('#network-interval_seconds').fill('4');await page.locator('#network-hourly_limit').fill('80');await page.locator('#network-round_limit').fill('20');await page.locator('#save-network').click();
+  await page.locator('[data-preference-tab="network"]').click();await page.locator('#network-interval_seconds').fill('12');await page.locator('#network-hourly_limit').fill('80');await page.locator('#network-round_limit').fill('20');await page.locator('#save-network').click();
   await page.waitForFunction(()=>document.querySelector('#preferences-error').textContent.includes('限制已保存'));
   const cooldown=(await request('/api/network')).data.sites[0].next_allowed_at;
   await page.locator('#network-toggle').click();await page.waitForFunction(()=>document.querySelector('#network-summary').textContent.includes('联网已暂停'));
   await page.locator('[data-network-site="biligame.com"]').click();await page.waitForFunction(()=>document.querySelector('[data-network-site]').dataset.paused==='false');
   await page.locator('[data-network-site="biligame.com"]').click();await page.waitForFunction(()=>document.querySelector('[data-network-site]').dataset.paused==='true');
-  state=(await request('/api/state')).data;assert.equal(state.network.sites[0].next_allowed_at,cooldown);assert.equal(state.network.policy.interval_seconds,4);assert.equal(state.network.paused,true);
+  state=(await request('/api/state')).data;assert.equal(state.network.sites[0].next_allowed_at,cooldown);assert.equal(state.network.policy.interval_seconds,12);assert.equal(state.network.paused,true);
   assert.equal((await request('/api/network','PATCH',{policy:{interval_seconds:0}},state.csrf_token)).status,400);
   await page.screenshot({path:path.join(output,'network-controls.png')});
   await page.reload();await page.locator('#workspace-button').click();await page.locator('[data-preference-tab="network"]').click();assert.match(await page.locator('#network-summary').innerText(),/联网已暂停/);assert.equal(await page.locator('#network-hourly_limit').inputValue(),'80');
@@ -119,7 +129,7 @@ const request=(route,method='GET',data=null,token='')=>new Promise((resolve,reje
   assert.equal(await page.locator('.sidebar').isVisible(),false);
   await page.locator('#workspace-button').click();await page.locator('[data-preference-tab="layout"]').click();await page.locator('#reset-layout').click();await page.waitForFunction(()=>document.body.dataset.sidebar==='left');await page.locator('#preferences-dialog [data-close]').click();
   await page.locator('#rail-games').click();await page.waitForFunction(()=>document.body.dataset.sidebar==='hidden');await page.locator('#rail-games').click();await page.waitForFunction(()=>document.body.dataset.sidebar==='left');
-  for(const width of [320,768,1440]){await page.setViewportSize({width,height:1050});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Overflow at '+width);if(width===320){const a=await page.locator('#game-select').boundingBox(),b=await page.locator('#version-select').boundingBox();assert.ok(a.y+a.height<=b.y,'Mobile game/version controls must not overlap');await page.screenshot({path:path.join(output,'design-mobile-320.png'),animations:'disabled'});}}
+  for(const width of [320,768,1440]){await page.setViewportSize({width,height:1050});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'Overflow at '+width);if(width===320){await page.locator('#sidebar-more').click();const a=await page.locator('#game-select').boundingBox(),b=await page.locator('#version-select').boundingBox();assert.ok(a.y+a.height<=b.y,'Mobile game/version controls must not overlap');await page.screenshot({path:path.join(output,'design-mobile-320.png'),animations:'disabled'});await page.locator('#sidebar-more').click();}}
   state=(await request('/api/state')).data;assert.equal(state.provider_api_version,1);assert.deepEqual(state.games.map(g=>g.id),before.games.map(g=>g.id));assert.equal(state.events.length,before.events.length);assert.deepEqual(errors,[]);
   console.log('PASS: layout reorder/collapse/sidebar recovery and persistence; dark/custom theme/export/contrast guard/reset isolation; shared network policy, pause and cooldown controls; plugin API 1 and all five calendars unchanged; responsive UI');
  }finally{if(browser)await browser.close();server.kill();}

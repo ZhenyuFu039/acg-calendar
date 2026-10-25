@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "strategy": "batch_date_and_independent_identity",
+  "english_dates_used_for_schedule": false,
+  "candidate_count": 8,
+  "batch_offsets": {
+    "2026年10月15日10:00港区改建": [
+      0
+    ],
+    "2026年9月8日10:00港区改建": [
+      0
+    ],
+    "2026年9月4日10:00港区改建": [
+      0
+    ]
+  },
+  "results": [
+    {
+      "event_id": "page-230749-section-1",
+      "title": "严厉女仆不严厉",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/1/1c/The_Strict_Maid_Isn%27t_So_Strict_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/The_Strict_Maid_Isn%E2%80%99t_So_Strict",
+      "candidate_title": "The Strict Maid Isn't So Strict",
+      "revision_id": 306940,
+      "evidence": [
+        "known_title_alias",
+        "mission_signature"
+      ],
+      "shared_missions": 15,
+      "mission_similarity": 1.0,
+      "entities": [],
+      "identity": true,
+      "score": 90,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-10-15",
+        "end": "2026-11-04",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "ground_truth": "correct"
+    },
+    {
+      "event_id": "page-230592-section-1",
+      "title": "自选轻量复刻",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-230187-section-6",
+      "title": "世界巡游 · 第三十一期",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-230187-section-9",
+      "title": "限界挑战：天秤座",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-1",
+      "title": "幽影迷城",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/c/c2/Tales_of_the_Paranormal_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+      "candidate_title": "Tales of the Paranormal",
+      "revision_id": 306644,
+      "evidence": [
+        "known_title_alias"
+      ],
+      "shared_missions": 0,
+      "mission_similarity": 0,
+      "entities": [],
+      "identity": true,
+      "score": 85,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-09-08",
+        "end": "2026-09-30",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "ground_truth": "correct"
+    },
+    {
+      "event_id": "page-228604-section-2",
+      "title": "异常的日常进行中",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-3",
+      "title": "幽影收容协议",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-4",
+      "title": "特别庆典再开",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-5",
+      "title": "特别纪念签到",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-10",
+      "title": "限定祈愿建造",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-11",
+      "title": "司令部动员指令",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-12",
+      "title": "新人指挥官双倍经验活动",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228290-section-1",
+      "title": "作战准备：新纪元都市NO.7",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/0/0a/Call_to_Arms_New_Era_City_No._7_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Call_to_Arms:_New_Era_City_No._7",
+      "candidate_title": "Call to Arms New Era City No. 7",
+      "revision_id": null,
+      "evidence": [
+        "known_title_alias",
+        "activity_type:preparation"
+      ],
+      "shared_missions": 0,
+      "mission_similarity": 0,
+      "entities": [],
+      "identity": true,
+      "score": 90,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-09-04",
+        "end": "2026-10-07",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "ground_truth": "correct"
+    },
+    {
+      "event_id": "page-228290-section-2",
+      "title": "闪耀的“魔法”",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/3/34/%C3%89clat_Magique_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/%C3%89clat_Magique",
+      "candidate_title": "Éclat Magique",
+      "revision_id": null,
+      "evidence": [
+        "known_title_alias"
+      ],
+      "shared_missions": 0,
+      "mission_similarity": 0,
+      "entities": [],
+      "identity": true,
+      "score": 85,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-09-04",
+        "end": "2026-09-30",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "ground_truth": "correct"
+    },
+    {
+      "event_id": "page-228290-section-3",
+      "title": "信标·META · 萨拉托加·META",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228290-section-5",
+      "title": "Fight！都市求职大作战！",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/2/2d/Fight_On%21_The_Ultimate_Job-Hunting_Operation%21_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Fight_On!_The_Ultimate_Job-Hunting_Operation!",
+      "candidate_title": "Fight On! The Ultimate Job-Hunting Operation!",
+      "revision_id": null,
+      "evidence": [
+        "known_title_alias"
+      ],
+      "shared_missions": 0,
+      "mission_similarity": 0,
+      "entities": [],
+      "identity": true,
+      "score": 85,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-09-04",
+        "end": "2026-09-30",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "ground_truth": "correct"
+    },
+    {
+      "event_id": "page-228290-section-6",
+      "title": "蓝图补完计划 · 那不勒斯",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/6/6f/PR7_Catchup_Napoli_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Blueprint_Completion_Plan",
+      "candidate_title": "PR7 Catchup Napoli",
+      "revision_id": 306647,
+      "evidence": [
+        "known_title_alias",
+        "activity_type:blueprint"
+      ],
+      "shared_missions": 0,
+      "mission_similarity": 0,
+      "entities": [
+        "napoli"
+      ],
+      "identity": true,
+      "score": 90,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-09-04",
+        "end": "2026-09-30",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "ground_truth": "correct"
+    },
+    {
+      "event_id": "page-228290-section-7",
+      "title": "限时兵装训练",
+      "status": "unmatched",
+      "candidates_considered": 0,
+      "ground_truth": "not_assigned"
+    },
+    {
+      "event_id": "page-228604-section-1-shop",
+      "title": "幽影迷城 · 活动商店",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/c/c2/Tales_of_the_Paranormal_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+      "candidate_title": "Tales of the Paranormal",
+      "revision_id": 306644,
+      "evidence": [
+        "known_title_alias"
+      ],
+      "shared_missions": 0,
+      "mission_similarity": 0,
+      "entities": [],
+      "identity": true,
+      "score": 85,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-09-08",
+        "end": "2026-09-30",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "inherited_from": "page-228604-section-1",
+      "ground_truth": "correct"
+    },
+    {
+      "event_id": "page-228604-section-1-claim",
+      "title": "幽影迷城 · 累计奖励领取",
+      "status": "matched",
+      "image_url": "https://azurlane.netojuu.com/images/c/c2/Tales_of_the_Paranormal_Event_Banner_EN.jpg",
+      "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+      "candidate_title": "Tales of the Paranormal",
+      "revision_id": 306644,
+      "evidence": [
+        "known_title_alias"
+      ],
+      "shared_missions": 0,
+      "mission_similarity": 0,
+      "entities": [],
+      "identity": true,
+      "score": 85,
+      "offset_days": 0,
+      "window": {
+        "start": "2026-09-08",
+        "end": "2026-09-30",
+        "servers": "All Servers"
+      },
+      "candidates_considered": 1,
+      "inherited_from": "page-228604-section-1",
+      "ground_truth": "correct"
+    }
+  ],
+  "matched": 8,
+  "ambiguous": 0,
+  "unmatched": 12,
+  "validation": {
+    "cn_announcements": 6,
+    "cn_events": 20,
+    "known_en_banner_events_including_children": 9,
+    "correct": 8,
+    "wrong": 0,
+    "old_image_url_mappings_removed": true,
+    "title_aliases_are_curated": true,
+    "no_alias_matches": [
+      {
+        "title": "严厉女仆不严厉",
+        "image_url": "https://azurlane.netojuu.com/images/1/1c/The_Strict_Maid_Isn%27t_So_Strict_Event_Banner_EN.jpg",
+        "shared_missions": 15,
+        "evidence": [
+          "mission_signature"
+        ]
+      }
+    ],
+    "scope": "Limited historical sample; abstention is not full coverage. Real cross-server delay beyond these samples is not inferred as a global constant."
+  }
+}

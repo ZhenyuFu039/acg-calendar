@@ -108,16 +108,15 @@ public sealed partial class CalendarWindow
         {
             networkPaused = net.GetProperty("paused").GetBoolean();
             var p = net.GetProperty("policy");
-            networkStatus.Text = (networkPaused ? "联网已暂停，缓存和提醒继续运行。" : "联网已启用。") + $"\n同站间隔 {p.GetProperty("interval_seconds").GetInt32()} 秒，每小时 {p.GetProperty("hourly_limit").GetInt32()} 次。";
+            networkStatus.Text = (networkPaused ? "联网已暂停，缓存和提醒继续运行。" : "联网已启用。") + $"\n自动复查 {state.GetProperty("settings").GetProperty("sync_interval_minutes").GetInt32() / 60} 小时后，另随机错峰 0–2 小时。\n同站至少间隔 {p.GetProperty("interval_seconds").GetInt32()} 秒，另加 0–5 秒错峰。\n每小时上限 {p.GetProperty("hourly_limit").GetInt32()} 次；倒计时在本地运行。";
+            if (state.TryGetProperty("sync_schedule", out var schedules) && schedules.TryGetProperty(selectedGame, out var scheduled))
+            {
+                if (!scheduled.GetProperty("enabled").GetBoolean()) networkStatus.Text += "\n自动复查已由启动参数关闭。";
+                else if (DateTimeOffset.TryParse(scheduled.GetProperty("next_check_at").GetString(), out var nextCheck)) networkStatus.Text += "\n当前游戏下次复查：" + nextCheck.ToLocalTime().ToString("MM/dd HH:mm");
+            }
         }
         if (state.TryGetProperty("workspace_defaults", out var defaults)) workspaceDefaults = defaults.Clone();
         var workspace = state.GetProperty("workspace");
-        personalPlansPanel.Children.Clear();
-        if (state.TryGetProperty("plans", out var plans)) foreach (var plan in plans.EnumerateArray())
-        {
-            if (plan.TryGetProperty("game_id", out var game) && game.ValueKind == JsonValueKind.String && !InScope(game.GetString()!)) continue;
-            personalPlansPanel.Children.Add(Text(plan.GetProperty("title").GetString() ?? "个人计划", 11));
-        }
         string signature = workspace.GetProperty("layout").GetRawText() + workspace.GetProperty("theme").GetRawText();
         if (signature == workspaceSignature) return;
         CaptureTextRoles(desktopLayout);

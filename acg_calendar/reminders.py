@@ -14,6 +14,13 @@ from .parser import iso, resolve_versions, stamp
 from .games import game_name
 
 
+def check_event_offsets(offsets):
+    """Per-event reminder minutes: None follows the global setting."""
+    if offsets is not None and (not isinstance(offsets, list) or len(offsets) > 5 or any(type(n) is not int or not 1 <= n <= 10080 for n in offsets)):
+        raise ValueError("提醒提前量需为 1–10080 分钟，最多 5 项")
+    return sorted(set(offsets), reverse=True) if offsets is not None else None
+
+
 def native_available():
     if os.environ.get("ACG_DISABLE_DESKTOP") == "1":
         return False
@@ -37,11 +44,13 @@ def native_notify(title, body):
 
 
 class ReminderEngine:
-    def __init__(self, store, sender=native_notify, *, game_names=None, enabled_games=None):
+    def __init__(self, store, sender=native_notify, *, game_names=None, enabled_games=None, scope_games=None):
         self.store = store
         self.sender = sender
         self.game_names = game_names or {}
         self.enabled_games = enabled_games
+        # Callable returning the games chosen in the reminder settings, or None for all games.
+        self.scope_games = scope_games
         self.delivery_lock = threading.Lock()
 
     def tick(self, now=None):
@@ -50,8 +59,11 @@ class ReminderEngine:
         if not settings["reminders_enabled"]:
             return []
         created = []
+        chosen = self.scope_games() if self.scope_games else None
         for version in resolve_versions(self.store.versions(), self.store.state()):
             if self.enabled_games is not None and version.get("game") not in self.enabled_games:
+                continue
+            if chosen is not None and version.get("game") not in chosen:
                 continue
             for event in version["events"]:
                 if event["completed"] or event["ignored"] or event.get("invalid_interval") or event["time_kind"] == "point":

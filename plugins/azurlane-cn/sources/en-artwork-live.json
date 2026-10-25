@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "fetched_at": "2026-10-23T08:18:07.818793Z",
+  "capture_method": "public_mediawiki_parse_api_extracted_tables",
+  "pages": [
+    {
+      "title": "The Strict Maid Isn’t So Strict",
+      "revision_id": 306940,
+      "source_url": "https://azurlane.koumakan.jp/wiki/The_Strict_Maid_Isn%E2%80%99t_So_Strict",
+      "capture_scope": "Extracted real date/banner tables; maid also includes the real task table.",
+      "candidates": [
+        {
+          "title": "The Strict Maid Isn't So Strict",
+          "page_title": "The Strict Maid Isn’t So Strict",
+          "image_url": "https://azurlane.netojuu.com/images/1/1c/The_Strict_Maid_Isn%27t_So_Strict_Event_Banner_EN.jpg",
+          "source_url": "https://azurlane.koumakan.jp/wiki/The_Strict_Maid_Isn%E2%80%99t_So_Strict",
+          "revision_id": 306940,
+          "windows": [
+            {
+              "start": "2026-10-15",
+              "end": "2026-11-04",
+              "servers": "All Servers"
+            }
+          ],
+          "context": "The Strict Maid Isn't So Strict  All Servers Start date \n   October 15th, 2026 \n   End date \n   November 4th, 2026 \n Day \n Task 1 \n Rewards \n Task 2 \n Rewards \n 1 \n Sortie and obtain 10 victories with S-rating. \n 100 Whip \n Log in to the game. \n 100 Whip \n 2 \n Complete 2 commissions. \n 100 Whip \n Conduct 2 exercises. \n 100 Whip \n 3 \n Complete 3 Daily Challenges. \n 100 Whip \n Retire 2 ships. \n 100 Whip \n 4 \n Conduct tactical training 2 times. \n 100 Whip \n Enhance ship 5 times. \n 100 Whip \n 5 \n Defeat 20 enemies. \n 100 Whip \n Restock snacks in your dorm 5 times. \n 100 Whip \n 6 \n Open 1 Tech Box. \n 100 Whip \n Build 2 ships. \n 100 Whip \n 7 \n Conduct tactical training 2 times. \n 100 Whip \n Sortie and defeat 3 Boss Fleets. \n 100 Whip \n Win 100 battles (daily task) \n 200 Whip \n Beat 14-4 (One-time reward) \n 500 Whip"
+        }
+      ],
+      "fetched_at": "2026-10-23T08:18:07.818793Z"
+    },
+    {
+      "title": "Blueprint Completion Plan",
+      "revision_id": 306647,
+      "source_url": "https://azurlane.koumakan.jp/wiki/Blueprint_Completion_Plan",
+      "capture_scope": "Extracted real date/banner tables; maid also includes the real task table.",
+      "candidates": [
+        {
+          "title": "PR1 Catchup Neptune",
+          "page_title": "Blueprint Completion Plan",
+          "image_url": "https://azurlane.netojuu.com/images/d/df/PR1_Catchup_Neptune_Event_Banner_EN.png",
+          "source_url": "https://azurlane.koumakan.jp/wiki/Blueprint_Completion_Plan",
+          "revision_id": 306647,
+          "windows": [
+            {
+              "start": "2020-07-30",
+              "end": "2020-08-26",
+              "servers": "EN Servers"
+            },
+            {
+              "start": "2021-05-20",
+              "end": "2021-06-16",
+              "servers": "Rerun All Servers"
+            }
+          ],
+          "context": "PR-Catchup: Neptune  CN/JP Servers Start date \n   July 16th, 2020 \n   End date \n   August 12th, 2020 \n EN Servers Start date \n   July 30th, 2020 \n   End date \n   August 26th, 2020 \n Rerun All Servers Start date \n   May 20th, 2021 \n   End date \n   June 16th, 2021 \n PR-Catchup: Napoli  All Servers Start date \n   September 4th, 2026 \n   End date \n   September 30th, 2026"
+        },
+        {
+          "title": "PR7 Catchup Napoli",
+          "page_title": "Blueprint Completion Plan",
+          "image_url": "https://azurlane.netojuu.com/images/6/6f/PR7_Catchup_Napoli_Event_Banner_EN.jpg",
+          "source_url": "https://azurlane.koumakan.jp/wiki/Blueprint_Completion_Plan",
+          "revision_id": 306647,
+          "windows": [
+            {
+              "start": "2026-09-04",
+              "end": "2026-09-30",
+              "servers": "All Servers"
+            }
+          ],
+          "context": "PR-Catchup: Neptune  CN/JP Servers Start date \n   July 16th, 2020 \n   End date \n   August 12th, 2020 \n EN Servers Start date \n   July 30th, 2020 \n   End date \n   August 26th, 2020 \n Rerun All Servers Start date \n   May 20th, 2021 \n   End date \n   June 16th, 2021 \n PR-Catchup: Napoli  All Servers Start date \n   September 4th, 2026 \n   End date \n   September 30th, 2026"
+        }
+      ],
+      "fetched_at": "2026-10-23T08:18:07.818793Z"
+    },
+    {
+      "title": "Tempesta and the Corridor of Fog",
+      "revision_id": 307286,
+      "source_url": "https://azurlane.koumakan.jp/wiki/Tempesta_and_the_Corridor_of_Fog",
+      "capture_scope": "Extracted real date/banner tables; maid also includes the real task table.",
+      "candidates": [
+        {
+          "title": "Tempesta and the Corridor of Fog",
+          "page_title": "Tempesta and the Corridor of Fog",
+          "image_url": "https://azurlane.netojuu.com/images/9/94/Tempesta_and_the_Corridor_of_Fog_Event_Banner_EN.jpg",
+          "source_url": "https://azurlane.koumakan.jp/wiki/Tempesta_and_the_Corridor_of_Fog",
+          "revision_id": 307286,
+          "windows": [
+            {
+              "start": "2026-10-22",
+              "end": "2026-11-04",
+              "servers": "All Servers"
+            }
+          ],
+          "context": "Tempesta and the Corridor of Fog  Event stories \n     Tempesta and the Corridor of Fog \n      Heaven or Hell: The Beckoning \n All Servers Start date \n   October 22nd, 2026 \n   End date \n   November 4th, 2026 Juustagrams"
+        }
+      ],
+      "fetched_at": "2026-10-23T08:18:07.818793Z"
+    },
+    {
+      "title": "Tales of the Paranormal",
+      "revision_id": 306644,
+      "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+      "capture_scope": "Extracted real date/banner tables; maid also includes the real task table.",
+      "candidates": [
+        {
+          "title": "Tales of the Paranormal",
+          "page_title": "Tales of the Paranormal",
+          "image_url": "https://azurlane.netojuu.com/images/c/c2/Tales_of_the_Paranormal_Event_Banner_EN.jpg",
+          "source_url": "https://azurlane.koumakan.jp/wiki/Tales_of_the_Paranormal",
+          "revision_id": 306644,
+          "windows": [
+            {
+              "start": "2026-09-08",
+              "end": "2026-09-30",
+              "servers": "All Servers"
+            }
+          ],
+          "context": "Tales of the Paranormal  Associated event(s) \n     Call to Arms: New Era City No. 7  Fight On! The Ultimate Job-Hunting Operation! Event stories \n     Tales of the Paranormal \n All Servers Start date \n   September 8th, 2026 \n   End date \n   September 30th, 2026 Juustagrams"
+        }
+      ],
+      "fetched_at": "2026-10-23T08:18:07.818793Z"
+    }
+  ]
+}

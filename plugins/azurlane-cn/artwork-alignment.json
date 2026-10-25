@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "description": "日期与活动结构只缩小范围，独立的名称别名、任务指纹或多个奖励对象才确认身份；不按条目序号配图，不覆盖国服时间。",
+  "discovery": {
+    "history_days": 60,
+    "max_pages": 6,
+    "heading_prefixes": ["Limited Time Event:", "New Event:", "Event Rerun:", "Limited-time Event:"]
+  },
+  "banner_filename_pattern": "_Event_Banner(?:_(?:EN|CN|JP))?\\.(?:jpg|jpeg|png|webp)$",
+  "max_offset_days": 21,
+  "start_tolerance_days": 0,
+  "end_tolerance_days": 1,
+  "minimum_score": 85,
+  "minimum_margin": 15,
+  "minimum_shared_missions": 6,
+  "minimum_mission_similarity": 0.8,
+  "minimum_shared_entities": 2,
+  "scores": {"alias": 60, "missions": 65, "entities": 60, "structure": 5, "dates": 25},
+  "aliases": [
+    {"cn": ["严厉女仆不严厉"], "en": ["The Strict Maid Isn’t So Strict"]},
+    {"cn": ["幽影迷城"], "en": ["Tales of the Paranormal"]},
+    {"cn": ["异常的日常进行中"], "en": ["A Slightly Paranormal State of Affairs"]},
+    {"cn": ["作战准备：新纪元都市NO.7"], "en": ["Call to Arms: New Era City No. 7"]},
+    {"cn": ["Fight！都市求职大作战！"], "en": ["Fight On! The Ultimate Job-Hunting Operation!"]},
+    {"cn": ["闪耀的“魔法”"], "en": ["Éclat Magique"]},
+    {"cn": ["蓝图补完计划 · 那不勒斯"], "en": ["PR7 Catchup Napoli", "PR-Catchup: Napoli"]}
+  ],
+  "entities": [
+    {"id": "algerie", "cn": ["阿尔及利亚"], "en": ["Algérie"]},
+    {"id": "napoli", "cn": ["那不勒斯"], "en": ["Napoli"]},
+    {"id": "emile-bertin", "cn": ["埃米尔·贝尔汀"], "en": ["Émile Bertin"]}
+  ],
+  "activity_types": [
+    {"id": "preparation", "cn": ["^作战准备"], "en": ["^Call to Arms"]},
+    {"id": "blueprint", "cn": ["^蓝图补完计划"], "en": ["^(?:PR\\d?[- ]Catchup|Blueprint Completion)"]}
+  ],
+  "missions": [
+    {"action": "s_victories", "cn": ["S评价通关(?P<count>\\d+)次"], "en": ["(?P<count>\\d+) victories with S-rating"]},
+    {"action": "login", "cn": ["登录游戏"], "en": ["Log in to the game"]},
+    {"action": "commission", "cn": ["军事委托(?P<count>\\d+)次"], "en": ["Complete (?P<count>\\d+) commissions"]},
+    {"action": "exercise", "cn": ["进行(?P<count>\\d+)次演习"], "en": ["Conduct (?P<count>\\d+) exercises"]},
+    {"action": "daily_challenge", "cn": ["完成(?P<count>\\d+)次每日挑战"], "en": ["Complete (?P<count>\\d+) Daily Challenges"]},
+    {"action": "retire_ship", "cn": ["舰船退役(?P<count>\\d+)次"], "en": ["Retire (?P<count>\\d+) ships"]},
+    {"action": "tactical_training", "cn": ["进行战术训练(?P<count>\\d+)次", "进行(?P<count>\\d+)次战术训练"], "en": ["Conduct tactical training (?P<count>\\d+) times"]},
+    {"action": "enhance_ship", "cn": ["舰船强化(?P<count>\\d+)次"], "en": ["Enhance ship (?P<count>\\d+) times"]},
+    {"action": "defeat_enemy", "cn": ["击沉任意敌人(?P<count>\\d+)艘"], "en": ["Defeat (?P<count>\\d+) enemies"]},
+    {"action": "dorm_food", "cn": ["后宅补充食物(?P<count>\\d+)次"], "en": ["Restock snacks in your dorm (?P<count>\\d+) times"]},
+    {"action": "open_box", "cn": ["打开任意科技箱(?P<count>\\d+)个"], "en": ["Open (?P<count>\\d+) Tech Box"]},
+    {"action": "build_ship", "cn": ["建造舰船(?P<count>\\d+)次"], "en": ["Build (?P<count>\\d+) ships"]},
+    {"action": "boss_fleet", "cn": ["击败旗舰(?P<count>\\d+)次"], "en": ["defeat (?P<count>\\d+) Boss Fleets"]},
+    {"action": "win_battle", "cn": ["获得(?P<count>\\d+)次胜利"], "en": ["Win (?P<count>\\d+) battles"]}
+  ]
+}

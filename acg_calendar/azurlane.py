@@ -1,4 +1,4 @@
-"""CN bulletin scheduling; English Wiki contributes explicitly matched media only."""
+"""CN bulletin scheduling; optional JSON-aligned English Wiki artwork."""
 import copy
 import datetime as dt
 import hashlib
@@ -10,11 +10,14 @@ import urllib.parse
 
 from .artwork import image_kind
 from .azurlane_http import AzurLaneHTTP, allowed
+from .azurlane_artwork import (EN, align_artwork, discover_pages, snapshot_candidates, page_candidates,
+                               bulletin_visual_references, apply_bulletin_visuals)
 from .gamekee import atomic_json
-from .network import network_job
+from .network import deferring_images, network_job
 from .parser import iso, stamp, maintenance_start_estimate
 from .plugin_media import local_file
 from .providers import JsonProvider, bounded_json
+from .sync_progress import SyncProgress
 
 CN = 'https://wiki.biligame.com/blhx/'
 
@@ -139,7 +142,7 @@ class BulletinParser:
         return result
 
 
-def compile_feed(pages, rules, fetched_at):
+def compile_feed(pages, rules, fetched_at, *, artwork_catalog=None, alignment_rules=None):
     parser = BulletinParser(rules)
     maintenance = {value['date']: value for page in pages for value in [parser.maintenance(page)]}
     rows = [event for page in pages for event in parser.parse(page, maintenance)]
@@ -156,7 +159,10 @@ def compile_feed(pages, rules, fetched_at):
             if mapping.get('language') == 'en':
                 notes.append('英文 Wiki 仅补充已核对头图，不采用其外服时间。图内日期/文案可能属于外服。')
         row['description'] = '\n'.join(notes)
-    return {'schema_version': 1, 'versions': [{'id': 'recent-cn-activities', 'name': '国服近期活动', 'source_url': rules['sources']['calendar_url'], 'events': rows, 'analysis': {'strategy': rules['strategy'], 'ai_used': False, 'event_count': len(rows), 'announcements': len(pages), 'fetched_at': fetched_at, 'timezone': 'Asia/Shanghai', 'english_dates_used': False}}]}
+    analysis = {'strategy': rules['strategy'], 'ai_used': False, 'event_count': len(rows), 'announcements': len(pages), 'fetched_at': fetched_at, 'timezone': 'Asia/Shanghai', 'english_dates_used': False}
+    if artwork_catalog is not None and alignment_rules:
+        analysis['artwork_alignment'] = align_artwork(rows, pages, artwork_catalog, alignment_rules)
+    return {'schema_version': 1, 'versions': [{'id': 'recent-cn-activities', 'name': '国服近期活动', 'source_url': rules['sources']['calendar_url'], 'events': rows, 'analysis': analysis}]}
 
 
 class AzurLaneProvider(JsonProvider):
@@ -172,6 +178,8 @@ class AzurLaneProvider(JsonProvider):
         if type(hour) is not int or not 0 <= hour <= 23:
             raise ValueError('暂定维护小时应在 0–23 之间')
         self.http = http or AzurLaneHTTP()
+        self.alignment = self.config.get('artwork_alignment')
+        self.alignment_rules = bounded_json(local_file(directory, self.alignment['rules'])) if self.alignment else None
         self.lock, self.last_attempt = threading.Lock(), None
         self.descriptor.update(plugin_kind='azurlane-wiki-json', source_kind='community_calendar', capabilities=['sync', 'rules', 'artwork'])
 
@@ -199,6 +207,10 @@ class AzurLaneProvider(JsonProvider):
                     event[role]['reference'] = reference
                 if event.get('artwork'):
                     event['artwork'].update(match=row.get('image_match', 'plugin_local_asset'), source_title=row['title'])
+                    if row.get('image_alignment'):
+                        event['artwork']['alignment'] = copy.deepcopy(row['image_alignment'])
+                    if row.get('image_bulletin_visual'):
+                        event['artwork'].update(shared_update=True, bulletin_visual=copy.deepcopy(row['image_bulletin_visual']))
         return versions
 
     def seed(self):
@@ -222,7 +234,7 @@ class AzurLaneProvider(JsonProvider):
         try:
             self.collect()
         except Exception as error:
-            self.store.set_meta(self.sync_key, {**self.store.get_meta(self.sync_key, {}), 'running': False, 'error': str(error)[:400], 'message': '同步失败，保留上次成功日历'})
+            self.store.set_meta(self.sync_key, {**self.store.get_meta(self.sync_key, {}), 'running': False, 'stage': None, 'waiting': None, 'error': str(error)[:400], 'message': '同步失败，保留上次成功日历'})
         finally:
             self.lock.release()
 
@@ -232,9 +244,122 @@ class AzurLaneProvider(JsonProvider):
             raise ValueError('Wiki 接口错误：' + str(result['error'].get('code')))
         return result
 
+    def english_page(self, title):
+        url = EN + '/w/api.php?' + urllib.parse.urlencode({'action': 'parse', 'page': title,
+            'prop': 'text|revid', 'format': 'json', 'formatversion': 2})
+        payload = json.loads(self.http.read(url))
+        page = payload.get('parse', {}) if isinstance(payload, dict) else {}
+        if not isinstance(page, dict) or not isinstance(page.get('text'), str) or not isinstance(page.get('revid'), int) or not isinstance(page.get('title'), str):
+            raise ValueError('英文 Wiki 未返回有效活动页面；保留头图缓存')
+        return {'title': page['title'], 'html': page['text'], 'revision_id': page['revid'],
+                'source_url': EN + '/wiki/' + urllib.parse.quote(page['title'].replace(' ', '_'), safe='')}
+
+    def artwork_catalog(self, now, online=True):
+        """Best-effort optional media refresh, using the host's shared limiter.
+
+        With online=False only the local snapshots are used, so the calendar is not held back.
+        """
+        if not self.alignment:
+            return None, []
+        snapshots, warnings = [], []
+        for key in ('snapshot', 'live_snapshot'):
+            path = local_file(self.directory, self.alignment[key])
+            if path.is_file():
+                try:
+                    snapshots.append(bounded_json(path))
+                except (OSError, ValueError) as error:
+                    warnings.append('头图缓存不可读：' + str(error)[:100])
+        cached = {p['title']: p for s in snapshots for p in s.get('pages', []) if 'html' in p or 'candidates' in p}
+        if not online:
+            return snapshot_candidates({'pages': [p for s in snapshots for p in s.get('pages', [])]}, self.alignment_rules), warnings
+        try:
+            index = self.english_page('Recent_News')
+            targets = discover_pages(index['html'], self.alignment_rules, now)
+            if not targets:
+                raise ValueError('英文 Wiki 更新目录没有识别到活动；保留头图缓存')
+            targets.sort(key=lambda p: cached.get(p['title'], {}).get('fetched_at', ''))
+            changed = False
+            for target in targets[:self.alignment_rules['discovery']['max_pages']]:
+                try:
+                    page = self.english_page(target['title'])
+                    candidates = page_candidates(page, self.alignment_rules)
+                    if not candidates:
+                        warnings.append('英文专题尚无可用的独立头图与日期：' + target['title'])
+                        # Record negative checks too, so incomplete pages do not
+                        # consume every future round and starve later candidates.
+                        cached[page['title']] = {**cached.get(page['title'], {
+                            'title': page['title'], 'source_url': page['source_url'],
+                            'revision_id': page['revision_id'], 'candidates': []}), 'fetched_at': iso(now)}
+                        changed = True
+                        continue
+                    page = {k: v for k, v in page.items() if k != 'html'}
+                    page.update(candidates=candidates, batch_date=target['batch_date'], fetched_at=iso(now))
+                    cached[page['title']] = page
+                    changed = True
+                except (OSError, ValueError) as error:
+                    warnings.append('英文头图采集暂停，沿用缓存：' + str(error)[:150])
+                    break
+            if changed:
+                latest = sorted(cached.values(), key=lambda p: p.get('fetched_at', ''), reverse=True)[:32]
+                snapshot = {'schema_version': 1, 'fetched_at': iso(now), 'index_revision': index['revision_id'], 'pages': latest}
+                while len(json.dumps(snapshot, ensure_ascii=False).encode('utf-8')) > 1_500_000 and latest:
+                    latest.pop()
+                atomic_json(local_file(self.directory, self.alignment['live_snapshot']), snapshot)
+                snapshots.append(snapshot)
+        except (OSError, ValueError) as error:
+            warnings.append('英文头图来源暂不可用，沿用缓存：' + str(error)[:150])
+        return snapshot_candidates({'pages': [p for s in snapshots for p in s.get('pages', [])]}, self.alignment_rules), warnings
+
+    def attach_bulletin_visuals(self, feed, pages, online=True):
+        config = self.config.get('bulletin_artwork', {})
+        rows = [r for v in feed['versions'] for r in v['events']]
+        references = bulletin_visual_references(pages, rows, config)
+        if not references:
+            return []
+        cache_path = local_file(self.directory, config['cache'])
+        warnings = []
+        try:
+            media = bounded_json(cache_path).get('files', {}) if cache_path.is_file() else {}
+        except (OSError, ValueError):
+            media = {}
+        if not isinstance(media, dict):
+            media = {}
+        def valid(image):
+            if not isinstance(image, dict) or any(type(image.get(k)) not in (int, float) for k in ('width', 'height', 'size')):
+                return False
+            width, height = image.get('width', 0), image.get('height', 0)
+            return (allowed(image.get('url', ''), True) and width >= config['minimum_width'] and height > 0 and
+                    config['minimum_aspect_ratio'] <= width / height <= config['maximum_aspect_ratio'] and
+                    0 < image.get('size', 0) <= 5_000_000)
+        files = list(dict.fromkeys(r['file'] for r in references.values()))
+        needed = [f for f in files if not valid(media.get(f, {}))]
+        if needed and online:
+            try:
+                result = self.api({'action': 'query', 'titles': '|'.join('File:' + f for f in needed),
+                                   'prop': 'imageinfo', 'iiprop': 'url|size'})
+                for page in result.get('query', {}).get('pages', []):
+                    name = page.get('title', '').split(':', 1)[-1]
+                    info = next(iter(page.get('imageinfo', [])), {})
+                    if name in needed and valid(info):
+                        media[name] = info
+                atomic_json(cache_path, {'schema_version': 1, 'files': {f: media[f] for f in files if f in media}})
+            except (OSError, ValueError) as error:
+                warnings.append('公告共用头图暂不可用：' + str(error)[:150])
+        apply_bulletin_visuals(feed, references, {f: media[f] for f in files if valid(media.get(f, {}))})
+        missing = [f for f in files if not valid(media.get(f, {}))]
+        if missing:
+            warnings.append('公告主视觉未取得有效横图：' + '、'.join(missing))
+        return warnings
+
     @network_job
     def collect(self, now=None):
+        progress = SyncProgress(self.store, self.sync_key)
+        with progress.active():
+            return self._collect(progress, now)
+
+    def _collect(self, progress, now=None):
         now = now or dt.datetime.now(dt.timezone.utc)
+        progress.stage('fetch')
         index = self.api({'action': 'parse', 'page': '游戏活动表', 'prop': 'wikitext|revid'})['parse']
         titles = calendar_titles(index['wikitext'], self.config, now)
         pages = []
@@ -261,13 +386,39 @@ class AzurLaneProvider(JsonProvider):
                         break
         if len(pages) > 24:
             raise ValueError('仍在开放的历史公告超出保留上限，未替换日历')
-        feed = compile_feed(pages, self.config, iso(now))
-        errors = self.attach_images(feed)
-        versions = self.normalize(feed)
+        progress.stage('parse')
+        old = [v for v in self.store.versions() if v.get('game') == self.descriptor['id']]
+        # First publish CN dates with cached artwork evidence only; English Wiki pages,
+        # image metadata and missing files are fetched afterwards and never delay dates.
+        catalog, _ = self.artwork_catalog(now, online=False)
+        draft = compile_feed(pages, self.config, iso(now), artwork_catalog=catalog, alignment_rules=self.alignment_rules)
+        self.attach_bulletin_visuals(draft, pages, online=False)
+        with deferring_images():
+            self.attach_images(draft)
+        versions = self.normalize(draft)
         atomic_json(self.directory / 'sources/cn-bulletins.json', {'calendar_revision': index['revid'], 'pages': pages, 'fetched_at': iso(now)})
+        atomic_json(self.directory / 'events.json', draft)
+        self.store.replace_game_versions(self.descriptor['id'], versions)
+        progress.calendar_saved(old, versions)
+        progress.stage('images')
+        catalog, media_warnings = self.artwork_catalog(now)
+        feed = compile_feed(pages, self.config, iso(now), artwork_catalog=catalog, alignment_rules=self.alignment_rules)
+        media_warnings += self.attach_bulletin_visuals(feed, pages)
+        image_errors = self.attach_images(feed)
+        errors = media_warnings + image_errors
+        versions = self.normalize(feed)
         atomic_json(self.directory / 'events.json', feed)
         self.store.replace_game_versions(self.descriptor['id'], versions)
-        self.store.set_meta(self.sync_key, {'running': False, 'last_success': iso(now), 'last_attempt': iso(now), 'mode': 'bwiki', 'error': None, 'message': f'国服公告已同步；{len(errors)} 张头图暂不可用', 'warnings': errors})
+        progress.images_done(versions, len(image_errors))
+        report = feed['versions'][0]['analysis'].get('artwork_alignment')
+        media_status = (f"头图自动对齐 {report['matched']} 条，{report['unmatched'] + report['ambiguous']} 条未自动匹配"
+                        if report else f'{len(errors)} 张头图暂不可用')
+        shared = sum(bool(r.get('artwork')) and r.get('image_match') == 'cn_bulletin_shared_visual'
+                     for r in feed['versions'][0]['events'])
+        if shared:
+            media_status = (f"{sum(bool(r.get('artwork')) for r in feed['versions'][0]['events'])} 条已有头图"
+                            f"（含 {shared} 条使用更新主视觉）")
+        self.store.set_meta(self.sync_key, progress.finish({'running': False, 'last_success': iso(now), 'last_attempt': iso(now), 'mode': 'bwiki', 'error': None, 'message': '国服公告已同步；' + media_status, 'warnings': errors}))
         return feed
 
     def attach_images(self, feed):

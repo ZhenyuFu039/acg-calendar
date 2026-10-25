@@ -14,10 +14,11 @@ import unicodedata
 
 from .artwork import image_kind
 from .gamekee_http import GameKeeHTTP, secure_url
-from .network import network_job
+from .network import deferring_images, network_job
 from .parser import iso, stamp
 from .plugin_media import local_file
 from .providers import JsonProvider, bounded_json, date_value, public_url
+from .sync_progress import SyncProgress
 
 
 def clean(text):
@@ -386,7 +387,7 @@ class GameKeeProvider(JsonProvider):
             self.collect()
         except Exception as error:
             previous = self.store.get_meta(self.sync_key, {})
-            self.store.set_meta(self.sync_key, {**previous, "running": False, "error": str(error)[:400], "message": "同步失败，保留上次成功日历"})
+            self.store.set_meta(self.sync_key, {**previous, "running": False, "stage": None, "waiting": None, "error": str(error)[:400], "message": "同步失败，保留上次成功日历"})
         finally:
             self.lock.release()
 
@@ -413,7 +414,13 @@ class GameKeeProvider(JsonProvider):
 
     @network_job
     def collect(self, now=None):
+        progress = SyncProgress(self.store, self.sync_key)
+        with progress.active():
+            return self._collect(progress, now)
+
+    def _collect(self, progress, now=None):
         now = now or dt.datetime.now(dt.timezone.utc)
+        progress.stage("fetch")
         servers = self.read_json("/v1/gameServer/list")["data"]
         if not any(s.get("id") == self.source["server_id"] and s.get("game_id") == self.source["wiki_id"] and s.get("name") == self.source["server_name"] for s in servers):
             raise ValueError("GameKee 区服信息变化，未混入其他区服")
@@ -439,13 +446,25 @@ class GameKeeProvider(JsonProvider):
                     if cached.get("id") == cid:
                         notices.append(cached)
                         errors[-1] = f"公告 {cid} 正文暂不可用，继续使用上次核对的正文快照"
+        progress.stage("parse")
         feed = compile_feed(cards, notices, self.config, self.source, iso(now), now, errors)
+        # Validate the whole snapshot before replacing any successful records. Dates are
+        # published with cached images first; missing images are downloaded afterwards.
+        old = [v for v in self.store.versions() if v.get("game") == self.descriptor["id"]]
+        draft = copy.deepcopy(feed)
+        with deferring_images():
+            self.attach_images(draft)
+        versions = self.normalize(draft)
+        atomic_json(self.directory / "events.json", draft)
+        self.store.replace_game_versions(self.descriptor["id"], versions)
+        progress.calendar_saved(old, versions)
+        progress.stage("images")
         self.attach_images(feed)
-        # Validate the whole snapshot before replacing any successful records.
         versions = self.normalize(feed)
         atomic_json(self.directory / "events.json", feed)
         self.store.replace_game_versions(self.descriptor["id"], versions)
-        self.store.set_meta(self.sync_key, {"running": False, "last_attempt": iso(now), "last_success": iso(now), "error": None, "mode": "gamekee", "message": f"GameKee 外服资料已同步；{len(errors)} 篇公告待核对", "warnings": errors})
+        progress.images_done(versions, sum(v["analysis"]["artwork"]["download_errors"] for v in feed["versions"]))
+        self.store.set_meta(self.sync_key, progress.finish({"running": False, "last_attempt": iso(now), "last_success": iso(now), "error": None, "mode": "gamekee", "message": f"GameKee 外服资料已同步；{len(errors)} 篇公告待核对", "warnings": errors}))
         return feed
 
     def attach_images(self, feed):

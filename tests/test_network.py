@@ -36,7 +36,7 @@ class Opener:
 class NetworkTests(unittest.TestCase):
     def setUp(self):
         self.clock, self.opener = Clock(), Opener()
-        self.manager = NetworkManager(clock=self.clock, waiter=self.clock.advance, opener=self.opener)
+        self.manager = NetworkManager(clock=self.clock, waiter=self.clock.advance, opener=self.opener, uniform=lambda a,b:0)
 
     def read(self, suffix='', host='wiki.biligame.com', **kwargs):
         return self.manager.read(urllib.request.Request('https://' + host + '/zzz/api.php?' + suffix), WikiRedirect, **kwargs)
@@ -134,7 +134,7 @@ class NetworkTests(unittest.TestCase):
     def test_response_size_and_settings_cannot_disable_limits(self):
         self.opener.responses=[Reply(b'0123456789')]
         with self.assertRaises(ValueError): self.read('one',limit=5)
-        for p in [{'policy':{'interval_seconds':0}},{'policy':{'round_limit':True}},{'site':'unknown','paused':False},{'paused':'false'}]:
+        for p in [{'policy':{'interval_seconds':0}},{'policy':{'interval_seconds':9}},{'policy':{'hourly_limit':121}},{'policy':{'round_limit':65}},{'policy':{'round_limit':True}},{'site':'unknown','paused':False},{'paused':'false'}]:
             with self.assertRaises(ValueError): self.manager.update(p)
 
     def test_source_interval_and_tighter_policy_take_effect_immediately(self):
@@ -143,6 +143,14 @@ class NetworkTests(unittest.TestCase):
         self.read('two');self.assertEqual(self.clock()-start,10)
         start=self.clock();self.read('three',min_interval=20)
         self.assertEqual(self.clock()-start,20)
+
+    def test_request_jitter_is_chosen_once_and_survives_status_reads(self):
+        self.manager.uniform=lambda a,b:b
+        self.read('one');start=self.clock()
+        self.assertEqual(self.manager.sites['biligame.com']['next_at'],start+15)
+        self.manager.snapshot();self.manager.snapshot()
+        self.read('two')
+        self.assertEqual(self.clock()-start,15)
 
     def test_no_store_no_cache_and_public_metadata_only(self):
         self.opener.responses=[Reply(b'private',{'Cache-Control':'no-store'}),Reply(b'new'),Reply(b'validate',{'Cache-Control':'no-cache','ETag':'version','Set-Cookie':'not-retained'}),urllib.error.HTTPError('url',304,'unchanged',{},None)]
@@ -184,7 +192,7 @@ class NetworkTests(unittest.TestCase):
                 entered.set();release.wait(2)
                 with lock: counts['active']-=1
                 return Reply()
-        manager=NetworkManager(opener=BlockingOpener());manager.policy['interval_seconds']=.01
+        manager=NetworkManager(opener=BlockingOpener(), uniform=lambda a,b:0);manager.policy['interval_seconds']=.01
         def run(url):manager.read(url,WikiRedirect)
         a=threading.Thread(target=run,args=('https://wiki.biligame.com/zzz/api.php?a',));b=threading.Thread(target=run,args=('https://patchwiki.biligame.com/images/b.png',))
         a.start();self.assertTrue(entered.wait(1));b.start();time.sleep(.05)

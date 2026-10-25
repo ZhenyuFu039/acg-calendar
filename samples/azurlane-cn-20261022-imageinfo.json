@@ -1,0 +1,30 @@
+{
+  "batchcomplete": true,
+  "query": {
+    "normalized": [
+      {
+        "fromencoded": false,
+        "from": "File:飓风与雾霭回廊.jpg",
+        "to": "文件:飓风与雾霭回廊.jpg"
+      }
+    ],
+    "pages": [
+      {
+        "pageid": 230977,
+        "ns": 6,
+        "title": "文件:飓风与雾霭回廊.jpg",
+        "imagerepository": "local",
+        "imageinfo": [
+          {
+            "size": 820277,
+            "width": 1920,
+            "height": 1080,
+            "url": "https://patchwiki.biligame.com/images/blhx/a/ab/nkme9euuv5xtlz24arn7j44agbvkx73.jpg",
+            "descriptionurl": "https://wiki.biligame.com/blhx/%E6%96%87%E4%BB%B6:%E9%A3%93%E9%A3%8E%E4%B8%8E%E9%9B%BE%E9%9C%AD%E5%9B%9E%E5%BB%8A.jpg",
+            "descriptionshorturl": "https://wiki.biligame.com/blhx/index.php?curid=230977"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -9,19 +9,36 @@ import hashlib
 import json
 import math
 import re
+import random
 import threading
 import time
 import urllib.error
 import urllib.parse
 import urllib.request
 
-POLICY = {'interval_seconds': 2, 'hourly_limit': 120, 'round_limit': 64}
+POLICY = {'interval_seconds': 10, 'hourly_limit': 120, 'round_limit': 64}
 _scope = ContextVar('calendar_network', default=None)
+_reporter = ContextVar('calendar_network_reporter', default=None)
+_defer_images = ContextVar('calendar_defer_images', default=False)
 _fallback = None
 
 
 class NetworkDeferred(ValueError):
     pass
+
+
+class ImageDeferred(NetworkDeferred):
+    """An image request skipped on purpose so the calendar can be published first."""
+
+
+@contextmanager
+def deferring_images():
+    """Inside this block image downloads raise ImageDeferred; already cached files still work."""
+    token = _defer_images.set(True)
+    try:
+        yield
+    finally:
+        _defer_images.reset(token)
 
 
 @dataclass
@@ -45,6 +62,16 @@ def site_for(url):
     return host
 
 
+@contextmanager
+def reporting(callback):
+    """Let a sync job learn when its requests wait for a site's interval (shown as a stage detail)."""
+    token = _reporter.set(callback)
+    try:
+        yield
+    finally:
+        _reporter.reset(token)
+
+
 def network_job(fn):
     @wraps(fn)
     def run(self, *args, **kwargs):
@@ -62,12 +89,21 @@ def default_manager():
 
 
 def read_response(request, redirect, *, limit=6_000_000, timeout=20, image=False, min_interval=0):
+    if image and _defer_images.get():
+        raise ImageDeferred('活动图片稍后补齐')
     current = _scope.get()
     return (current[0] if current else default_manager()).read(request, redirect, limit=limit, timeout=timeout, image=image, min_interval=min_interval)
 
 
+def check_policy(policy):
+    limits = {'interval_seconds': (10, 60), 'hourly_limit': (20, 120), 'round_limit': (5, 64)}
+    if not isinstance(policy, dict) or set(policy) - set(limits) or any(type(n) is not int or not limits[k][0] <= n <= limits[k][1] for k, n in policy.items()):
+        raise ValueError('请求间隔应为 10–60 秒，每小时 20–120 次，每轮每站 5–64 次')
+    return policy
+
+
 class NetworkManager:
-    def __init__(self, store=None, *, clock=time.time, waiter=None, opener=None):
+    def __init__(self, store=None, *, clock=time.time, waiter=None, opener=None, uniform=random.uniform):
         self.store, self.clock, self.waiter, self.opener = store, clock, waiter, opener
         saved = store.get_meta('network-policy', {}) if store else {}
         self.policy = {**POLICY, **saved.get('policy', {})}
@@ -78,6 +114,11 @@ class NetworkManager:
         self.cache_hits = 0
         self.cache_dir = store.path.parent / 'http-cache' if store else None
         self.memory = {}
+        self.uniform = uniform
+        old_policy = dict(self.policy)
+        self.policy.update(interval_seconds=max(10, self.policy['interval_seconds']), hourly_limit=min(120, self.policy['hourly_limit']), round_limit=min(64, self.policy['round_limit']))
+        if self.policy != old_policy:
+            self._save()
 
     def _site(self, name):
         return self.sites.setdefault(name, {'paused': False, 'next_at': 0, 'cooldown_until': 0, 'window_start': 0, 'requests': 0, 'failures': 0, 'error': '', 'active': False})
@@ -110,10 +151,7 @@ class NetworkManager:
         with self.condition:
             if 'paused' in payload and type(payload['paused']) is not bool:
                 raise ValueError('暂停开关必须为布尔值')
-            policy = payload.get('policy', {})
-            limits = {'interval_seconds': (2, 60), 'hourly_limit': (20, 600), 'round_limit': (5, 100)}
-            if not isinstance(policy, dict) or set(policy) - set(limits) or any(type(n) is not int or not limits[k][0] <= n <= limits[k][1] for k, n in policy.items()):
-                raise ValueError('请求间隔应为 2–60 秒，每小时 20–600 次，每轮每站 5–100 次')
+            policy = check_policy(payload.get('policy', {}))
             site = payload.get('site')
             if site is not None and (not isinstance(site, str) or site not in self.sites or 'paused' not in payload or policy):
                 raise ValueError('请选择已出现的站点，只能调整其暂停状态')
@@ -141,6 +179,7 @@ class NetworkManager:
     def _claim(self, site, min_interval=0):
         with self.condition:
             self.waiting += 1
+            reported = False
             try:
                 while True:
                     now, s = self.clock(), self._site(site)
@@ -158,11 +197,18 @@ class NetworkManager:
                         raise NetworkDeferred('本轮采集额度已用完；已停止继续请求')
                     delay = max(s['next_at'], s.get('last_started', 0) + max(min_interval, self.policy['interval_seconds'])) - now
                     if not s['active'] and self.active < 4 and delay <= 0:
-                        s.update(active=True, last_started=now, next_at=now + max(self.policy['interval_seconds'], min_interval), requests=s['requests'] + 1)
+                        s.update(active=True, last_started=now, next_at=now + max(self.policy['interval_seconds'], min_interval) + self.uniform(0, 5), requests=s['requests'] + 1)
                         budget[site] = budget.get(site, 0) + 1
                         self.active += 1
                         self._save()
                         return
+                    report = _reporter.get()
+                    if report and not reported and delay > 1:
+                        reported = True
+                        try:
+                            report(site, delay)
+                        except Exception:
+                            pass  # Status reporting never blocks a request.
                     wait = min(max(delay, .05), 1)
                     self.waiter(wait) if self.waiter else self.condition.wait(wait)
             finally:

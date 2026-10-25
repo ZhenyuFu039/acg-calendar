@@ -1,6 +1,6 @@
 # 开发文档 · v0.1.0
 
-本项目“游时 Playtime”是可本地部署的游戏活动日历，由来源适配器读取公开活动信息，转换为 JSON 并交给统一的时间轴、日历和提醒系统。不依赖 AI API 或游戏账号。架构见 [architecture.md](architecture.md)，插件接口见 [plugins.md](plugins.md)，后续工作见 [TODO](../TODO.md)。
+本项目“游时 Playtime”是可本地部署的游戏活动日历，由来源适配器读取公开活动信息，转换为 JSON 并交给统一的时间轴、日历和提醒系统。不依赖 AI API 或游戏账号。架构见 [architecture.md](architecture.md)，插件接口见 [plugins.md](plugins.md)，后续工作见 [TODO](../TODO.md)。当前未发布源码已新增 [碧蓝航线 JSON 头图对齐](azurlane-artwork-alignment.md)，含真实历史样本与离线回测报告；下文 v0.1.0 边界保留为已发布版本记录。
 
 v0.1.0 新增统一采集限制器、模块化布局编辑器与网页/WPF 共享主题；操作与边界见 [preferences.md](preferences.md)。
 

@@ -1,6 +1,7 @@
 'use strict';
 (() => {
   const W = window.PlaytimeWorkspace;
+  const P = window.PlaytimePlanner;
   const combined = () => ['all','selected'].includes(S.game);
   const $ = selector => document.querySelector(selector);
   const DAY = 86400000;
@@ -59,6 +60,62 @@
     if(hours) return `${hours}小时 ${minutes%60}分`;
     return `${minutes}分钟`;
   }
+  const narrow=matchMedia('(max-width:850px)');
+  const local={
+    get(key,fallback){try{const v=JSON.parse(localStorage.getItem('playtime.'+key));return v??fallback;}catch{return fallback;}},
+    set(key,value){try{localStorage.setItem('playtime.'+key,JSON.stringify(value));}catch{}}
+  };
+  // Phone view choice is kept per browser and screen class, so polling and the desktop
+  // setting never override it; wide screens keep using settings.view.
+  const NARROW_VIEW='view.v1.narrow',NARROW_VIEWS=['upcoming','timeline','month','list'];
+  function preferredView(){
+    if(narrow.matches){const v=local.get(NARROW_VIEW,'upcoming');return NARROW_VIEWS.includes(v)?v:'upcoming';}
+    return S.data.settings.view;
+  }
+  // On phones the filter sidebar folds to the game picker; the saved desktop sidebar is untouched.
+  function paintSidebar(){const open=local.get('sidebar.v1.narrow',false)===true;$('.sidebar').classList.toggle('sidebar-expanded',open);const b=$('#sidebar-more');b.setAttribute('aria-expanded',String(open));b.textContent=open?'收起筛选 ▴':'范围与筛选 ▾';}
+  function headingCompact(){return local.get('heading.v1',innerHeight<1000?'compact':'full')==='compact';}
+  function paintHeading(){
+    const compact=headingCompact();document.body.classList.toggle('heading-compact',compact);
+    const b=$('#heading-toggle');b.textContent=compact?'展开标题':'收起标题';b.setAttribute('aria-expanded',String(!compact));
+  }
+  function renderUpcoming(events) {
+    const byId=new Map(events.map(e=>[e.id,e])),seen=new Set(),current=now(),today=Math.floor(civil(current));
+    const nodes=(S.data.presentation.deadline_nodes||[]).filter(n=>byId.has(n.event_id)&&Date.parse(n.at)>current&&!seen.has(n.event_id+'|'+n.at+'|'+n.kind)&&seen.add(n.event_id+'|'+n.at+'|'+n.kind))
+      .sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)||a.title.localeCompare(b.title));
+    const uncertain=(S.data.presentation.uncertain_deadlines||[]).map(id=>byId.get(id)).filter(e=>e&&e.time_kind!=='point'&&(!e.end.at||Date.parse(e.end.at)>current));
+    if(!nodes.length&&!uncertain.length)return emptyCalendar();
+    const item=(e,kind,when,extra)=>`<button type="button" class="upcoming-item ${e.completed?'completed':''}" data-event="${e.id}" style="--event-accent:${accent(e)}"><span class="event-avatar">${gameIcon(e.game)}</span><span class="upcoming-text"><strong>${e.starred?'★ ':''}${esc(cleanTitle(e))}</strong><small>${esc(gameLabel(e))} · ${kind}</small></span><span class="upcoming-time"><strong>${esc(when)}</strong>${extra}</span></button>`;
+    // Only a confirmed overall end is labelled as such. An exact phase can coincide with
+    // an estimated overall end; its own title still identifies what is actually closing.
+    const nodeLabel=(n,e)=>e.end.at&&['exact','confirmed','manual'].includes(e.end.state)&&n.title===e.title&&Date.parse(n.at)===Date.parse(e.end.at)?(n.kind==='exchange'?'兑换关闭':'活动结束'):`<b class="upcoming-phase">${esc(n.title)}</b>`;
+    const groups=new Map();
+    for(const n of nodes){const day=Math.floor(civil(n.at));if(!groups.has(day))groups.set(day,[]);groups.get(day).push(n);}
+    const label=day=>(day===today?'今天 · ':day===today+1?'明天 · ':'')+shortDay(day)+' 周'+'日一二三四五六'[serialDate(day).getUTCDay()];
+    return `<div class="upcoming-list">${[...groups].map(([day,rows])=>`<section class="upcoming-day"><h3>${label(day)}<span>${rows.length} 项</span></h3>${rows.map(n=>item(byId.get(n.event_id),nodeLabel(n,byId.get(n.event_id)),format(n.at).split(' ')[1],countdownSlot(n.at))).join('')}</section>`).join('')}${uncertain.length?`<section class="upcoming-day upcoming-uncertain"><h3>预计 / 待定<span>${uncertain.length} 项 · 不计入精确截止</span></h3>${uncertain.map(e=>item(e,e.end.at?'预计结束':'截止待定',e.end.at?format(e.end.at):'待公告','<span>'+(e.end.at?'预计':'等待后续公告')+'</span>')).join('')}</section>`:''}</div>`;
+  }
+  const countdownSlot=value=>`<span data-countdown="${esc(value||'')}"></span>`;
+  // Time-dependent values are written into existing nodes; the markup stays stable between polls.
+  function syncTime(root=document) {
+    for(const node of root.querySelectorAll('[data-countdown]')){const text=countdown(node.dataset.countdown);if(node.textContent!==text)node.textContent=text;}
+    const current=civil(now());
+    for(const node of root.querySelectorAll('[data-progress]')){const [a,b]=node.dataset.progress.split(',').map(Number);node.style.setProperty('--progress',Math.max(0,Math.min(100,(current-a)/(b-a)*100))+'%');}
+    for(const node of root.querySelectorAll('[data-now-line]')){const [lo,days]=node.dataset.nowLine.split(',').map(Number);node.style.setProperty('--now-left',(current-lo)/days*100+'%');}
+  }
+  // Replace a region only when its markup changed; when it must be rebuilt, focus returns to
+  // the control for the same activity or plan instead of falling back to <body>.
+  function patch(el,html) {
+    if(el._html===html&&el.firstChild===el._first)return false;
+    const active=document.activeElement,key=el.contains(active)&&active!==el?focusKey(active):null;
+    el.innerHTML=html;el._html=html;el._first=el.firstChild;
+    if(key){const same=el.querySelector(key);if(same)same.focus({preventScroll:true});}
+    return true;
+  }
+  function focusKey(node) {
+    const data=[...node.attributes].filter(a=>a.name.startsWith('data-')&&!['data-countdown','data-progress','data-now-line'].includes(a.name)).map(a=>`[${a.name}="${CSS.escape(a.value)}"]`).join('');
+    const kind=node.classList[0]?'.'+CSS.escape(node.classList[0]):'';
+    return data||node.id?node.tagName.toLowerCase()+kind+(node.id?'#'+CSS.escape(node.id):'')+data:null;
+  }
   function status(event) {
     if(event.completed) return '已完成';
     if(event.invalid_interval) return '时间待核对';
@@ -95,9 +152,10 @@
   }
   function renderRewardSummary(version) {
     const r=version.reward_summary;
-    $('#reward-summary').hidden=!r;
-    if(!r) return;
-    $('#reward-summary').innerHTML=`<div class="reward-summary-amount">${rewardIcon}<div><span>本版本活动 · 已核实小计</span><strong id="reward-total">${rewardNumber(r.verified_total)}<small>嵌晶玉</small></strong></div></div><p>${r.claims.length} 笔独立奖励 · ${r.unlisted.length} 项公告未列明数量${r.conflicts.length?' · '+r.conflicts.length+' 项来源差异':''}<br>不含新地图、信用商店；不随筛选或完成状态变化</p><button id="reward-details" class="text-button" type="button">统计口径与明细 ↗</button>`;
+    const related=P.relatedRewards();
+    $('#reward-summary').hidden=!r&&!related;
+    if(!r) {$('#reward-summary').innerHTML=related;return;}
+    $('#reward-summary').innerHTML=`<div class="reward-summary-amount">${rewardIcon}<div><span>本版本活动 · 已核实小计</span><strong id="reward-total">${rewardNumber(r.verified_total)}<small>嵌晶玉</small></strong></div></div><p>${r.claims.length} 笔独立奖励 · ${r.unlisted.length} 项公告未列明数量${r.conflicts.length?' · '+r.conflicts.length+' 项来源差异':''}<br>不含新地图、信用商店；不随筛选或完成状态变化</p><button id="reward-details" class="text-button" type="button">统计口径与明细 ↗</button>${related}`;
   }
   function rewardDetail(event) {
     const r=event.reward;
@@ -114,10 +172,11 @@
     $('#reward-content').innerHTML=`<div class="reward-dialog-total">${rewardIcon}<strong>${rewardNumber(r.verified_total)}</strong><span>已核实小计</span></div><p class="help-text">${esc(r.scope)}<br>统计活动可获得总量，非账号未领取余额。公告未列明数量的条目不按零计算；导览数量为 1 的展示占位不计数。</p>${rows}${conflicts?'<h3>来源数量差异</h3><ul class="reward-sources">'+conflicts+'</ul>':''}<h3>公告未列明数量 · ${r.unlisted.length} 项</h3><p class="help-text">${r.unlisted.map(e=>esc(e.title)).join('；')||'无'}。未列明不代表奖励为零。</p>${other?'<h3>未纳入活动小计</h3><ul class="reward-sources">'+other+'</ul>':''}`;
     openDialog('#reward-dialog');
   }
-  function filteredEvents() {
+  function baseFilteredEvents() {
     const query=($('#event-search')?.value||'').trim().toLocaleLowerCase();
     return scopeEvents().filter(event => (!W.view.hide_future||(event.start.at&&Date.parse(event.start.at)<=now())) && S.categories.has(event.category) && !event.ignored && (!S.data.settings.hide_completed || !event.completed) && (S.includePending || event.time_kind==='point' || event.end.at) && (!query||(event.title+' '+event.subtype+' '+event.section+' '+(event.game_name||'')).toLocaleLowerCase().includes(query)));
   }
+  function filteredEvents() {return P.filterFocus(baseFilteredEvents());}
   function range() {
     if(S.view==='timeline') return [S.anchor,S.anchor+S.days];
     const d=serialDate(S.anchor), first=Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),1)/DAY;
@@ -143,12 +202,30 @@
     clearTimeout(S.toastTimer);S.toastTimer=setTimeout(()=>{el.hidden=true;},4500);
   }
   async function mutate(path,body={},method='POST') {
-    try { const data=await api(path,method,body); applyState(data); return true; }
+    const generation=S.scopeGeneration;
+    try { const data=await api(path,method,body); if(generation===S.scopeGeneration)applyState(data); return true; }
     catch(error) { toast(error.message,true);return false; }
   }
+  async function selectScope(game,selected_games,reset=false) {
+    if(S.scoping)return;
+    S.scopeGeneration=(S.scopeGeneration||0)+1;S.scoping=true;
+    const controls=[$('#game-select'),...document.querySelectorAll('[data-select-game]')];controls.forEach(c=>c.disabled=true);
+    try {
+      if(game!=='selected')await api('/api/settings','POST',{active_game:game});
+      const data=await api('/api/workspace','PATCH',{view:{scope:['all','selected'].includes(game)?game:'single',selected_games}});
+      S.game=game;S.version=null;S.rules=null;
+      if(reset){S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));$('#event-search').value='';}
+      S.scoping=false;applyState(data);
+    }catch(error){toast(error.message,true);S.scoping=false;render();}
+    finally{S.scoping=false;$('#game-select').disabled=false;document.querySelectorAll('[data-select-game]').forEach(c=>c.disabled=false);}
+  }
   function applyState(data) {
+    if(S.scoping)return;
     const first=!S.initialized;
     S.data=data;W.accept(data);
+    const scopeSignature=JSON.stringify([W.view.scope,W.selected()]);
+    if(S.scopeSignature&&S.scopeSignature!==scopeSignature)S.game=W.view.scope==='single'?W.selected()[0]:W.view.scope;
+    S.scopeSignature=scopeSignature;
     $('#workspace-button').disabled=false;
     $('#fit-version').disabled=false;$('#data-button').disabled=false;
     if(!S.game) { const requested=new URLSearchParams(location.search).get('game'); S.game=['all','selected'].includes(requested)||data.games.some(g=>g.id===requested)?requested:(W.view.scope==='selected'?'selected':W.view.scope==='all'?'all':W.selected()[0])||data.games[0]?.id||'all'; }
@@ -156,12 +233,16 @@
     if(combined()) S.version=S.game;
     else if(!data.versions.some(version=>version.id===S.version&&version.game===S.game)) S.version=data.versions.find(v=>v.game===S.game)?.id;
     if(first) {
-      S.view=data.settings.view;S.anchor=Math.floor(civil(now()));
+      S.view=preferredView();S.anchor=Math.floor(civil(now()));paintHeading();paintSidebar();
       data.notifications.forEach(notice=>S.seenNotices.add(notice.id));
       buildFilters();S.initialized=true;
     }
+    const focusDate=W.view.focus.date;
+    if(focusDate&&(first||S.lastFocusDate!==focusDate)){const day=Date.parse(focusDate)/DAY,[lo,hi]=range();if(S.view==='month'||day<lo||day>=hi)S.anchor=day;}
+    S.lastFocusDate=focusDate;
     deliverBrowserNotices(data.notifications);
     render();
+    if(first)P.query();
     window.PlaytimeCustomize.update();
     if(first&&new URLSearchParams(location.search).has("appearance")){const url=new URL(location.href),panel=url.searchParams.get('appearance');url.searchParams.delete('appearance');history.replaceState(null,'',url);if(panel==='reminders')openReminders();else window.PlaytimeCustomize.open(['layout','theme','network'].includes(panel)?panel:'theme');}
     if($('#reminder-dialog').open) renderInbox();
@@ -194,24 +275,27 @@
     $('a[href^="/api/calendar.ics"]').href='/api/calendar.ics?game='+S.game;
     $('#timezone-select').value=S.data.settings.timezone;
     $('#hide-completed').checked=S.data.settings.hide_completed;
-    $('#version-summary').textContent=combined()?`${S.game==='selected'?'自选组合':'全部游戏'} · ${scopeEvents().length} 个独立条目 · 提醒覆盖全部游戏`:`${S.game==='endfield-cn'?'「'+version.name+'」版本':(gameInfo().name+' · '+gameInfo().server+' · '+version.name)} · ${scopeEvents().length} 个独立条目 · ${gameInfo().source_label}`;
+    $('#combination-help').textContent='勾选后共用日期轴；'+reminderScopeText()+'（在“提醒”中设置）。';
+    $('#version-summary').textContent=combined()?`${S.game==='selected'?'自选组合':'全部游戏'} · ${scopeEvents().length} 个独立条目 · ${reminderScopeText()}`:`${S.game==='endfield-cn'?'「'+version.name+'」版本':(gameInfo().name+' · '+gameInfo().server+' · '+version.name)} · ${scopeEvents().length} 个独立条目 · ${gameInfo().source_label}`;
     for(const id of Object.keys(categories)) $(`[data-count="${id}"]`).textContent=scopeEvents().filter(e=>e.category===id).length;
+    $('#upcoming-view').setAttribute('aria-pressed',S.view==='upcoming');
     $('#timeline-view').setAttribute('aria-pressed',S.view==='timeline');
     $('#month-view').setAttribute('aria-pressed',S.view==='month');
     $('#list-view').setAttribute('aria-pressed',S.view==='list');
     $('.range-control').hidden=S.view!=='timeline'||S.fit;
     $('#fit-version').textContent=S.fit?'退出全览':'版本全览';
     $('#fit-version').setAttribute('aria-pressed',Boolean(S.fit));
-    $('.date-navigation').classList.toggle('list-mode',S.view==='list');
+    $('.date-navigation').classList.toggle('list-mode',['list','upcoming'].includes(S.view));
     const [lo,hi]=range();
     const date=serialDate(lo);
     $('#period-title').textContent=S.view==='month'?`${date.getUTCFullYear()} 年 ${date.getUTCMonth()+1} 月`:`${shortDay(lo,true)} — ${shortDay(hi-1,serialDate(hi-1).getUTCFullYear()!==date.getUTCFullYear())}`;
-    const filtered=filteredEvents(), shown=S.view==='list'?filtered:filtered.filter(event=>overlaps(event,lo,hi));
+    const filtered=filteredEvents(), shown=['list','upcoming'].includes(S.view)?filtered:filtered.filter(event=>overlaps(event,lo,hi));
     const pending=filtered.filter(e=>!e.end.at&&e.time_kind!=='point').length;
     const total=scopeEvents().length;
-    $('#visible-summary').textContent=S.view==='list'?`本版本共 ${total} 项 · 当前显示 ${shown.length} 项`:`日期范围内 ${shown.length} / 筛选后 ${filtered.length} 项 · 本版本 ${total} 项`;
+    $('#visible-summary').textContent=S.view==='upcoming'?`筛选后 ${filtered.length} 项 · 按显示时区列出未来截止`:S.view==='list'?`本版本共 ${total} 项 · 当前显示 ${shown.length} 项`:`日期范围内 ${shown.length} / 筛选后 ${filtered.length} 项 · 本版本 ${total} 项`;
     $('#catalog-count').textContent=`${S.view==='list'?'全部列表不受日期范围限制':S.fit?'版本时间轴总览':'范围外活动可在“全部活动”查看'}${pending?' · '+pending+' 项截止待定':''}`;
     if(S.view==='list') $('#period-title').textContent=`「${version.name}」全部活动`;
+    if(S.view==='upcoming') $('#period-title').textContent='近期截止';
     const unread=S.data.notifications.filter(n=>!n.read).length;
     $('#unread-count').textContent=unread;$('#unread-count').hidden=!unread;
     const sync=syncState();
@@ -219,35 +303,55 @@
     $('#sync-button').classList.toggle('syncing',Boolean(sync.running));
     $('#sync-button').lastChild.textContent=sync.running?'同步中…':'同步资料';
     $('#sync-status').textContent=combined()?'各来源独立同步 · 数据保存在本机':sync.last_success?`最近同步 ${format(sync.last_success,{year:true})} · 数据保存在本机`:`${gameInfo().source_label}快照 ${format(version.source.fetched_at,{year:true})} · 数据保存在本机`;
-    W.renderModules();renderClock();
+    W.renderModules();P.update();renderClock();syncTime();
   }
   W.register('sources',()=>renderSourceStatus(activeVersion()));
   W.register('rewards',()=>renderRewardSummary(activeVersion()));
   W.register('deadlines',()=>renderDeadline(filteredEvents()));
-  W.register('personal-plans',()=>{const rows=S.data.plans.filter(p=>!p.game_id||S.game==='all'||(S.game==='selected'?W.selected().includes(p.game_id):p.game_id===S.game));$('#personal-plans-panel').hidden=!rows.length;$('#personal-plans-panel').innerHTML=rows.map(p=>`<p><strong>${esc(p.title)}</strong> · ${esc(format(p.start))} → ${esc(format(p.end))}</p>`).join('');});
+  W.register('personal-plans',()=>P.plansModule());
   W.register('calendar',()=>{
-    const [lo,hi]=range(), filtered=filteredEvents(), shown=S.view==='list'?filtered:filtered.filter(e=>overlaps(e,lo,hi));
+    if(P.holding)return; // Keep pointer capture and the selection overlay during local polling.
+    const [lo,hi]=range(), filtered=filteredEvents(), shown=['list','upcoming'].includes(S.view)?filtered:filtered.filter(e=>overlaps(e,lo,hi));
     const oldScroll=$('#calendar .timeline-scroll')||$('#calendar');
     const position=[oldScroll.scrollLeft,oldScroll.scrollTop];
-    $('#calendar').innerHTML=S.view==='timeline'?renderTimeline(shown,lo,hi):S.view==='list'?renderList(filtered):renderMonth(filtered,lo,hi);
-    const newScroll=$('#calendar .timeline-scroll')||$('#calendar');
-    [newScroll.scrollLeft,newScroll.scrollTop]=position;
+    if(patch($('#calendar'),S.view==='timeline'?renderTimeline(shown,lo,hi):S.view==='list'?renderList(filtered):S.view==='upcoming'?renderUpcoming(filtered):renderMonth(filtered,lo,hi))){
+      const newScroll=$('#calendar .timeline-scroll')||$('#calendar');
+      [newScroll.scrollLeft,newScroll.scrollTop]=position;
+    }
     const unscheduled=filtered.filter(e=>!e.start.at||e.invalid_interval);
     $('#unscheduled').hidden=!unscheduled.length;
-    $('#unscheduled').innerHTML=unscheduled.length?`<h3>时间待核对 · ${unscheduled.length} 项</h3>${unscheduled.map(e=>`<button type="button" data-event="${e.id}">${esc(cleanTitle(e))}</button>`).join('')}`:'';
+    patch($('#unscheduled'),unscheduled.length?`<h3>时间待核对 · ${unscheduled.length} 项</h3>${unscheduled.map(e=>`<button type="button" data-event="${e.id}">${esc(cleanTitle(e))}</button>`).join('')}`:'');
   });
+  // F12: named stages and real waiting reasons instead of a percentage; the last round's
+  // calendar and image results stay visible until the next sync.
+  function syncProgress(sync) {
+    if(!sync)return '';
+    if(sync.running){
+      const parts=[(sync.stage?.label||'正在同步')+'…'];
+      if(sync.stage?.name==='images'&&sync.calendar_saved_at)parts.unshift('日历已更新');
+      if(sync.waiting)parts.push(`等待 ${sync.waiting.site} 请求间隔约 ${sync.waiting.seconds} 秒`);
+      return parts.join(' · ');
+    }
+    const c=sync.result?.calendar,i=sync.result?.images||{};
+    if(!c||sync.error)return '';
+    const changes=c.added||c.updated||c.removed?`新增 ${c.added} · 更新 ${c.updated}${c.removed?' · 移除 '+c.removed:''}`:'活动无变化';
+    return '上次同步：'+changes+(i.added?` · 补齐图片 ${i.added} 张`:'')+(i.failed?` · ${i.failed} 张图片暂不可用`:'')+(i.notes?.length?' · '+i.notes.join('；'):'');
+  }
   function renderSourceStatus(version) {
     const sync=syncState(), target=$('#source-status');
     if(S.game!=='endfield-cn') {
-      const label=combined()?S.data.games.filter(g=>S.game==='all'||W.selected().includes(g.id)).map(g=>g.short_name+'：'+g.source_label).join('；'):gameInfo().source_label+' · '+gameInfo().server+' · '+gameInfo().timezone+(version.warnings?.length?' · '+version.warnings.length+' 项采集提示':'');
-      target.innerHTML=`<span class="status-point"></span><span>${esc(label+(sync.running?' · 同步中':sync.error?' · 同步失败，保留缓存':S.game==='arknights-cn'&&version.source.origin==='snapshot'?' · 当前为内置快照':''))}</span>`;
+      const running=combined()?S.data.games.filter(g=>(S.game==='all'||W.selected().includes(g.id))&&S.data.sync_by_game[g.id]?.running).map(g=>g.short_name+' '+syncProgress(S.data.sync_by_game[g.id])):[];
+      const label=combined()?S.data.games.filter(g=>S.game==='all'||W.selected().includes(g.id)).map(g=>g.short_name+'：'+g.source_label).join('；')+(running.length?' · 同步中：'+running.join('；'):''):gameInfo().source_label+' · '+gameInfo().server+' · '+gameInfo().timezone+(version.warnings?.length?' · '+version.warnings.length+' 项采集提示':'');
+      const progress=combined()?'':syncProgress(sync);
+      target.innerHTML=`<span class="status-point"></span><span>${esc(label+(sync.running?(combined()?'':' · '+progress):sync.error?' · 同步失败，保留缓存':progress?' · '+progress:S.game==='arknights-cn'&&version.source.origin==='snapshot'?' · 当前为内置快照':''))}</span>`;
       target.classList.toggle('warning',Boolean(sync.error||version.warnings?.length));target.title=sync.error||(version.warnings||[]).join('；');return;
     }
     let message;
-    if(sync.running) message='正在读取官方公告，现有日历仍可使用。';
+    if(sync.running) message=syncProgress(sync)+' 现有日历仍可使用。';
     else if(sync.error) message=`联网同步失败，继续使用本地${version.source.origin==='snapshot'?'官网快照':'缓存'}。可稍后重试。`;
     else if(version.source.origin==='snapshot') message=`内置官网真实快照 · ${format(version.source.fetched_at,{year:true})} 采集 · 点击“同步公告”检查更新`;
     else message=`已连接官方公告 · ${format(version.source.fetched_at,{year:true})} 采集 · 预计开服时间有独立标记`;
+    if(!sync.running&&!sync.error&&syncProgress(sync)) message+=' · '+syncProgress(sync);
     if(version.briefing) message+=` · 官方导览已关联 ${version.briefing.matched_events} 项${version.briefing.conflicts?' · '+version.briefing.conflicts+' 处时间需核对':''}`;
     if(S.data.briefing_previews?.length) message+=` · 已缓存 ${S.data.briefing_previews.length} 份新版本导览，等待对应更新公告`;
     if(S.data.source_checks?.skland?.status==='device_validation_required') message+=' · 森空岛接口需设备校验，未参与排期';
@@ -261,8 +365,8 @@
     $('#zone-offset').textContent=offset.replace('GMT','UTC')+' · 按日期自动换算';
   }
   function renderDeadline(events) {
-    const next=events.filter(e=>!e.completed && e.end.at && e.end.state!=='estimated' && !e.invalid_interval && Date.parse(e.end.at)>now()).sort((a,b)=>Date.parse(a.end.at)-Date.parse(b.end.at))[0];
-    $('#deadline-strip').innerHTML=next?`<span>NEXT DEADLINE</span><strong>${esc(format(next.end.at))}</strong><span>${esc(cleanTitle(next))} · 还剩 ${esc(countdown(next.end.at))}</span><button class="text-button" type="button" data-event="${next.id}">查看活动 ↗</button>`:'<span>DEADLINES</span><span>当前筛选中没有已明确的未来截止时间。</span>';
+    const ids=new Set(events.map(e=>e.id)),next=(S.data.presentation.deadline_nodes||[]).filter(n=>ids.has(n.event_id)&&Date.parse(n.at)>now()).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at))[0];
+    patch($('#deadline-strip'),next?`<span>NEXT DEADLINE</span><strong>${esc(format(next.at))}</strong><span>${next.kind==='exchange'?'兑换关闭 · ':''}${esc(next.title)} · 还剩 ${countdownSlot(next.at)}</span><button class="text-button" type="button" data-event="${next.event_id}">查看活动 ↗</button>`:'<span>DEADLINES</span><span>当前筛选中没有已明确的未来截止时间。</span>');
   }
   function bar(event,lo,hi,{month=false,top=0}={}) {
     const start=civil(event.start.at), isPoint=event.time_kind==='point';
@@ -270,41 +374,42 @@
     const a=Math.max(lo,start),b=Math.min(hi,end),span=hi-lo;
     if(b<=a) return '';
     const left=(a-lo)/span*100,width=(b-a)/span*100;
-    const progress=Math.max(0,Math.min(100,(civil(now())-a)/(b-a)*100));
     const cat=categories[event.category];
     const tooltip=`${cleanTitle(event)} · ${format(event.start.at,{year:true})} → ${event.end.at?format(event.end.at,{year:true}):referenceLabels[event.end.reference]||'截止待定'} · ${status(event)}`;
     if(isPoint&&!month) return `<button type="button" class="point-marker" style="--category:${cat.color};--bar-left:${left}%" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}"></button>`;
     const label=month?(combined()?gameLabel(event)+' · ':'')+cleanTitle(event):(start<lo?'← ':'')+format(event.start.at,{dateOnly:true})+(event.start.state==='estimated'?' 预计':'')+(event.end.at?' → '+format(event.end.at,{dateOnly:true}):' → 待定')+(end>hi?' →':'');
     const image=month?'':artwork(event,'bar-art');
-    return `<button type="button" class="event-bar ${image?'has-art':''} ${!event.end.at&&!isPoint?'open-end':''} ${event.start.state==='estimated'?'estimated-start':''} ${end>hi?'clipped-end':''} ${event.completed?'completed':''}" style="--category:${cat.color};--event-accent:${accent(event)};--bar-left:${left}%;--bar-width:${width}%;--progress:${progress}%;--bar-top:${top}px" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}">${image}<span class="bar-label">${esc(label)}</span></button>`;
+    return `<button type="button" class="event-bar ${image?'has-art':''} ${!event.end.at&&!isPoint?'open-end':''} ${event.start.state==='estimated'?'estimated-start':''} ${end>hi?'clipped-end':''} ${event.completed?'completed':''}" style="--category:${cat.color};--event-accent:${accent(event)};--bar-left:${left}%;--bar-width:${width}%;--bar-top:${top}px" data-progress="${a},${b}" data-event="${event.id}" aria-label="${esc(tooltip)}" title="${esc(tooltip)}">${image}<span class="bar-label">${esc(label)}</span></button>`;
   }
   function renderTimeline(events,lo,hi) {
-    if(!events.length) return emptyCalendar();
+    const plans=P.planBars(lo,hi);
+    if(!events.length&&!plans&&!P.creating) return emptyCalendar();
+    events=P.arrange(events);
     const today=Math.floor(civil(now())), days=hi-lo;
     const axis=Array.from({length:days},(_,i)=>{
       const serial=lo+i,d=serialDate(serial),week=d.getUTCDay();
       const label=!S.fit||i%7===0||serial===today;
-      return `<div class="axis-day ${serial===today?'today':''} ${[0,6].includes(week)?'weekend':''}" title="${shortDay(serial,true)}"><span>${S.fit?'': ['日','一','二','三','四','五','六'][week]}</span><strong>${label?(S.fit?(d.getUTCMonth()+1)+'/':'')+d.getUTCDate():''}</strong></div>`;
+      return `<div class="axis-day ${serial===today?'today':''} ${[0,6].includes(week)?'weekend':''}" title="${shortDay(serial,true)}">${P.densityButton(serial,false,{fit:S.fit,label})}</div>`;
     }).join('');
     const groupOrder=(W.view.starred_first&&events.some(e=>e.starred)?['starred']:[]).concat(W.view.group_by==='none'?['all']:W.view.group_by==='game'?[...new Set(events.map(e=>e.game))]:['gacha','event','exchange','update','maintenance']);
     const rows=groupOrder.map(category=>{
       const definition=categories[category]||{name:category==='starred'?'★ 收藏':category==='all'?'全部活动':W.game(category)?.short_name||category,color:'var(--green)'};
-      const group=events.filter(e=>category==='starred'?e.starred:(!W.view.starred_first||!e.starred)&&(category==='all'||(W.view.group_by==='game'?e.game===category:e.category===category))).sort(W.compare);
+      const group=events.filter(e=>{const root=e._group_event||e;return category==='starred'?root.starred:(!W.view.starred_first||!root.starred)&&(category==='all'||(W.view.group_by==='game'?root.game===category:root.category===category));});
       if(!group.length) return '';
       return `<div class="timeline-group" style="--category:${definition.color}"><span class="category-dot"></span>${definition.name}<span class="group-count">${String(group.length).padStart(2,'0')}</span></div>`+group.map(event=>{
         const markers=event.phases.filter(p=>p.at&&civil(p.at)>=lo&&civil(p.at)<hi).map(p=>`<button type="button" class="phase-mark" style="left:${(civil(p.at)-lo)/days*100}%" data-event="${event.id}" aria-label="${esc(event.title+' · '+p.title+' '+format(p.at,{year:true}))}" title="${esc(p.title+' '+format(p.at))}"></button>`).join('');
-        const deadline=event.time_kind==='point'?`<strong>${esc(format(event.start.at))}</strong><span>更新节点</span>`:event.end.at?`<strong>${esc(format(event.end.at))}</strong><span>${event.end.state==='estimated'?'预计结束':esc(countdown(event.end.at))}</span>`:`<strong class="pending-label">截止待定</strong><span>${event.end.reference==='recruitment_cycles'?'按寻访次数结束':'等待后续公告'}</span>`;
-        return `<div data-game="${event.game}" class="timeline-row ${event.completed?'completed':''}" style="--event-accent:${accent(event)};--game-color:${esc(W.game(event.game)?.color||'#6D8658')}"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="event-avatar">${gameIcon(event.game)}</span><span class="event-name-text"><strong>${event.starred?'★ ':''}${esc(cleanTitle(event))}</strong><small><span class="game-label">${esc(gameLabel(event))}</span> · ${esc(event.subtype)} · ${esc(status(event))}</small></span></button><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" style="--now-left:${(civil(now())-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button><button type="button" class="reward-cell" data-event="${event.id}" aria-label="${esc(cleanTitle(event))}的嵌晶玉奖励">${rewardBadge(event)}</button></div>`;
+        const deadline=event.time_kind==='point'?`<strong>${esc(format(event.start.at))}</strong><span>更新节点</span>`:event.end.at?`<strong>${esc(format(event.end.at))}</strong><span>${event.end.state==='estimated'?'预计结束':countdownSlot(event.end.at)}</span>`:`<strong class="pending-label">截止待定</strong><span>${event.end.reference==='recruitment_cycles'?'按寻访次数结束':'等待后续公告'}</span>`;
+        return `<div data-game="${event.game}" class="timeline-row ${event.completed?'completed':''}" style="--tree-depth:${event._tree_depth||0};--event-accent:${accent(event)};--game-color:${esc(W.game(event.game)?.color||'#6D8658')}"><div class="event-name-cell"><button type="button" class="event-name" data-event="${event.id}" style="--category:${definition.color}"><span class="event-avatar" title="点击图标只看${esc(gameLabel(event))}">${gameIcon(event.game)}</span><span class="event-name-text"><strong>${event.starred?'★ ':''}${esc(cleanTitle(event))}</strong><small><span class="game-label">${esc(gameLabel(event))}</span> · ${esc(event.subtype)} · ${esc(status(event))}</small></span></button>${P.familyControls(event)}</div><div class="bar-cell"><span class="today-column" style="--today-left:${(today-lo)/days*100}%" ${today<lo||today>=hi?'hidden':''}></span><span class="now-line" data-now-line="${lo},${days}" ${today<lo||today>=hi?'hidden':''}></span>${bar(event,lo,hi)}${markers}</div><button type="button" class="deadline-cell" data-event="${event.id}">${deadline}</button><button type="button" class="reward-cell" data-event="${event.id}" aria-label="${esc(cleanTitle(event))}的嵌晶玉奖励">${rewardBadge(event)}</button></div>`;
       }).join('');
     }).join('');
-    return `<div class="timeline-scroll"><div class="timeline ${S.game==='arknights-cn'?'arknights-timeline':''} ${S.fit?'fit-version':''}" style="--days:${days};min-width:${S.fit?Math.max(1000,456+days*10):Math.max(840,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态 · 标题完整显示</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div><div class="timeline-reward-head">嵌晶玉<span>${combined()?'仅终末地':'活动总量'}</span></div></div>${rows}</div></div>`;
+    return `<div class="timeline-scroll"><div class="timeline ${S.game==='arknights-cn'?'arknights-timeline':''} ${S.fit?'fit-version':''}" style="--days:${days};min-width:${S.fit?Math.max(1000,456+days*10):Math.max(840,296+days*28)}px"><div class="timeline-head"><div class="timeline-label">活动 / 开放状态 · 标题完整显示</div><div class="day-axis">${axis}</div><div class="timeline-deadline-head">截止 / 更新时刻<span>${esc(zone())}</span></div><div class="timeline-reward-head">嵌晶玉<span>${combined()?'仅终末地':'活动总量'}</span></div></div>${P.creationRow()}${plans}${rows}</div></div>`;
   }
   function renderList(events) {
     if(!events.length) return emptyCalendar();
-    return '<div class="activity-catalog">'+events.slice().sort(W.compare).map(event=>{
+    return '<div class="activity-catalog">'+P.arrange(events).map(event=>{
       const picture=artwork(event,'catalog-art');
       const end=event.time_kind==='point'?'单次更新':event.end.at?format(event.end.at,{year:true})+(event.end.state==='estimated'?' · 预计':''):'截止待定';
-      return `<button data-game="${event.game}" class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)};--game-color:${esc(W.game(event.game)?.color||'#6D8658')}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span class="catalog-game-badge">${gameIcon(event.game)}</span></span><span class="catalog-info"><small>${combined()?esc(gameLabel(event))+' · ':''}${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${event.starred?'★ ':''}${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':esc(countdown(event.end.at))}</span>${rewardBadge(event)}</span><span class="catalog-arrow" aria-hidden="true">↗</span></button>`;
+      return `<div class="catalog-family" style="--tree-depth:${event._tree_depth||0}"><button data-game="${event.game}" class="catalog-event ${event.completed?'completed':''}" type="button" data-event="${event.id}" style="--event-accent:${accent(event)};--game-color:${esc(W.game(event.game)?.color||'#6D8658')}"><span class="catalog-visual ${picture?'has-art':''}">${picture}<span class="catalog-game-badge">${gameIcon(event.game)}</span></span><span class="catalog-info"><small>${combined()?esc(gameLabel(event))+' · ':''}${esc(categories[event.category].name)} · ${esc(status(event))}</small><strong>${event.starred?'★ ':''}${esc(cleanTitle(event))}</strong><span>开始 ${esc(format(event.start.at,{year:true}))}${event.start.state==='estimated'?' · 预计':''}</span></span><span class="catalog-deadline"><small>${event.time_kind==='point'?'更新':'截止'}</small><strong>${esc(end)}</strong><span>${event.time_kind==='point'?'':countdownSlot(event.end.at)}</span>${rewardBadge(event)}</span><span class="catalog-arrow" aria-hidden="true">↗</span></button>${P.familyControls(event)}</div>`;
     }).join('')+'</div>';
   }
   function renderMonth(events,monthStart,monthEnd) {
@@ -328,7 +433,7 @@
       }
       const cells=Array.from({length:7},(_,i)=>{
         const day=lo+i,date=serialDate(day),extra=visible.filter(e=>overlaps(e,day,day+1)&&!drawn.includes(e.id)).length;
-        return `<div class="month-cell ${day<monthStart||day>=monthEnd?'outside':''} ${day===today?'today':''}"><button type="button" class="month-date" data-day="${day}" aria-label="${shortDay(day,true)}的全部活动">${date.getUTCDate()}</button>${extra?`<button type="button" class="month-more" data-day="${day}">+${extra} 项</button>`:''}</div>`;
+        return `<div class="month-cell ${day<monthStart||day>=monthEnd?'outside':''} ${day===today?'today':''}"><button type="button" class="month-date" data-day="${day}" aria-label="${shortDay(day,true)}的全部活动">${date.getUTCDate()}</button>${P.densityButton(day,true)}${P.monthPlans(day)}${extra?`<button type="button" class="month-more" data-day="${day}">+${extra} 项</button>`:''}</div>`;
       }).join('');
       html+=`<div class="month-week">${cells}${bars.join('')}</div>`;
     }
@@ -350,9 +455,11 @@
     }
   }
   function openEvent(id) {
+    if(P.creating)P.stopCreating();
     const event=allEvents().find(e=>e.id===id);
     if(!event) return;
-    S.selected=id;
+    S.selected=id;P.selectEvent(id);
+    for(const d of document.querySelectorAll('.feature-dialog[open]'))d.close();
     if($('#agenda-dialog').open) $('#agenda-dialog').close();
     renderDetail(event);openDialog('#detail-dialog');
   }
@@ -386,7 +493,7 @@
       $('#detail-content .source-link').textContent='阅读 BWIKI 国服公告 ↗';
       $('#detail-content .source-box summary').textContent='查看国服时间与 Wiki 修订依据';
       const panel=document.createElement('section');panel.className='wiki-evidence';
-      panel.innerHTML=`<strong>BWIKI · 碧蓝航线国服</strong><p>国服公告决定起止时间；英文 Wiki 仅补充已核对的活动头图。已知维护日期、尚无明确时刻的截止暂按当天国服时间 10:00，并标为预计。</p><a href="${esc(event.source.evidence?.revision_url||event.source.url)}" target="_blank" rel="noopener noreferrer">查看公告固定修订 ↗</a>${event.artwork?.source_url?`<br><a href="${esc(event.artwork.source_url)}" target="_blank" rel="noopener noreferrer">查看头图出处 ↗</a>`:''}`;
+      panel.innerHTML=`<strong>BWIKI · 碧蓝航线国服</strong><p>国服公告决定起止时间；英文 Wiki 可补充已核对的活动头图。${event.artwork?.shared_update?'当前图片为这篇国服更新公告的共用主视觉，并非该条目的独立宣传图。':''}已知维护日期、尚无明确时刻的截止暂按当天国服时间 10:00，并标为预计。</p><a href="${esc(event.source.evidence?.revision_url||event.source.url)}" target="_blank" rel="noopener noreferrer">查看公告固定修订 ↗</a>${event.artwork?.source_url?`<br><a href="${esc(event.artwork.source_url)}" target="_blank" rel="noopener noreferrer">查看头图出处 ↗</a>`:''}`;
       $('#detail-content .source-link').after(panel);
     }
     if(event.source.kind==='gamekee') {
@@ -416,18 +523,45 @@
       panel.innerHTML=`<strong>官方版本导览 · ${esc(source.title)}</strong><p>国服时间依据：${esc(start)} → ${esc(end)}</p><p>${source.match==='parent_activity'?'关联到同一玩法的素材，当前阶段时间沿用更新公告。':source.conflicts.length?'两份官方来源的时间存在差异，当前保留版本更新公告时间。':'已与版本更新公告核对；维护相关时间仍保留待确认标记。'}</p><a class="source-link" href="${esc(source.news_url)}" target="_blank" rel="noopener noreferrer">阅读导览上线公告 ↗</a> <a class="source-link" href="${esc(source.source_url)}" target="_blank" rel="noopener noreferrer">打开官方导览（入口随版本更新）↗</a>`;
       $('#detail-content .source-link').after(panel);
     }
-    addOfficialTimeNotice($('#detail-dialog'));
+    addOfficialTimeNotice($('#detail-dialog'));P.detail(event);
   }
   function openAgenda(day) {
     const events=filteredEvents().filter(e=>overlaps(e,day,day+1)).sort((a,b)=>Date.parse(a.start.at)-Date.parse(b.start.at));
     $('#agenda-title').textContent=shortDay(day,true)+' · '+events.length+' 项';
     $('#agenda-content').innerHTML=events.length?events.map(e=>`<button type="button" class="agenda-event" data-event="${e.id}" style="--category:${categories[e.category].color}"><strong><span class="category-dot"></span>${esc(cleanTitle(e))}</strong><span>${esc(format(e.start.at))} → ${e.end.at?esc(format(e.end.at)):'截止待定'} · ${esc(status(e))}</span></button>`).join(''):'<div class="empty-state">当天没有符合筛选的活动。</div>';
+    $('#agenda-content').insertAdjacentHTML('beforeend',P.agendaPlans(day));
     openDialog('#agenda-dialog');
   }
+  // F13: which games send deadline reminders, kept apart from what the page is showing.
+  function reminderScopeText() {
+    const scope=S.data.settings.reminder_scope||{mode:'all',games:[]};
+    if(scope.mode==='follow')return '提醒跟随当前游戏组合';
+    if(scope.mode==='custom')return scope.games?.length?'提醒：'+scope.games.map(id=>W.game(id)?.short_name||id).join('、'):'未选择提醒游戏';
+    return '提醒覆盖全部已安装游戏';
+  }
+  function reminderScopeFields() {
+    const scope=S.data.settings.reminder_scope||{mode:'all',games:null},chosen=scope.games||[];
+    const games=[...S.data.games.map(g=>[g.id,g.short_name+' · '+g.server]),...chosen.filter(id=>!W.game(id)).map(id=>[id,id+'（未安装，重新安装后恢复）'])];
+    const current=W.selected().map(id=>W.game(id)?.short_name||id).join('、')||'无';
+    const option=(mode,label)=>`<label><input type="radio" name="reminder-scope" value="${mode}" ${scope.mode===mode?'checked':''}>${label}</label>`;
+    return `<fieldset class="reminder-scope"><legend>提醒的游戏</legend>${option('all','全部已安装游戏（含以后安装的）')}${option('follow','跟随当前游戏组合（当前：'+esc(current)+'）')}${option('custom','自选游戏')}<div class="reminder-scope-games" ${scope.mode==='custom'?'':'hidden'}>${games.map(([id,label])=>`<label><input type="checkbox" data-reminder-game="${esc(id)}" ${chosen.includes(id)?'checked':''}>${esc(label)}</label>`).join('')}</div>${scope.mode==='custom'&&!chosen.length?'<p class="help-text warning">未选择任何游戏，截止提醒不会发送。</p>':''}<p class="help-text">只决定哪些游戏发送截止提醒，不受页面的搜索、类型或日期筛选影响；选“跟随当前游戏组合”时，切换日历游戏会一起改变提醒范围。单个活动的提醒设置仍然有效。</p></fieldset>`;
+  }
+  async function saveReminderScope(mode) {
+    const scope=S.data.settings.reminder_scope||{mode:'all',games:null},list=$('.reminder-scope-games');
+    // The custom list, even an empty one, is kept when switching modes; only a list that was
+    // never saved (null) starts from the current combination.
+    let games=scope.games;
+    if(mode==='custom'&&list&&!list.hidden)games=[...document.querySelectorAll('[data-reminder-game]:checked')].map(b=>b.dataset.reminderGame);
+    else if(mode==='custom'&&games===null)games=[...W.selected()];
+    await mutate('/api/settings',{reminder_scope:{mode,games}});
+    paintReminderSettings();
+  }
   function openReminders() {
+    paintReminderSettings();renderInbox();openDialog('#reminder-dialog');
+  }
+  function paintReminderSettings() {
     const settings=S.data.settings;
-    $('#reminder-settings').innerHTML=`<label class="setting-row"><span><strong>开启截止提醒</strong><p>只为截止时间已明确、尚未完成的活动生成提醒。</p></span><input id="reminders-enabled" type="checkbox" ${settings.reminders_enabled?'checked':''}></label><div class="offset-choices" role="group" aria-label="提前多久提醒">${[[4320,'提前 3 天'],[1440,'提前 24 小时'],[60,'提前 1 小时']].map(([n,label])=>`<label><input type="checkbox" data-offset="${n}" ${settings.reminder_offsets.includes(n)?'checked':''}>${label}</label>`).join('')}</div><label class="setting-row"><span><strong>系统桌面提醒</strong><p>${S.data.native_available?'本地程序保持运行时，关闭网页后仍可交给系统通知。':'此环境暂不支持本机通知，可使用应用内或浏览器提醒。'}</p></span><input id="native-notifications" type="checkbox" ${settings.native_notifications?'checked':''} ${S.data.native_available?'':'disabled'}></label><p class="help-text">电脑关机、休眠或本地程序停止时暂停检查。重新运行后补查提醒窗口；同一活动、截止时间和提前量只提醒一次。浏览器提醒需要网页保持打开。</p><div class="settings-actions"><button id="test-reminder" class="button button-primary" type="button">发送测试提醒</button><button id="browser-notifications" class="button" type="button">${browserEnabled()?'关闭浏览器提醒':'开启浏览器提醒'}</button></div><p id="delivery-result" class="help-text"></p>`;
-    renderInbox();openDialog('#reminder-dialog');
+    $('#reminder-settings').innerHTML=`<label class="setting-row"><span><strong>开启截止提醒</strong><p>只为截止时间已明确、尚未完成的活动生成提醒。</p></span><input id="reminders-enabled" type="checkbox" ${settings.reminders_enabled?'checked':''}></label><div class="offset-choices" role="group" aria-label="提前多久提醒">${[[4320,'提前 3 天'],[1440,'提前 24 小时'],[60,'提前 1 小时']].map(([n,label])=>`<label><input type="checkbox" data-offset="${n}" ${settings.reminder_offsets.includes(n)?'checked':''}>${label}</label>`).join('')}</div>${reminderScopeFields()}<label class="setting-row"><span><strong>系统桌面提醒</strong><p>${S.data.native_available?'本地程序保持运行时，关闭网页后仍可交给系统通知。':'此环境暂不支持本机通知，可使用应用内或浏览器提醒。'}</p></span><input id="native-notifications" type="checkbox" ${settings.native_notifications?'checked':''} ${S.data.native_available?'':'disabled'}></label><p class="help-text">电脑关机、休眠或本地程序停止时暂停检查。重新运行后补查提醒窗口；同一活动、截止时间和提前量只提醒一次。浏览器提醒需要网页保持打开。</p><div class="settings-actions"><button id="test-reminder" class="button button-primary" type="button">发送测试提醒</button><button id="browser-notifications" class="button" type="button">${browserEnabled()?'关闭浏览器提醒':'开启浏览器提醒'}</button></div><p id="delivery-result" class="help-text"></p>`;
   }
   function renderInbox() {
     $('#notification-list').innerHTML=S.data.notifications.length?S.data.notifications.map(notice=>`<div class="notice ${notice.read?'read':''}"><span class="notice-dot"></span><${notice.event_id?'button type="button" data-event="'+esc(notice.event_id)+'"':'div'}><strong>${notice.game_name?esc(notice.game_name)+' · ':''}${esc(notice.title)}</strong><p>${esc(notice.message)}${notice.end_at?' · 截止 '+esc(format(notice.end_at,{year:true})):''}</p><small>${esc(format(notice.created_at,{year:true}))}</small></${notice.event_id?'button':'div'}></div>`).join(''):'<div class="empty-state">还没有提醒。可以发送一条测试提醒。</div>';
@@ -467,14 +601,19 @@
   }
   async function switchView(view) {
     if(S.view===view) return;
-    S.view=view;S.fit=false;S.days=Number($('#range-select').value);render();await mutate('/api/settings',{view});
+    S.view=view;S.fit=false;S.days=Number($('#range-select').value);
+    if(narrow.matches){local.set(NARROW_VIEW,view);render();return;}
+    render();await mutate('/api/settings',{view});
   }
+  // Crossing the breakpoint adopts that screen class's view, except during plan drawing.
+  narrow.addEventListener('change',()=>{if(!S.data||P.creating)return;S.view=preferredView();S.fit=false;render();});
   async function showAll(view='list') {
     S.categories=new Set(Object.keys(categories));S.includePending=true;
     $('#event-search').value='';$('#include-pending').checked=true;buildFilters();
     S.view=view;S.fit=false;S.days=Number($('#range-select').value);
-    await api('/api/settings','POST',{hide_completed:false,view});
-    await mutate('/api/workspace',{view:{hide_future:false}},'PATCH');
+    if(narrow.matches)local.set(NARROW_VIEW,view);
+    await api('/api/settings','POST',narrow.matches?{hide_completed:false}:{hide_completed:false,view});
+    await mutate('/api/workspace',{view:{hide_future:false,focus:{date:null,event_id:null}}},'PATCH');
   }
   async function fitVersion() {
     if(S.fit) {S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));render();return;}
@@ -502,7 +641,7 @@
       if($('#reward-dialog').open) $('#reward-dialog').close();
       openEvent(target.dataset.event);return;
     }
-    if(target.dataset.day) {openAgenda(Number(target.dataset.day));return;}
+    if(target.dataset.day) {if(await P.focusDay(Number(target.dataset.day)))openAgenda(Number(target.dataset.day));return;}
     if(target.hasAttribute('data-focus-version')) {
       const start=activeVersion()?.maintenance.start;
       if(start) {S.anchor=Math.floor(civil(start));render();}
@@ -510,10 +649,24 @@
     }
     if(!S.data) return;
     switch(target.id) {
+      case 'open-plugin-directory': {
+        target.disabled=true;
+        try {
+          const result=await api('/api/plugins/open-directory','POST',{});
+          const note=$('#plugin-directory-status');note.textContent='已打开：'+result.directory;note.hidden=false;
+          toast('放入或移出完整插件文件夹后，请退出并重启游时');
+        } catch(error) {toast(error.message,true);}
+        finally {target.disabled=false;}
+        break;
+      }
       case 'reward-details':openRewardDetails();break;
       case 'previous-period':movePeriod(-1);break;
       case 'next-period':movePeriod(1);break;
       case 'today-button':S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));render();break;
+      case 'upcoming-view':await switchView('upcoming');break;
+      case 'sidebar-more':{const open=!$('.sidebar').classList.contains('sidebar-expanded');local.set('sidebar.v1.narrow',open);paintSidebar();break;}
+      case 'heading-toggle':local.set('heading.v1',headingCompact()?'full':'compact');paintHeading();W.renderModules();break;
+      case 'more-tools':{const open=target.getAttribute('aria-expanded')!=='true';target.setAttribute('aria-expanded',String(open));target.textContent=open?'收起 ▴':'更多 ▾';$('.calendar-context').classList.toggle('links-open',open);break;}
       case 'timeline-view':await switchView('timeline');break;
       case 'month-view':await switchView('month');break;
       case 'list-view':await switchView('list');break;
@@ -579,26 +732,25 @@
       if(target.checked) S.categories.add(target.dataset.category);else S.categories.delete(target.dataset.category);
       render();return;
     }
+    if(target.name==='reminder-scope') {await saveReminderScope(target.value);return;}
+    if(target.dataset.reminderGame) {await saveReminderScope('custom');return;}
     if(target.dataset.offset) {
       const offsets=[...document.querySelectorAll('[data-offset]:checked')].map(input=>Number(input.dataset.offset));
       await mutate('/api/settings',{reminder_offsets:offsets});return;
     }
     if(target.dataset.selectGame) {
       const selected_games=[...document.querySelectorAll('[data-select-game]:checked')].map(el=>el.dataset.selectGame);
-      S.game='selected';S.version='selected';S.rules=null;
-      await mutate('/api/workspace',{view:{selected_games,scope:'selected'}},'PATCH');return;
+      await selectScope('selected',selected_games);return;
     }
     switch(target.id) {
       case 'hide-future':await mutate('/api/workspace',{view:{hide_future:target.checked}},'PATCH');break;
       case 'event-sort':await mutate('/api/workspace',{view:{sort:target.value}},'PATCH');break;
       case 'event-group':await mutate('/api/workspace',{view:{group_by:target.value}},'PATCH');break;
       case 'game-select':
-        S.game=target.value;S.version=null;S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));S.rules=null;
-        $('#event-search').value='';
         for(const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
-        if(S.game!=='selected') {await api('/api/settings','POST',{active_game:S.game});await mutate('/api/workspace',{view:{selected_games:S.game==='all'?S.data.games.map(g=>g.id):[S.game],scope:S.game==='all'?'all':'single'}},'PATCH');} else await mutate('/api/workspace',{view:{scope:'selected'}},'PATCH');break;
+        await selectScope(target.value,target.value==='all'?S.data.games.map(g=>g.id):target.value==='selected'?W.selected():[target.value],true);break;
       case 'version-select':S.version=target.value;S.anchor=Math.floor(civil(activeVersion().maintenance.start||now()));render();break;
-      case 'timezone-select':await mutate('/api/settings',{timezone:target.value});break;
+      case 'timezone-select':await mutate('/api/settings',{timezone:target.value});if(W.view.focus.date)await mutate('/api/workspace',{view:{focus_timezone:zone()}},'PATCH');break;
       case 'range-select':S.fit=false;S.days=Number(target.value);render();break;
       case 'hide-completed':await mutate('/api/settings',{hide_completed:target.checked});break;
       case 'include-pending':S.includePending=target.checked;render();break;
@@ -636,7 +788,9 @@
     if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom) dialog.close();
   }));
   async function refresh() {
-    try {applyState(await api('/api/state'));}
+    if(S.scoping)return;
+    const generation=S.scopeGeneration;
+    try {const data=await api('/api/state');if(generation===S.scopeGeneration)applyState(data);}
     catch(error) {
       if(!S.data) {$('#load-error').textContent='无法连接本地程序：'+error.message+'。请运行 start.ps1 或 python app.py。';$('#load-error').hidden=false;}
       else {$('#source-status').textContent='本地连接已断开，请检查程序是否仍在运行。现有日历保留显示。';$('#source-status').classList.add('warning');}
@@ -648,9 +802,18 @@
       event.target.parentElement?.classList.remove('has-art','with-image');event.target.remove();
     }
   },true);
-  window.PlaytimeCustomize.init({state:()=>S.data,mutate,openDialog});
+  async function preparePlanning(){
+    if(S.scoping)throw new Error('正在切换游戏，请稍候再创建规划。');
+    if(narrow.matches)local.set(NARROW_VIEW,'timeline');else await api('/api/settings','POST',{view:'timeline'});
+    S.view='timeline';
+    const layout=structuredClone(S.data.workspace.layout),calendar=layout.modules.find(m=>m.id==='calendar');
+    if(calendar.collapsed){calendar.collapsed=false;if(!await mutate('/api/workspace',{layout},'PATCH'))throw new Error('请先展开日历模块。');}
+    render();
+  }
+  P.init({state:()=>S.data,game:()=>S.game,zone,dateParts,format,civil,range,isTimeline:()=>S.view==='timeline',timelineEvents:()=>{const[lo,hi]=range();return P.arrange(filteredEvents().filter(e=>overlaps(e,lo,hi)));},prepareTimeline:preparePlanning,render,toast,baseEvents:baseFilteredEvents,events:filteredEvents,api,mutate,applyState,openDialog,openAgenda,openEvent});
+  window.PlaytimeCustomize.init({state:()=>S.data,mutate,openDialog,api,refresh,toast});
   refresh();
   S.pollTimer=setInterval(refresh,10000);
-  setInterval(()=>{if(S.data) renderClock();},30000);
+  setInterval(()=>{if(S.data){renderClock();syncTime();}},30000);
   window.addEventListener('focus',()=>{if(S.initialized) refresh();});
 })();

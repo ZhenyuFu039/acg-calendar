@@ -71,3 +71,5 @@ html[data-theme=dark] .sidebar,html[data-theme=dark] .app-header,html[data-theme
 
 .workspace-modules{display:flex;flex-direction:column;min-width:0}.workspace-modules>.calendar-panel{min-width:0}
 .official-time-notice{font-size:11px;line-height:1.6;color:var(--muted);margin:0 0 8px;max-width:220px;text-wrap:balance}.heading-controls>.official-time-notice{text-align:right;margin-left:auto}.dialog-official-time-notice{max-width:none;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--lime-soft);margin:0 0 18px}
+
+.reminder-scope{border:1px solid var(--line);border-radius:var(--ui-radius,8px);padding:10px 14px;margin:12px 0;display:grid;gap:6px}.reminder-scope legend{font-weight:600;padding:0 4px}.reminder-scope label{display:flex;align-items:center;gap:8px;font-size:13px}.reminder-scope-games{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:4px 12px;padding:4px 0 4px 24px}.reminder-scope .warning{color:var(--danger,#b42318)}

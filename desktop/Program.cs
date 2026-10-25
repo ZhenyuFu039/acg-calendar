@@ -233,6 +233,7 @@ public sealed partial class CalendarWindow : Window
             UpdateReminderControls(state.RootElement.GetProperty("settings"));
             UpdateProviders(state.RootElement);
             UpdateWorkspace(state.RootElement);
+            UpdatePlanner(state.RootElement);
             await UpdateProviderPictures();
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
@@ -251,7 +252,7 @@ public sealed partial class CalendarWindow : Window
     void Render()
     {
         clock.Text = DateTime.Now.ToString("M月d日 dddd HH:mm") + " · 本机时区";
-        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("当前没有活动数据，可在侧栏同步或检查插件。")); ApplyWorkspaceVisuals(desktopLayout); return; }
+        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("当前没有活动数据，可在侧栏同步或检查插件。")); RenderPlannerLayers(Array.Empty<CalendarEvent>()); ApplyWorkspaceVisuals(desktopLayout); return; }
         var scoped = events.Where(e => InScope(e.Game)).ToArray();
         rewardHeader.Visibility = !bubbleMode && ModuleVisible("rewards") && scoped.Any(e => e.Reward.ValueKind == JsonValueKind.Object) ? Visibility.Visible : Visibility.Collapsed;
         subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + scoped.Length + " 项" : "接下来，别错过";
@@ -260,20 +261,24 @@ public sealed partial class CalendarWindow : Window
         cards.Children.Clear();
         var now = DateTimeOffset.Now;
         var shown = showAll ? scoped.AsEnumerable() : scoped.Where(e => !e.Completed && !e.Ignored && e.Category != "maintenance");
-        if (selected is DateTime chosen)
-            shown = shown.Where(e => e.Begin != null && e.Begin.Value.LocalDateTime.Date <= chosen.Date && (e.Finish?.LocalDateTime.Date >= chosen.Date || (e.Time_Kind == "point" ? e.Begin.Value.LocalDateTime.Date == chosen.Date : e.Finish == null)));
+        if (selected != null || focusStart != null)
+            shown = shown.Where(EventInFocus);
         else if (!showAll) shown = shown.Where(e => e.Finish > now || e.Begin > now || (e.Finish == null && e.Time_Kind != "point"));
         if (hideFuture) shown = shown.Where(e => e.Begin != null && e.Begin <= now);
-        var ordered = shown.OrderBy(e => eventOrder.GetValueOrDefault(e.Id, int.MaxValue)).ThenBy(e => e.Id).ToArray();
+        var eligible = shown.OrderBy(e => eventOrder.GetValueOrDefault(e.Id, int.MaxValue)).ThenBy(e => e.Id).ToArray();
+        var ordered = ArrangeFamilies(eligible);
+        RenderPlannerLayers(scoped);
         foreach (var entry in ordered)
         {
             var color = categoryBrushes.GetValueOrDefault(entry.Category, LinkInk);
             var gameColor = Brush(GameColor(entry.Game));
             var card = new Border { Background = CardBackground(), CornerRadius = new CornerRadius(themeRadius), Padding = new Thickness(dense ? 10 : 14), Margin = new Thickness(0, 0, 0, Math.Max(2, (dense ? 6 : 9) + themeSpacing - 14)), BorderBrush = gameColor, BorderThickness = new Thickness(3, themeBorderWidth, themeBorderWidth, themeBorderWidth), Opacity = entry.Completed ? .65 : 1 };
             AttachBubbleDrag(card);
+            card.Margin = new Thickness(familyDepth.GetValueOrDefault(entry.Id) * 12, 0, 0, card.Margin.Bottom);
             var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
             var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), ToolTip = GameLabel(entry.Game) };
             badge.Child = (UIElement)GameIdentity(entry.Game); layout.Children.Add(badge);
+            badge.MouseLeftButtonUp += (_, e) => { gameSelect.SelectedValue = entry.Game; e.Handled = true; };
             var body = new StackPanel();
             string type = entry.Category switch { "gacha" => "寻访", "exchange" => "兑换", "update" => "更新", "maintenance" => "维护", _ => "活动" };
             if (selectedGame is "all" or "selected") type = GameLabel(entry.Game) + " · " + type;
@@ -310,9 +315,12 @@ public sealed partial class CalendarWindow : Window
                 body.Children.Add(line);
             }
             var actions = new WrapPanel { Margin = new Thickness(0, 7, 0, 0) };
+            actions.Children.Add(Button("详情 ↗", () => Open(address + "?event=" + entry.Id)));
             actions.Children.Add(Button(entry.Starred ? "取消收藏" : "☆ 收藏", async () => await Mutate("/api/events/" + entry.Id, new { starred = !entry.Starred }, true)));
             actions.Children.Add(Button("标记完成", async () => await Mutate("/api/events/" + entry.Id, new { completed = true }, true)));
             if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button(entry.Game == "arknights-cn" ? "PRTS ↗" : "公告 ↗", () => Open(source.GetString()!)));
+            actions.Children.Add(Button("◇ 安排游玩 ↗", () => Open(address + "?planEvent=" + entry.Id)));
+            AddFamilyControls(body, entry, eligible.Select(e => e.Id).ToHashSet());
             if (!dense) body.Children.Add(actions); Grid.SetColumn(body, 1); layout.Children.Add(body); card.Child = layout; cards.Children.Add(card);
         }
         if (ordered.Length == 0) cards.Children.Add(MessageBubble("没有符合当前筛选的待办活动。右键打开侧栏，可切换游戏或显示全部活动。"));
@@ -417,40 +425,42 @@ public sealed partial class CalendarWindow : Window
             byte[] ics = await http.GetByteArrayAsync(address + "/api/calendar.ics");
             if (!System.Text.Encoding.UTF8.GetString(ics).StartsWith("BEGIN:VCALENDAR")) throw new Exception("Calendar export failed");
             SaveRender("widget.png"); ShowMode(false); showAll = true; Render(); SaveRender("month.png");
-            gameSelect.SelectedValue = "arknights-cn"; Render(); SaveRender("arknights.png");
+            gameSelect.SelectedValue = "arknights-cn"; await scopeUpdate; Render(); SaveRender("arknights.png");
             if (cards.Children.Count != events.Count(e => e.Game == "arknights-cn") || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("Arknights filter or currency isolation failed");
             byte[] arkIcs = await http.GetByteArrayAsync(address + "/api/calendar.ics?game=arknights-cn");
             if (!System.Text.Encoding.UTF8.GetString(arkIcs).Contains("PRTS")) throw new Exception("Arknights calendar attribution missing");
-            gameSelect.SelectedValue = "sample-game"; Render(); SaveRender("plugin.png");
+            gameSelect.SelectedValue = "sample-game"; await scopeUpdate; Render(); SaveRender("plugin.png");
             if (cards.Children.Count != 2 || rewardHeader.Visibility != Visibility.Collapsed || GamePicture("sample-game") != null) throw new Exception("Third-party game metadata or currency isolation failed");
             if (games.Any(g => g.Id == "nikke-global"))
             {
-                gameSelect.SelectedValue = "nikke-global"; Render(); SaveRender("nikke.png");
+                gameSelect.SelectedValue = "nikke-global"; await scopeUpdate; Render(); SaveRender("nikke.png");
                 if (cards.Children.Count != events.Count(e => e.Game == "nikke-global") || GamePicture("nikke-global") == null || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("NIKKE plugin, local logo or currency isolation failed");
             }
             if (games.Any(g => g.Id == "azurlane-cn"))
             {
-                gameSelect.SelectedValue = "azurlane-cn"; Render(); SaveRender("azurlane.png");
+                gameSelect.SelectedValue = "azurlane-cn"; await scopeUpdate; Render(); SaveRender("azurlane.png");
                 if (cards.Children.Count != events.Count(e => e.Game == "azurlane-cn") || cards.Children.Count == 0 || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("Azur Lane plugin or currency isolation failed");
             }
             if (games.Any(g => g.Id == "zzz-cn"))
             {
-                gameSelect.SelectedValue = "zzz-cn"; Render(); SaveRender("zzz.png");
+                gameSelect.SelectedValue = "zzz-cn"; await scopeUpdate; Render(); SaveRender("zzz.png");
                 if (cards.Children.Count != events.Count(e => e.Game == "zzz-cn") || cards.Children.Count == 0 || GamePicture("zzz-cn") == null || rewardHeader.Visibility != Visibility.Collapsed) throw new Exception("ZZZ plugin, APP icon or currency isolation failed");
             }
             await Mutate("/api/workspace", new { view = new { selected_games = new[] { "endfield-cn", "sample-game" }, scope = "selected", sort = "remaining" } }, true);
-            gameSelect.SelectedValue = "selected"; Render(); SaveRender("selected-games.png");
+            gameSelect.SelectedValue = "selected"; await scopeUpdate; Render(); SaveRender("selected-games.png");
             if (cards.Children.Count != events.Count(e => e.Game is "endfield-cn" or "sample-game")) throw new Exception("Custom game combination omitted or leaked entries");
             byte[] selectedIcs = await http.GetByteArrayAsync(address + "/api/calendar.ics?game=selected");
             if (System.Text.Encoding.UTF8.GetString(selectedIcs).Contains("PRTS")) throw new Exception("Custom game export leaked unselected games");
-            gameSelect.SelectedValue = "all"; Render(); SaveRender("combined.png");
+            gameSelect.SelectedValue = "all"; await scopeUpdate; Render(); SaveRender("combined.png");
             if (cards.Children.Count != events.Length) throw new Exception("All-activities view omitted entries");
             bool workspaceVerified = await WorkspaceSmokeTest();
             bool appearanceVerified = await AppearanceSmokeTest();
             bool interactionVerified = await InteractionSmokeTest();
+            bool plannerVerified = await PlannerSmokeTest();
             month.SelectedDate = DateTime.Today.AddDays(1);
+            await dateUpdate;
             if (selected != DateTime.Today.AddDays(1)) throw new Exception("Calendar selection did not update");
-            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, workspaceVerified, appearanceVerified, interactionVerified, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
+            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, workspaceVerified, appearanceVerified, interactionVerified, plannerVerified, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
         }
         catch (Exception error)
         {

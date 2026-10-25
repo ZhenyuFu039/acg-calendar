@@ -1,4 +1,4 @@
-"""Bounded public BWIKI API and the two explicitly configured image CDNs."""
+"""Bounded public BWIKI/English Wiki parse APIs and two image CDNs."""
 import time
 import urllib.parse
 import urllib.request
@@ -15,7 +15,14 @@ def allowed(url, image=False):
         if image:
             return ((p.hostname == 'patchwiki.biligame.com' and p.path.startswith('/images/blhx/')) or
                     (p.hostname == 'azurlane.netojuu.com' and p.path.startswith('/images/'))) and p.path.lower().endswith(('.png', '.jpg', '.jpeg', '.webp'))
-        return p.hostname == 'wiki.biligame.com' and p.path == '/blhx/api.php'
+        if p.hostname == 'wiki.biligame.com' and p.path == '/blhx/api.php':
+            return True
+        if p.hostname == 'azurlane.koumakan.jp' and p.path == '/w/api.php':
+            query = urllib.parse.parse_qs(p.query)
+            return (set(query) <= {'action', 'page', 'prop', 'format', 'formatversion'} and
+                    query.get('action') == ['parse'] and query.get('format') == ['json'] and
+                    query.get('prop') == ['text|revid'] and len(query.get('page', [''])[0]) <= 200)
+        return False
     except (ValueError, TypeError):
         return False
 

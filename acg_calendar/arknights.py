@@ -13,6 +13,7 @@ import urllib.parse
 from .artwork import ArtworkCache
 from .arknights_artwork import OfficialArknightsArtwork
 from .network import network_job
+from .sync_progress import SyncProgress
 from .parser import ROOT, iso, stamp
 from .wiki_http import WikiHTTP, wiki_url
 
@@ -298,7 +299,7 @@ class ArknightsCollector:
             self.collect()
         except Exception as error:
             previous = self.store.get_meta(self.meta_key, {})
-            self.store.set_meta(self.meta_key, {**previous, 'running': False, 'error': str(error)[:300], 'message': 'PRTS 同步失败，保留本地日历'})
+            self.store.set_meta(self.meta_key, {**previous, 'running': False, 'stage': None, 'waiting': None, 'error': str(error)[:300], 'message': 'PRTS 同步失败，保留本地日历'})
             # Official pictures may refresh even when the independent date source is offline.
             if self.official_artwork:
                 version = next((v for v in self.store.versions() if v['id'] == VERSION_ID), None)
@@ -317,6 +318,12 @@ class ArknightsCollector:
 
     @network_job
     def collect(self):
+        progress = SyncProgress(self.store, self.meta_key)
+        with progress.active():
+            return self._collect(progress)
+
+    def _collect(self, progress):
+        progress.stage('fetch')
         config = rules()
         titles, image_urls = catalog_titles(self.fetcher(config['catalog_url']), config, with_images=True)
         pages = revisions(self.fetcher, titles)
@@ -364,10 +371,13 @@ class ArknightsCollector:
             image = saved.get(event['id'], {}).get('artwork')
             if image and self.artwork.path(image.get('key', '')):
                 event['artwork'] = image
+        progress.stage('parse')
         now = dt.datetime.now(dt.timezone.utc)
         fetched = iso(now)
         version = make_version(list({e['id']: e for e in events}.values()), fetched, errors=errors)
         self.store.save_version(version)
+        progress.calendar_saved([previous] if previous else [], [version])
+        progress.stage('images')
         self.enrich(version)
         image_candidates = sorted(events, key=lambda e: (bool(e['end']['at']) and stamp(e['end']['at']) < now, -(stamp(e['start']['at']).timestamp() if e['start']['at'] else 0)))
         images = list(dict.fromkeys(e['prts']['image_title'] for e in image_candidates if e['prts'].get('image_title') and not e.get('artwork')))[:config['max_images']]
@@ -388,5 +398,9 @@ class ArknightsCollector:
                     break
         version['warnings'] = errors
         self.store.save_version(version)
-        self.store.set_meta(self.meta_key, {'running': False, 'mode': 'live', 'last_attempt': fetched, 'last_success': fetched, 'error': None, 'message': '已同步 PRTS 社区 Wiki', 'page_count': parsed, 'warnings': errors})
+        # Official-site index/image problems are reported as a source note: PRTS images or the
+        # cache may already cover those activities, so they are not counted as missing images.
+        official = version.get('official_artwork', {}).get('errors', [])
+        progress.images_done([version], image_errors, [f'明日方舟官网头图暂不可用（{len(official)} 项记录），已沿用 PRTS 图片或缓存'] if official else [])
+        self.store.set_meta(self.meta_key, progress.finish({'running': False, 'mode': 'live', 'last_attempt': fetched, 'last_success': fetched, 'error': None, 'message': '已同步 PRTS 社区 Wiki', 'page_count': parsed, 'warnings': errors}))
         return version
