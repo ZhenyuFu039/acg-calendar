@@ -82,7 +82,7 @@ const base='http://127.0.0.1:8809';
       await p2.locator('[data-category="exchange"]').evaluate(n=>n.click());
       const bar2=p2.locator('#hidden-summary');await bar2.waitFor();
       const drawn=async()=>p2.evaluate(()=>new Set([...document.querySelectorAll('#calendar [data-event]')].map(n=>n.dataset.event)).size);
-      const shownCount=async()=>Number((await bar2.innerText()).match(/当前显示 (\d+)/)[1]);
+      const shownCount=async()=>Number((await bar2.innerText()).match(/(?:当前显示|截止总览已计入) (\d+)/)[1]);
       // Upcoming draws soon, neighbor and pending; the ended activity is explained, and only it counts as new-but-hidden.
       assert.equal(await shownCount(),await drawn());assert.equal(await drawn(),3);
       let summary=await bar2.innerText();
@@ -90,18 +90,20 @@ const base='http://127.0.0.1:8809';
       assert.match(summary,/上次同步新增的 1 条活动未显示/);
       assert.match(summary,/「版本二」有 1 条上次同步新增的活动/);
       assert.equal((summary.match(/上次同步新增的活动/g)||[]).length,1,'New activities of other games are not reported here');
-      // Month view draws the neighbouring-month activity in the grid, so nothing new is reported missing.
+      // Deadline month counts represented activities, rather than hidden three-lane bars.
       await p2.setViewportSize({width:1440,height:900});await p2.locator('#month-view').click();await p2.locator('.month-cell').first().waitFor();
-      await p2.waitForFunction(id=>document.querySelector(`#calendar [data-event="${id}"]`),id('neighbor'));
-      assert.equal(await shownCount(),await drawn());
-      summary=await bar2.innerText();assert.doesNotMatch(summary,/上次同步新增的 \d+ 条活动未显示/);
-      // The version notice switches version only when asked, keeping the other filters.
+      const represented=()=>p2.evaluate(()=>[...new Set([...document.querySelectorAll('.month-date')].flatMap(n=>PlaytimePlanner.density(new Date(Number(n.dataset.day)*86400000).toISOString().slice(0,10)).rows.map(n=>n.event_id)))]);
+      assert.equal(await shownCount(),(await represented()).length);
+      assert.equal(await p2.locator('.month-more,.month-week .event-bar').count(),0);
+      assert.ok(!(await represented()).includes(id('neighbor')),'An activity with its deadline in the next month is not counted as this month’s deadline');
+      assert.match(await bar2.innerText(),/上次同步新增的 1 条活动未显示/);
+      // Switching version is explicit and keeps category filtering; November reveals its deadline.
       await p2.locator('[data-unhide="version"]').click();
       await p2.waitForFunction(v=>document.querySelector('#version-select').value===v,v2);
-      await p2.waitForFunction(id=>document.querySelector(`#calendar [data-event="${id}"]`),id('fresh'));
-      assert.equal(await p2.locator('[data-category="exchange"]').isChecked(),false,'Category filter is preserved');
+      assert.equal(await p2.locator('[data-category="exchange"]').isChecked(),false);
+      await p2.locator('#next-period').click();assert.ok((await represented()).includes(id('fresh')));
       await p2.screenshot({path:path.join(output,'hidden-summary-month.png')});
-      // Month overflow (H1): only drawn bars count as shown; a new activity left in "+N 项" is reported.
+      // All five overlapping activities are represented; no artificial +N/new-hidden warning.
       execFileSync(process.env.CALENDAR_PYTHON||'python',['-c',['import sys,json','from pathlib import Path','from acg_calendar.storage import Store',
         's=Store(Path(sys.argv[1])/"calendar.sqlite3")','m=s.get_meta("sync:sample-game",{})',
         'm["result"]={"calendar":{"added":1,"updated":0,"removed":0,"total":0,"added_ids":json.loads(sys.argv[2])},"images":{"ready":0,"added":0,"failed":0,"notes":[]}}',
@@ -109,16 +111,13 @@ const base='http://127.0.0.1:8809';
       const v3=data.events.find(e=>e.id===id('crowdA')).version_id;
       await p2.reload();await p2.waitForFunction(v=>[...document.querySelector('#version-select').options].some(o=>o.value===v),v3);
       await p2.locator('#version-select').evaluate((n,v)=>{n.value=v;n.dispatchEvent(new Event('change',{bubbles:true}));},v3);
-      await p2.waitForFunction(id=>document.querySelector(`#calendar [data-event="${id}"]`),id('crowdX'));
-      await bar2.waitFor();
-      assert.equal(await drawn(),4,'A, B, C and X are drawn; D only behind "+N 项"');
-      assert.equal(await shownCount(),await drawn());
-      summary=await bar2.innerText();
-      assert.match(summary,/上次同步新增的 1 条活动未显示/);
-      assert.match(summary,/另有 1 项收在“\+N 项”中/);
-      assert.doesNotMatch(summary,/子活动已折叠/,'Overflow is not described as folding');
-      await p2.locator('[data-unhide="range"]').click();await p2.waitForFunction(()=>document.querySelector('#list-view').getAttribute('aria-pressed')==='true');
-      await p2.waitForFunction(id=>document.querySelector(`#calendar [data-event="${id}"]`),id('crowdD'));
+      await p2.locator('#today-button').click();
+      await p2.waitForFunction(()=>document.querySelectorAll('.density-day').length>0);
+      assert.equal((await represented()).length,5);
+      assert.equal(await bar2.isVisible(),false,'All new activities are represented without overflow');
+      await p2.locator('[data-deadline-day="2026-10-04"]').click();
+      assert.equal(await p2.locator('#deadlines-content .agenda-event').count(),4);
+      await p2.locator('#deadlines-dialog [data-close]').click();
     }finally{server2.kill();}
     assert.deepEqual(errors,[]);console.log('PASS: per-reason hidden counts by stable id, new-from-sync notice, one-filter-at-a-time clearing for search, category and completed, no bar without filters; fixed-clock upcoming and month counts match drawn activities, other-version new activities with an explicit switch, other games ignored');
   }finally{if(browser)await browser.close();server.kill();}

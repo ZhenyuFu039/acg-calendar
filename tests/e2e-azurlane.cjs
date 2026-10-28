@@ -15,10 +15,10 @@ const fetch=url=>new Promise((resolve,reject)=>{http.get(url,r=>{const b=[];r.on
   const page=await browser.newPage({viewport:{width:1440,height:1050},locale:'zh-CN',timezoneId:'America/New_York'}),errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base);await page.locator('#game-select option[value="azurlane-cn"]').waitFor({state:'attached'});
   await page.locator('#game-select').selectOption('azurlane-cn');await page.waitForFunction(()=>document.body.dataset.game==='azurlane-cn');
-  await page.locator('#reset-filters').click();await page.waitForFunction(()=>document.querySelectorAll('.catalog-event').length===20);
+  await page.locator('#reset-filters').click();await page.locator('#list-view').click();await page.waitForFunction(()=>document.querySelectorAll('.catalog-event').length===20);
   assert.equal(await page.locator('#reward-summary').isVisible(),false);
   await page.locator('.catalog-event').filter({hasText:'严厉女仆不严厉'}).click();
-  const detail=page.locator('#detail-content');assert.match(await detail.innerText(),/11月5日维护/);assert.match(await detail.innerText(),/2026\/11\/04 21:00/);assert.match(await detail.innerText(),/预计/);assert.match(await detail.innerText(),/英文 Wiki 仅补充/);
+  const detail=page.locator('#detail-content');await page.locator('.detail-explanation summary').click();assert.match(await detail.innerText(),/11月5日维护/);assert.match(await detail.innerText(),/2026\/11\/04 21:00/);assert.match(await detail.innerText(),/预计/);assert.match(await detail.innerText(),/英文 Wiki 仅补充/);
   const notice='具体活动情况请参考游戏官方时间';
   assert.equal(await page.locator('#official-time-notice').innerText(),notice);
   assert.equal(await detail.locator('.dialog-official-time-notice').innerText(),notice);

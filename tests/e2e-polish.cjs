@@ -26,7 +26,7 @@ const base='http://127.0.0.1:8812';
     await page.clock.setFixedTime(new Date(Date.parse(linked.start.at)+3600000)); // The linked activity is inside the visible range.
     await page.goto(base+'/?game=all');await page.locator('#plans-button:not([disabled])').waitFor();
     // Overlap list: renamed, folded, manual link first.
-    await page.locator('#plans-button').click();await page.locator('#plans-dialog[open]').waitFor();
+    await page.locator('#rail-plans').click();await page.locator('#plans-dialog[open]').waitFor();
     const coverage=page.locator('.plan-coverage').first();
     assert.match(await coverage.locator('summary').innerText(),/期间可参与活动 · \d+ 项（手动关联的排在前面）/);
     assert.equal(await coverage.evaluate(n=>n.open),false,'Folded by default');

@@ -1,7 +1,7 @@
 'use strict';
 /* Host-only linked views and personal plans. No provider-specific selectors. */
 window.PlaytimePlanner = (() => {
-  let H, editing=null, editingPlan=null, managerSignature=null, focusQueue=Promise.resolve();
+  let H, editing=null, editingPlan=null, managerSignature=null, focusQueue=Promise.resolve(), inspectedDay=null, dayTab='deadlines';
   const $=s=>document.querySelector(s), W=window.PlaytimeWorkspace;
   const D=window.PlaytimePlanDrawing;
   const E=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -12,11 +12,19 @@ window.PlaytimePlanner = (() => {
   function filterFocus(events){const b=meta().focus_bounds;if(!b)return events;return events.filter(e=>e.start.at&&!e.invalid_interval&&(e.time_kind==='point'?Date.parse(e.start.at)>=Date.parse(b.start)&&Date.parse(e.start.at)<Date.parse(b.end):inDay(e.start.at,e.end.at||'9999-12-31T00:00:00Z')));}
   function scopedPlans({focus=true}={}){return (state()?.plans||[]).filter(p=>(!p.game_id||H.game()==='all'||(H.game()==='selected'?W.selected().includes(p.game_id):H.game()===p.game_id))&&(!focus||inDay(p.start,p.end)));}
   function nodes(){const ids=new Set(H.baseEvents().map(e=>e.id));return (meta().deadline_nodes||[]).filter(n=>ids.has(n.event_id));}
-  function density(day){const rows=nodes().filter(n=>instantDay(n.at)===day);return {rows,activity:rows.filter(n=>n.kind==='activity').length,exchange:rows.filter(n=>n.kind==='exchange').length};}
-  function densityButton(serial,month=false,axis={}){const day=dateKey(serial),d=density(day),counts=month?`活动 ${d.activity} / 兑 ${d.exchange}`:`${d.activity?`<i class="density-activity">${d.activity}</i>`:''}${d.exchange?`<i class="density-exchange">${d.exchange}</i>`:''}`;return `<button type="button" class="density-day ${d.rows.length?'has-deadlines':''} ${view().focus.date===day?'date-selected':''}" data-deadline-day="${day}" aria-label="${day}，活动截止 ${d.activity} 项，兑换截止 ${d.exchange} 项" title="${day} · 活动 ${d.activity} / 兑换 ${d.exchange}（已明确、未完成）">${month?'':`<strong>${axis.fit?(axis.label?Number(day.slice(5,7))+'/'+Number(day.slice(8)):''):Number(day.slice(8))}</strong>`}<small>${d.rows.length?counts:month?'':'·'}</small></button>`;}
-  function focusDay(day){const key=typeof day==='number'?dateKey(day):day;focusQueue=focusQueue.then(()=>H.mutate('/api/workspace',{view:{focus:{date:key,event_id:null},focus_timezone:H.zone()}},'PATCH'));return focusQueue;}
-  async function clearFocus(){return H.mutate('/api/workspace',{view:{focus:{date:null,event_id:null}}},'PATCH');}
-  function selectEvent(id){if(view().focus.event_id===id)return;focusQueue=focusQueue.then(()=>H.mutate('/api/workspace',{view:{focus:{event_id:id}}},'PATCH'));}
+  function density(day){if(typeof day==='number')day=dateKey(day);const rows=nodes().filter(n=>instantDay(n.at)===day);return {rows,activity:rows.filter(n=>n.kind==='activity').length,exchange:rows.filter(n=>n.kind==='exchange').length};}
+  function densityButton(serial,month=false,axis={}){
+    const day=dateKey(serial),d=density(day),date=axis.fit?(axis.label?Number(day.slice(5,7))+'/'+Number(day.slice(8)):''):(Number(day.slice(8))===1?Number(day.slice(5,7))+'/1':Number(day.slice(8)));
+    const tick=month?'':`<span class="axis-date" aria-label="${day}">${date}</span>`;
+    if(!d.rows.length)return tick+(month?'<span class="month-quiet">无明确截止</span>':'');
+    return tick+`<button type="button" class="density-day has-deadlines ${inspectedDay===day?'date-inspected':''}" data-deadline-day="${day}" aria-label="${day}，活动截止 ${d.activity} 项，兑换截止 ${d.exchange} 项">${d.activity?`<span>${month?'活动':'截止'} ${d.activity}</span>`:''}${d.exchange?`<span class="density-exchange">兑换 ${d.exchange}</span>`:''}</button>`;
+  }
+  // Every focus write (a pick, a clear, a view reset) runs in request order, so an older write
+  // can never land after a newer choice.
+  function queueFocus(task){focusQueue=focusQueue.then(task);return focusQueue;}
+  function focusDay(day){const key=typeof day==='number'?dateKey(day):day;return queueFocus(()=>H.mutate('/api/workspace',{view:{focus:{date:key,event_id:null},focus_timezone:H.zone()}},'PATCH'));}
+  function clearFocus(){return queueFocus(()=>H.mutate('/api/workspace',{view:{focus:{date:null,event_id:null}}},'PATCH'));}
+  function selectEvent(id){if(view().focus.event_id===id)return;queueFocus(()=>H.mutate('/api/workspace',{view:{focus:{event_id:id}}},'PATCH'));}
   function relatedClaims(){const claims=new Map();for(const event of H.events())if(event.reward&&event.reward.state!=='excluded')for(const c of event.reward.claims||[])claims.set(c.id,c.amount);return claims;}
   function relatedRewards(){if(!view().focus.date)return '';const claims=relatedClaims(),games=H.game()==='all'?state().games.map(g=>g.id):H.game()==='selected'?W.selected():[H.game()];if(!games.some(g=>W.game(g)?.currency))return '';return `<p class="related-rewards">${E(view().focus.date)} 关联活动 · ${claims.size?`${[...claims.values()].reduce((a,b)=>a+b,0).toLocaleString()} 嵌晶玉 / ${claims.size} 笔独立奖励`:'未有已核实关联数量；未列明不按零'}<br>按共享奖励 ID 去重；版本小计保持不变。</p>`;}
   function banner(){
@@ -128,11 +136,16 @@ window.PlaytimePlanner = (() => {
     catch(e){$('#plan-error').textContent=e.message;$('#plan-error').hidden=false;}
     finally{if(submit.isConnected)buttons.forEach(b=>b.disabled=false);}
   }
-  async function deadlines(day){
-    if(!await focusDay(day))return;
-    const d=density(day);$('#deadlines-title').textContent=day+' · 已明确的待完成截止';
-    $('#deadlines-content').innerHTML=`<p class="help-text">${E(H.zone())} · 活动 ${d.activity} / 兑换 ${d.exchange}。节点按活动与时刻去重；折叠不减少计数。数量不代表游玩时长。</p>${d.rows.map(n=>`<button type="button" class="agenda-event" data-event="${E(n.event_id)}"><strong>${n.kind==='exchange'?'兑换关闭':'活动 / 阶段关闭'} · ${E(n.title)}</strong><span>${E(H.format(n.at,{year:true}))}</span></button>`).join('')||'<p>这一天没有已明确的未完成截止节点。</p>'}<button type="button" class="button" data-agenda-date="${day}">查看当天活动与计划</button>`;
-    H.openDialog('#deadlines-dialog');
+  function paintDay(){
+    if(!inspectedDay)return;
+    const day=inspectedDay,serial=Date.parse(day)/86400000,d=density(day),rows=[...d.rows].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)||a.event_id.localeCompare(b.event_id));
+    const active=H.baseEvents().filter(e=>e.start.at&&!e.invalid_interval&&(e.time_kind==='point'?Math.floor(H.civil(e.start.at))===serial:H.civil(e.start.at)<serial+1&&(!e.end.at||H.civil(e.end.at)>serial)));
+    $('#deadlines-title').textContent=day+' · 当日明细';
+    const content=dayTab==='deadlines'?rows.map(n=>`<button type="button" class="agenda-event" data-event="${E(n.event_id)}"><strong>${n.kind==='exchange'?'兑换关闭':'活动 / 阶段关闭'} · ${E(n.title)}</strong><span>${E(H.format(n.at,{year:true}))}</span></button>`).join('')||'<p>这一天没有已明确的未完成截止节点。可查看当日开放活动或安排游玩。</p>':active.map(e=>`<button type="button" class="agenda-event" data-event="${E(e.id)}"><strong>${E(W.game(e.game)?.short_name||e.game)} · ${E(e.title)}</strong><span>${E(H.format(e.start.at))} → ${e.end.at?E(H.format(e.end.at)):'截止待定'}</span></button>`).join('')||'<p>当前游戏组合与筛选下没有当日开放活动。</p>';
+    $('#deadlines-content').innerHTML=`<p class="help-text">${E(H.zone())} · 明确截止：活动 ${d.activity} / 兑换 ${d.exchange}。查看此明细不会筛选时间轴。</p><div class="day-tabs"><button type="button" class="button" data-day-tab="deadlines" aria-pressed="${dayTab==='deadlines'}">截止节点 ${rows.length}</button><button type="button" class="button" data-day-tab="activities" aria-pressed="${dayTab==='activities'}">开放活动与计划 ${active.length}</button></div>${content}${dayTab==='activities'?agendaPlans(serial):''}<div class="day-actions"><button type="button" class="button" data-only-day="${day}">只看这一天</button><button type="button" class="button" data-new-plan-day="${day}">＋ 安排游玩</button></div>`;
+  }
+  function deadlines(day,tab='deadlines'){
+    inspectedDay=typeof day==='number'?dateKey(day):day;dayTab=tab;paintDay();document.querySelectorAll('[data-deadline-day]').forEach(n=>n.classList.toggle('date-inspected',n.dataset.deadlineDay===inspectedDay));H.openDialog('#deadlines-dialog');
   }
   // Entry points stay disabled until the first local state arrives (they all read it).
   function update(){if(!state())return;if($('#plans-button').disabled){$('#plans-button').disabled=$('#uncertain-deadlines').disabled=false;$('#plans-button').removeAttribute('title');}D.update();banner();if($('#plans-dialog')?.open)manager();document.querySelectorAll('[data-event]').forEach(el=>el.classList.toggle('event-focused',el.dataset.event===view().focus.event_id));}
@@ -142,6 +155,7 @@ window.PlaytimePlanner = (() => {
     const tools=$('.catalog-tools');tools.insertAdjacentHTML('afterend','<div id="focus-context" class="focus-context" hidden></div>');tools.insertAdjacentHTML('beforeend','<button type="button" id="uncertain-deadlines" class="text-button" title="预计或待定时间不计入精确截止密度" disabled>预计 / 待定</button><button type="button" id="clear-activity-focus" class="text-button" data-clear-selection hidden title="清除活动选择">清除选择 ×</button><button type="button" class="button button-small" id="plans-button" data-plans-manager disabled title="正在读取本地数据…">◇ 个人规划</button>');
     D.init({...host,closeDialogs,onSelection:selection=>editor(null,{selection}),onManual:()=>editor()});
     for(const [id,title,content]of [['plans','个人游玩计划','plans-content'],['plan-editor','个人计划','plan-editor-content'],['deadlines','截止明细','deadlines-content']])document.body.insertAdjacentHTML('beforeend',`<dialog id="${id}-dialog" class="feature-dialog" aria-labelledby="${id}-title"><div class="dialog-header"><h2 id="${id}-title">${title}</h2><button type="button" class="icon-button" data-close="${id}-dialog" aria-label="关闭">×</button></div><div class="dialog-body" id="${content}"></div></dialog>`);
+    $('#deadlines-dialog').addEventListener('close',()=>{inspectedDay=null;document.querySelectorAll('.date-inspected').forEach(n=>n.classList.remove('date-inspected'));});
     for(const d of document.querySelectorAll('.feature-dialog'))d.addEventListener('click',e=>{if(e.target!==d)return;const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();});
     document.addEventListener('submit',e=>{if(e.target.id==='plan-form'){e.preventDefault();save();}});
     document.addEventListener('change',e=>{if(e.target.id==='plan-game')eventOptions();});
@@ -149,6 +163,8 @@ window.PlaytimePlanner = (() => {
     for(const type of ['input','change'])document.addEventListener(type,e=>{if(e.target.closest('#plan-form')&&!$('#plan-error').hidden){$('#plan-error').hidden=true;$('#plan-error').textContent='';}});
     document.addEventListener('click',async e=>{
       const b=e.target.closest('button');if(!b||!state())return;
+      if(b.dataset.dayTab){dayTab=b.dataset.dayTab;paintDay();return;}
+      if(b.dataset.onlyDay){await focusDay(b.dataset.onlyDay);$('#deadlines-dialog').close();return;}
       if(b.hasAttribute('data-clear-focus')||b.hasAttribute('data-clear-selection'))await clearFocus();
       else if(b.dataset.foldParent){const collapsed=new Set(view().collapsed_parents);if(collapsed.has(b.dataset.foldParent))collapsed.delete(b.dataset.foldParent);else collapsed.add(b.dataset.foldParent);await H.mutate('/api/workspace',{view:{collapsed_parents:[...collapsed]}},'PATCH');}
       else if(b.dataset.deadlineDay)await deadlines(b.dataset.deadlineDay);
@@ -162,11 +178,11 @@ window.PlaytimePlanner = (() => {
       else if(b.dataset.planForEvent)editor(null,{eventId:b.dataset.planForEvent});
       else if(b.hasAttribute('data-move-plan'))await save(Number(b.dataset.movePlan));
       else if(b.hasAttribute('data-delete-plan')){if(await H.mutate('/api/plans/'+editing,{},'DELETE')){$('#plan-editor-dialog').close();manager();}}
-      else if(b.dataset.agendaDate){$('#deadlines-dialog').close();H.openAgenda(Date.parse(b.dataset.agendaDate)/86400000);}
+      else if(b.dataset.agendaDate){deadlines(b.dataset.agendaDate,'activities');}
     });
     // The game badge is a scope control, while the surrounding title opens details.
     document.addEventListener('click',e=>{const icon=e.target.closest('.event-avatar .game-icon,.catalog-game-badge .game-icon');if(!icon)return;const row=icon.closest('[data-game]');if(row){e.preventDefault();e.stopImmediatePropagation();$('#game-select').value=row.dataset.game;$('#game-select').dispatchEvent(new Event('change',{bubbles:true}));}},true);
   }
   function query(){const url=new URL(location.href);if(url.searchParams.has('planner')){url.searchParams.delete('planner');history.replaceState(null,'',url);manager();}else if(url.searchParams.has('event')){const id=url.searchParams.get('event');url.searchParams.delete('event');history.replaceState(null,'',url);H.openEvent(id);}else if(url.searchParams.has('planEvent')){const id=url.searchParams.get('planEvent');url.searchParams.delete('planEvent');history.replaceState(null,'',url);editor(null,{eventId:id});}else if(url.searchParams.has('plan')){const id=url.searchParams.get('plan');url.searchParams.delete('plan');history.replaceState(null,'',url);editor(id);}}
-  return {init,filterFocus,arrange,familyControls,densityButton,focusDay,clearFocus,selectEvent,update,detail,plansModule,planBars,monthPlans,agendaPlans,relatedRewards,query,creationRow:()=>D.row(),stopCreating:()=>D.stop(),get creating(){return D.active;},get holding(){return D.holding;}};
+  return {init,filterFocus,arrange,familyControls,densityButton,density,deadlines,queueFocus,focusDay,clearFocus,selectEvent,update,detail,plansModule,planBars,monthPlans,agendaPlans,relatedRewards,query,creationRow:()=>D.row(),stopCreating:()=>D.stop(),get creating(){return D.active;},get holding(){return D.holding;}};
 })();

@@ -1,6 +1,6 @@
-# 开发文档 · v0.2.0
+# 开发文档 · V0.2.4
 
-“游时 Playtime”是可本地部署的游戏活动日历，由来源适配器读取公开信息，转换为 JSON 后交给统一时间轴、日历和提醒系统。不依赖 AI API 或游戏账号。v0.2.0 提供个人规划、备份恢复、插件管理、提醒范围、手机布局及保守复查；架构见 [architecture.md](architecture.md)，插件见 [plugins.md](plugins.md)，升级和当前边界见 [发布说明](releases/v0.2.0.md)。
+“游时 Playtime”是可本地部署的游戏活动日历，由来源适配器读取公开信息，转换为 JSON 后交给统一时间轴、日历和提醒系统。不依赖 AI API 或游戏账号。V0.2.4 提供个人规划、备份恢复、插件管理、提醒范围、手机布局及保守复查；架构见 [architecture.md](architecture.md)，插件见 [plugins.md](plugins.md)，升级和当前边界见 [发布说明](releases/v0.2.4.md)。
 
 插件 API 保持 1，个人状态与公告快照分开保存；碧蓝航线自动头图匹配及有限历史样本的验证见 [回测说明](azurlane-artwork-alignment.md)。来源和素材声明继续适用。
 
@@ -11,7 +11,7 @@
 | 游戏 | 区服 | 接入方式 | 当前使用的信息来源 |
 | --- | --- | --- | --- |
 | 明日方舟：终末地 | 国服 | 内置适配器 | 官网版本更新公告、新版本导览专题及其公开素材 |
-| 明日方舟 | 国服 | 内置适配器 | PRTS Wiki 活动模板与公告；官网活动/寻访头图 |
+| 明日方舟 | 国服 | 内置适配器 | 官网活动预告、分段/兑换日期与章节头图；保留旧 PRTS 条目 |
 | 胜利女神：NIKKE | 国际服 | `nikke-global` JSON 插件 + GameKee 引擎 | GameKee 对应区服活动日历和公告 |
 | 碧蓝航线 | 国服 | `azurlane-cn` JSON 插件 + BWIKI 引擎 | BWIKI 国服改建公告；Azur Lane Wiki 已核对头图 |
 | 绝区零 | 国服 | `zzz-cn` JSON 插件 + 官网引擎 | 官网中文公告和头图；BWIKI 精确匹配补图 |
@@ -25,8 +25,8 @@
 | 网站 / 团队 | 使用内容及说明 |
 | --- | --- |
 | [《明日方舟：终末地》官网](https://endfield.hypergryph.com/) · [版本导览](https://endfield.hypergryph.com/version_briefing/latest?source_from=official) | 国服更新公告、维护时间、活动与奖励字段、官方导览及头图。感谢鹰角网络及相关公告与美术制作团队。 |
-| [《明日方舟》官网](https://ak.hypergryph.com/#information) | 按对应公告章节匹配活动、寻访图片。感谢官方运营与素材制作团队。 |
-| [PRTS Wiki](https://prts.wiki/w/首页) · [活动一览](https://prts.wiki/w/活动一览) | 明日方舟国服结构化活动信息、兑换截止及公告依据。感谢 PRTS 编辑与维护者。 |
+| [《明日方舟》官网](https://ak.hypergryph.com/news) | 活动预告、独立寻访公告的国服时间、分段开放、兑换时间及章节图片。感谢官方运营与素材制作团队。 |
+| [PRTS Wiki](https://prts.wiki/w/首页) · [活动一览](https://prts.wiki/w/活动一览) | 历史快照及旧版结构化活动信息、兑换截止和公告依据；当前默认同步不再请求，保留署名与解析器。感谢 PRTS 编辑与维护者。 |
 | [GameKee NIKKE 国际服活动日历](https://www.gamekee.com/nikke/huodong/19) | 国际服活动卡、公告整理、日期与对应头图。感谢 GameKee 与 NIKKE Wiki 社区贡献者；这是社区来源，不标为游戏官方。 |
 | [哔哩哔哩游戏 Wiki / 碧蓝海事局](https://wiki.biligame.com/blhx/游戏活动表) | 碧蓝航线国服改建公告、活动时间与部分图片，以及小活动任务/奖励表研究。感谢 BWIKI 平台、碧蓝海事局与相关编辑者。 |
 | [Azur Lane Wiki](https://azurlane.koumakan.jp/wiki/Recent_News) | 碧蓝航线英文活动专题与已核对头图、跨语言任务表研究。感谢该 Wiki 编辑与维护者；英文区服日期不用于国服排期。 |
@@ -60,13 +60,13 @@
 
 ## 本版实现边界
 
-v0.2.0 包含五游戏元数据、独立同步、JSON 插件管理、组合时间线、个人规划拖选/时间条、日期聚焦、截止密度、备份恢复、提醒范围、当地时间校正、共享主题与桌面气泡。碧蓝航线按有限的名称、批次和任务证据自动匹配头图，无可靠候选时回退；国服日期不随外服资料移动。Windows 系统时钟面板直接接入、免重启重载、原生桌面插件列表与备份编辑仍待后续实现。详细限制与升级方式见 [v0.2.0 说明](releases/v0.2.0.md)。
+V0.2.4 包含五游戏元数据、独立同步、JSON 插件管理、组合时间线、个人规划拖选/时间条、日期聚焦、截止密度、备份恢复、提醒范围、当地时间校正、共享主题与桌面气泡。碧蓝航线按有限的名称、批次和任务证据自动匹配头图，无可靠候选时回退；国服日期不随外服资料移动。已补齐原生插件列表、提醒范围与最近备份；Windows 系统时钟面板直接接入、免重启重载与完整实机可访问性验收仍待后续完成。详细限制与升级方式见 [V0.2.4 说明](releases/v0.2.4.md)。
 
 ## 当前页面
 
 以下截图来自隔离测试数据，不包含个人笔记或账号信息。
 
-![v0.2.0 工作区](screenshots/v0.2.0-workspace.png)
+![V0.2.4 工作区](screenshots/v0.2.4-workspace.png)
 
 ![日历展开模式](screenshots/timeline-expanded.png)
 

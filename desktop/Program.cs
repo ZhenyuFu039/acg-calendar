@@ -30,6 +30,10 @@ public static class Program
             directory = directory.Parent;
         }
         if (root == null) { MessageBox.Show("找不到 app.py，请从项目目录运行 start-desktop.ps1。", "游时"); return; }
+        // A restart passes the old process id; wait until it has released the single-instance lock.
+        for (int i = 0; i + 1 < args.Length; i++)
+            if (args[i] == "--after" && int.TryParse(args[i + 1], out int previous))
+                try { using var old = Process.GetProcessById(previous); old.WaitForExit(15000); } catch (ArgumentException) { }
         using var instance = new Mutex(true, "Local\\PlaytimeDesktop-" + StableKey(Path.GetFullPath(root)) + (args.Contains("--smoke-test") ? "-QA-" + Guid.NewGuid().ToString("N") : ""), out bool first);
         if (!first) { MessageBox.Show("游时已在运行，请点击系统托盘中的日历图标。", "游时"); return; }
         var app = new System.Windows.Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
@@ -83,7 +87,7 @@ public sealed partial class CalendarWindow : Window
     readonly Dictionary<string, ImageSource> pictures = new();
     DateTime? selected;
     DateTimeOffset lastRefresh;
-    Button mode = null!, pin = null!;
+    Button mode = null!;
     static Brush Ink = Brush("#233126"), Muted = Brush("#758073"), Green = Brush("#D8ED9A");
 
     public CalendarWindow(string root, bool offline, bool smoke = false)
@@ -129,14 +133,14 @@ public sealed partial class CalendarWindow : Window
         bubbleMenu = new Forms.ToolStripMenuItem("仅显示活动气泡");
         bubbleMenu.Click += (_, _) => Dispatcher.Invoke(() => SetBubbleMode(!bubbleMode));
         menu.Items.Add(bubbleMenu);
-        menu.Items.Add("打开完整时间轴", null, (_, _) => Open(address + "?game=" + selectedGame));
+        menu.Items.Add("打开完整日历（浏览器）", null, (_, _) => Dispatcher.Invoke(() => Open(FullCalendarUrl())));
         menu.Items.Add("导出日历文件", null, async (_, _) => await Export());
         notificationsMenu = new Forms.ToolStripMenuItem("启用 Windows 通知");
         notificationsMenu.Click += async (_, _) => await Mutate("/api/settings", new { native_notifications = !notificationsMenu.Checked });
         menu.Items.Add(notificationsMenu);
         menu.Items.Add("测试提醒", null, async (_, _) => await Mutate("/api/notifications/test", new { }));
         menu.Items.Add(new Forms.ToolStripSeparator());
-        menu.Items.Add("退出游时", null, (_, _) => Dispatcher.Invoke(Exit));
+        menu.Items.Add("退出游时（停止提醒）", null, (_, _) => Dispatcher.Invoke(Exit));
         tray.ContextMenuStrip = menu;
         tray.MouseClick += (_, e) => { if (e.Button == Forms.MouseButtons.Left) Dispatcher.Invoke(() => { if (IsVisible && IsActive && !edgeHidden) Hide(); else { RevealEdge(); Show(); Activate(); } }); };
         Closing += (_, e) => { if (!exiting) { e.Cancel = true; Dispatcher.BeginInvoke(new Action(CloseToDesktop)); } };
@@ -232,8 +236,10 @@ public sealed partial class CalendarWindow : Window
             notificationsMenu.Checked = state.RootElement.GetProperty("settings").GetProperty("native_notifications").GetBoolean();
             UpdateReminderControls(state.RootElement.GetProperty("settings"));
             UpdateProviders(state.RootElement);
+            UpdateReminderScope(state.RootElement); UpdateSyncProgress(state.RootElement);
             UpdateWorkspace(state.RootElement);
             UpdatePlanner(state.RootElement);
+            await ApplyPendingWindow(state.RootElement);
             await UpdateProviderPictures();
             events = state.RootElement.GetProperty("events").Deserialize<CalendarEvent[]>(json)!;
             // Clone source JsonElements before the response document is disposed.
@@ -252,7 +258,7 @@ public sealed partial class CalendarWindow : Window
     void Render()
     {
         clock.Text = DateTime.Now.ToString("M月d日 dddd HH:mm") + " · 本机时区";
-        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("当前没有活动数据，可在侧栏同步或检查插件。")); RenderPlannerLayers(Array.Empty<CalendarEvent>()); ApplyWorkspaceVisuals(desktopLayout); return; }
+        if (events.Length == 0) { cards.Children.Clear(); cards.Children.Add(MessageBubble("当前没有活动数据，可在侧栏同步或检查插件。")); RenderPlannerLayers(Array.Empty<CalendarEvent>()); ApplyShortLayout(); ApplyWorkspaceVisuals(desktopLayout); return; }
         var scoped = events.Where(e => InScope(e.Game)).ToArray();
         rewardHeader.Visibility = !bubbleMode && ModuleVisible("rewards") && scoped.Any(e => e.Reward.ValueKind == JsonValueKind.Object) ? Visibility.Visible : Visibility.Collapsed;
         subtitle.Text = selected is DateTime day ? day.ToString("M月d日") + "的活动" : showAll ? "全部活动 · " + scoped.Length + " 项" : "接下来，别错过";
@@ -276,7 +282,7 @@ public sealed partial class CalendarWindow : Window
             AttachBubbleDrag(card);
             card.Margin = new Thickness(familyDepth.GetValueOrDefault(entry.Id) * 12, 0, 0, card.Margin.Bottom);
             var layout = new Grid(); layout.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(53) }); layout.ColumnDefinitions.Add(new ColumnDefinition());
-            var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.White, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), ToolTip = GameLabel(entry.Game) };
+            var badge = new Border { Width = 43, Height = 43, VerticalAlignment = VerticalAlignment.Top, HorizontalAlignment = HorizontalAlignment.Left, Background = GamePicture(entry.Game) != null ? Brushes.White : Surface, BorderBrush = gameColor, BorderThickness = new Thickness(1), CornerRadius = new CornerRadius(4), ToolTip = GameLabel(entry.Game) };
             badge.Child = (UIElement)GameIdentity(entry.Game); layout.Children.Add(badge);
             badge.MouseLeftButtonUp += (_, e) => { gameSelect.SelectedValue = entry.Game; e.Handled = true; };
             var body = new StackPanel();
@@ -284,7 +290,7 @@ public sealed partial class CalendarWindow : Window
             if (selectedGame is "all" or "selected") type = GameLabel(entry.Game) + " · " + type;
             var heading = new DockPanel();
             var done = Button(entry.Completed ? "↶" : "✓", async () => await Mutate("/api/events/" + entry.Id, new { completed = !entry.Completed }, true));
-            done.ToolTip = entry.Completed ? "撤销完成" : "标记完成"; done.Padding = new Thickness(6, 2, 6, 2); DockPanel.SetDock(done, Dock.Right); heading.Children.Add(done);
+            done.ToolTip = entry.Completed ? "撤销完成" : "标记完成"; System.Windows.Automation.AutomationProperties.SetName(done, (entry.Completed ? "撤销完成：" : "标记完成：") + entry.Title); done.Padding = new Thickness(6, 2, 6, 2); DockPanel.SetDock(done, Dock.Right); heading.Children.Add(done);
             var title = new Grid { MinHeight = dense ? 23 : 42 };
             if (Picture(entry) is ImageSource picture)
                 title.Children.Add(new Image { Source = picture, Width = 170, Height = dense ? 30 : 46, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Stretch = Stretch.UniformToFill, Opacity = workspaceDark ? .25 : .42, OpacityMask = new LinearGradientBrush(Colors.Black, Colors.Transparent, new Point(0, .5), new Point(1, .5)), IsHitTestVisible = false });
@@ -295,7 +301,7 @@ public sealed partial class CalendarWindow : Window
             bool point = entry.Time_Kind == "point";
             string remaining = point ? (upcoming ? Countdown(entry.Begin!.Value - now) + "后上线" : "已上线") : due == null ? "截止待定" : (due <= now ? "已结束" : Countdown(due.Value - now) + (upcoming ? "后开始" : "后截止"));
             var countdown = Text(type + " · " + (entry.Completed ? "已完成" : certainty + remaining), dense ? 10 : 12, true); countdown.Foreground = color; countdown.Margin = new Thickness(0, dense ? 3 : 7, 0, 3); body.Children.Add(countdown);
-            var dates = Text((point ? "更新 " : "开始 ") + Format(entry.Begin) + (entry.Start.State == "estimated" ? "（预计）" : "") + (point ? "" : (dense ? " → " : "\n截止 ") + Format(entry.Finish) + (entry.End.State == "estimated" ? "（预计）" : "")), dense ? 10 : 11); dates.Foreground = Muted; body.Children.Add(dates);
+            var dates = Text((point ? "更新 " : "开始 ") + Format(entry.Begin) + (entry.Start.State == "estimated" ? "（预计）" : "") + (point ? "" : (dense ? " → " : "\n截止 ") + Format(entry.Finish) + (entry.End.State == "estimated" ? "（预计）" : "")), 11); dates.Foreground = Muted; body.Children.Add(dates);
             if (entry.Begin != null && entry.Finish > entry.Begin)
             {
                 double progress = Math.Clamp((now - entry.Begin.Value).TotalSeconds / (entry.Finish.Value - entry.Begin.Value).TotalSeconds * 100, 0, 100);
@@ -318,13 +324,14 @@ public sealed partial class CalendarWindow : Window
             actions.Children.Add(Button("详情 ↗", () => Open(address + "?event=" + entry.Id)));
             actions.Children.Add(Button(entry.Starred ? "取消收藏" : "☆ 收藏", async () => await Mutate("/api/events/" + entry.Id, new { starred = !entry.Starred }, true)));
             actions.Children.Add(Button("标记完成", async () => await Mutate("/api/events/" + entry.Id, new { completed = true }, true)));
-            if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button(entry.Game == "arknights-cn" ? "PRTS ↗" : "公告 ↗", () => Open(source.GetString()!)));
+            if (entry.Source.TryGetProperty("url", out var source)) actions.Children.Add(Button(entry.Source.TryGetProperty("kind", out var kind) && kind.GetString() == "community_wiki" ? "PRTS ↗" : "公告 ↗", () => Open(source.GetString()!)));
             actions.Children.Add(Button("◇ 安排游玩 ↗", () => Open(address + "?planEvent=" + entry.Id)));
             AddFamilyControls(body, entry, eligible.Select(e => e.Id).ToHashSet());
             if (!dense) body.Children.Add(actions); Grid.SetColumn(body, 1); layout.Children.Add(body); card.Child = layout; cards.Children.Add(card);
         }
-        if (ordered.Length == 0) cards.Children.Add(MessageBubble("没有符合当前筛选的待办活动。右键打开侧栏，可切换游戏或显示全部活动。"));
-        status.Text = $"当前 {ordered.Length} / 共 {scoped.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n" + (selectedGame == "arknights-cn" ? "来源：PRTS 社区 Wiki · 国服 · 可在完整时间轴查看修订。" : showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。");
+        if (ordered.Length == 0) cards.Children.Add(MessageBubble("没有符合当前筛选的待办活动。点下方“更多”可切换游戏或显示全部活动。"));
+        status.Text = $"当前 {ordered.Length} / 共 {scoped.Length} 项 · {lastRefresh:HH:mm:ss} 更新\n" + (selectedGame == "arknights-cn" ? "国服 · 来源见各活动的官网 / Wiki 页面，官网预告优先。" : showAll ? "包含已结束、已完成及维护，滚动查看所有条目。" : "近期视图隐藏已结束和已完成，点“全部活动”查看。");
+        ApplyShortLayout();
         ApplyWorkspaceVisuals(desktopLayout);
     }
     ImageSource? currencyIcon;
@@ -398,6 +405,16 @@ public sealed partial class CalendarWindow : Window
         if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
             try { Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true }); } catch { }
     }
+    // Plugin changes apply on start: launch a fresh copy that waits for this one, then exit normally.
+    void Restart()
+    {
+        var arguments = new List<string> { "--project", root, "--after", Environment.ProcessId.ToString() };
+        if (offline) arguments.Add("--offline");
+        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false, WorkingDirectory = root };
+        foreach (var argument in arguments) start.ArgumentList.Add(argument);
+        try { Process.Start(start); } catch (Exception error) { status.Text = "无法重新启动：" + error.Message; return; }
+        Exit();
+    }
     void Exit()
     {
         exiting = true; timer.Stop(); edgeTimer.Stop(); SavePreferences(); tray.Visible = false; tray.Dispose(); trayIcon.Dispose();
@@ -457,10 +474,13 @@ public sealed partial class CalendarWindow : Window
             bool appearanceVerified = await AppearanceSmokeTest();
             bool interactionVerified = await InteractionSmokeTest();
             bool plannerVerified = await PlannerSmokeTest();
+            bool parityVerified = await ParitySmokeTest();
+            bool quickActionsVerified = await QuickActionsSmokeTest();
+            bool smallWindowVerified = await SmallWindowSmokeTest();
             month.SelectedDate = DateTime.Today.AddDays(1);
             await dateUpdate;
             if (selected != DateTime.Today.AddDays(1)) throw new Exception("Calendar selection did not update");
-            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, workspaceVerified, appearanceVerified, interactionVerified, plannerVerified, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
+            await File.WriteAllTextAsync(Path.Combine(dataDirectory, "result.json"), JsonSerializer.Serialize(new { ok = true, entries = events.Length, workspaceVerified, appearanceVerified, interactionVerified, plannerVerified, parityVerified, quickActionsVerified, smallWindowVerified, verifiedRewardTotal, exportBytes = ics.Length, backendPid = backend?.Id }));
         }
         catch (Exception error)
         {

@@ -35,10 +35,10 @@ public sealed partial class CalendarWindow
 
     void BuildWorkspaceSettings()
     {
-        Resources["ControlCorner"] = new CornerRadius(4);
+        Resources["ControlCorner"] = new CornerRadius(4); Resources["FocusInk"] = Ink;
         Resources[typeof(Button)] = (Style)XamlReader.Parse("""
             <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Button">
-              <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource ControlCorner}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonSurface" Property="Opacity" Value="0.8"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
+              <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border x:Name="ButtonSurface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource ControlCorner}" Padding="{TemplateBinding Padding}"><ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" RecognizesAccessKey="True"/></Border><ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="ButtonSurface" Property="Opacity" Value="0.8"/></Trigger><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ButtonSurface" Property="BorderThickness" Value="2"/><Setter TargetName="ButtonSurface" Property="BorderBrush" Value="{DynamicResource FocusInk}"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
             </Style>
             """);
         // The Windows default ComboBox template keeps a light background even
@@ -47,7 +47,7 @@ public sealed partial class CalendarWindow
             <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="ComboBox">
               <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBox">
                 <Grid>
-                  <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ControlCorner}" Padding="8,5">
+                  <Border x:Name="Frame" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="{DynamicResource ControlCorner}" Padding="8,5">
                     <DockPanel><TextBlock DockPanel.Dock="Right" Text="▾" Foreground="{TemplateBinding Foreground}" Margin="8,0,0,0"/><ContentPresenter x:Name="SelectionContent" Content="{Binding SelectedItem.Label, RelativeSource={RelativeSource TemplatedParent}}" VerticalAlignment="Center"/></DockPanel>
                   </Border>
                   <ToggleButton Focusable="False" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
@@ -59,6 +59,7 @@ public sealed partial class CalendarWindow
                     </Border>
                   </Popup>
                 </Grid>
+              <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="Frame" Property="BorderThickness" Value="2"/><Setter TargetName="Frame" Property="BorderBrush" Value="{DynamicResource FocusInk}"/></Trigger></ControlTemplate.Triggers>
               </ControlTemplate></Setter.Value></Setter>
             </Style>
             """);
@@ -68,36 +69,47 @@ public sealed partial class CalendarWindow
                 <Track x:Name="PART_Track" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
                   <Track.DecreaseRepeatButton><RepeatButton Command="Slider.DecreaseLarge"><RepeatButton.Template><ControlTemplate TargetType="RepeatButton"><Border Height="3" Background="{TemplateBinding Foreground}" VerticalAlignment="Center"/></ControlTemplate></RepeatButton.Template></RepeatButton></Track.DecreaseRepeatButton>
                   <Track.IncreaseRepeatButton><RepeatButton Command="Slider.IncreaseLarge"><RepeatButton.Template><ControlTemplate TargetType="RepeatButton"><Border Height="3" Background="{TemplateBinding Foreground}" Opacity="0.25" VerticalAlignment="Center"/></ControlTemplate></RepeatButton.Template></RepeatButton></Track.IncreaseRepeatButton>
-                  <Track.Thumb><Thumb Width="10" Height="16"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="{TemplateBinding Foreground}"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
+                  <Track.Thumb><Thumb x:Name="SliderThumb" Width="10" Height="16"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border Background="{TemplateBinding Foreground}"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
                 </Track>
-              </Grid></ControlTemplate></Setter.Value></Setter>
+              </Grid><ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="SliderThumb" Property="Width" Value="15"/><Setter TargetName="SliderThumb" Property="Height" Value="20"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter>
             </Style>
             """);
         Resources[typeof(CheckBox)] = (Style)XamlReader.Parse("""
             <Style xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="CheckBox">
               <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="CheckBox">
                 <Grid Background="Transparent"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                  <Border Width="18" Height="18" Margin="0,0,7,0" VerticalAlignment="Center" BorderBrush="{TemplateBinding Foreground}" BorderThickness="1" CornerRadius="3" Background="{TemplateBinding Background}">
+                  <Border x:Name="Box" Width="18" Height="18" Margin="0,0,7,0" VerticalAlignment="Center" BorderBrush="{TemplateBinding Foreground}" BorderThickness="1" CornerRadius="3" Background="{TemplateBinding Background}">
                     <Path x:Name="CheckMark" Data="M2,7 L6,11 L13,2" Stroke="{TemplateBinding Foreground}" StrokeThickness="2.2" Margin="1" Visibility="Collapsed"/>
                   </Border>
                   <ContentPresenter Grid.Column="1" VerticalAlignment="Center" RecognizesAccessKey="True" Content="{TemplateBinding Content}" TextElement.Foreground="{TemplateBinding Foreground}"/>
                 </Grid>
-                <ControlTemplate.Triggers><Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers>
+                <ControlTemplate.Triggers><Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Box" Property="BorderThickness" Value="2.5"/></Trigger><Trigger Property="IsChecked" Value="True"><Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/></Trigger><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.5"/></Trigger></ControlTemplate.Triggers>
               </ControlTemplate></Setter.Value></Setter>
             </Style>
             """);
-        Section(desktopSettings, "布局与主题");
-        themePreset.DisplayMemberPath = "Label"; themePreset.SelectedValuePath = "Id"; themePreset.Margin = new Thickness(0, 0, 0, 8);
+        BuildNetworkPage();
+    }
+
+    // Theme and layout come after the window controls on the appearance page.
+    void BuildThemeSettings()
+    {
+        Section(desktopSettings, "主题与布局（高级）");
+        System.Windows.Automation.AutomationProperties.SetName(themePreset, "主题"); themePreset.DisplayMemberPath = "Label"; themePreset.SelectedValuePath = "Id"; themePreset.Margin = new Thickness(0, 0, 0, 8);
         themePreset.SelectionChanged += async (_, _) => { if (!changingWorkspace && themePreset.SelectedValue is string id && workspaceDefaults.ValueKind == JsonValueKind.Object && workspaceDefaults.GetProperty("themes").TryGetProperty(id, out var preset)) await Mutate("/api/workspace", new { theme = preset }, true); };
         desktopSettings.Children.Add(themePreset);
         desktopSettings.Children.Add(SidebarButton("编辑模块布局 ↗", () => Open(address + "?appearance=layout")));
         desktopSettings.Children.Add(SidebarButton("自定义颜色与字号 ↗", () => Open(address + "?appearance=theme")));
         desktopSettings.Children.Add(SidebarButton("恢复默认布局", async () => { if (workspaceDefaults.ValueKind == JsonValueKind.Object) await Mutate("/api/workspace", new { layout = workspaceDefaults.GetProperty("layout") }, true); }));
+    }
+
+    void BuildNetworkPage()
+    {
         Section(networkSettings, "联网采集状态");
         networkStatus.FontSize = 10; networkStatus.TextWrapping = TextWrapping.Wrap; networkStatus.Margin = new Thickness(0, 0, 0, 8); networkSettings.Children.Add(networkStatus);
         networkSettings.Children.Add(SidebarButton("暂停 / 恢复联网", async () => await Mutate("/api/network", new { paused = !networkPaused }, true)));
         networkSettings.Children.Add(SidebarButton("站点配额与冷却 ↗", () => Open(address + "?appearance=network")));
         networkSettings.Children.Add(SidebarButton("同步当前游戏", async () => await Mutate("/api/sync", new { game = selectedGame })));
+        BuildSyncAndBackupControls();
     }
 
     bool ModuleVisible(string id) => !workspaceModules.TryGetValue(id, out var m) || (m.Visible && !m.Collapsed);
@@ -135,7 +147,7 @@ public sealed partial class CalendarWindow
         themeRadius = theme.GetProperty("desktop_radius").GetDouble(); themeSpacing = theme.GetProperty("spacing").GetDouble(); fontScale = theme.GetProperty("font_size").GetDouble() / 14; surfaceOpacity = theme.GetProperty("card_opacity").GetDouble();
         themeControlRadius = theme.GetProperty("desktop_control_radius").GetDouble(); themeBorderWidth = theme.GetProperty("border_width").GetDouble(); themeHeadingWeight = theme.GetProperty("heading_weight").GetDouble();
         themeTexture = theme.GetProperty("texture").GetString()!; themeTextureOpacity = theme.GetProperty("texture_opacity").GetDouble() / 100;
-        Resources["ControlCorner"] = new CornerRadius(themeControlRadius);
+        Resources["ControlCorner"] = new CornerRadius(themeControlRadius); Resources["FocusInk"] = Ink;
         changingWorkspace = true;
         var names = workspaceDefaults.GetProperty("theme_names");
         var choices = workspaceDefaults.GetProperty("themes").EnumerateObject().Select(t => new GameChoice(t.Name, names.GetProperty(t.Name).GetString()!)).ToList();
@@ -197,10 +209,10 @@ public sealed partial class CalendarWindow
         bool inCalendar = node == month;
         for (var parent = node; !inCalendar && parent != null; parent = VisualTreeHelper.GetParent(parent)) inCalendar = parent == month;
         bool inAccent = false;
-        for (var parent = node; !inAccent && parent != null; parent = VisualTreeHelper.GetParent(parent)) inAccent = (parent is System.Windows.Controls.Primitives.CalendarDayButton day && (day.IsToday || day.IsSelected)) || (parent is Button b && ((b == navigationTab && sidebarPage == "calendar") || (b == settingsTab && sidebarPage == "appearance") || (b == remindersTab && sidebarPage == "reminders") || (b == networkTab && sidebarPage == "network")));
+        for (var parent = node; !inAccent && parent != null; parent = VisualTreeHelper.GetParent(parent)) inAccent = (parent is System.Windows.Controls.Primitives.CalendarDayButton day && (day.IsToday || day.IsSelected)) || (parent is Button b && ((b == navigationTab && sidebarPage == "calendar") || (b == settingsTab && sidebarPage == "appearance") || (b == remindersTab && sidebarPage == "reminders") || (b == networkTab && sidebarPage == "network") || (b == bubbleQuick && bubbleMode)));
         if (node is TextBlock text)
         {
-            double size = (double)text.GetValue(BaseFontProperty); if (double.IsNaN(size)) { size = text.FontSize; text.SetValue(BaseFontProperty, size); } text.FontSize = size * fontScale;
+            double size = (double)text.GetValue(BaseFontProperty); if (double.IsNaN(size)) { size = text.FontSize; text.SetValue(BaseFontProperty, size); } text.FontSize = size * fontScale * systemTextScale;
             if (text.Foreground == Muted) text.SetValue(MutedRoleProperty, true);
             text.Foreground = inAccent ? AccentInk : (bool)text.GetValue(MutedRoleProperty) ? (inNav ? NavMuted : Muted) : (inNav ? NavInk : Ink);
             if (text.FontSize >= 16) { text.FontWeight = FontWeight.FromOpenTypeWeight((int)themeHeadingWeight); text.FontFamily = new FontFamily("Bahnschrift, Microsoft YaHei UI"); }

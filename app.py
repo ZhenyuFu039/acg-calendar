@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import hashlib
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
@@ -22,7 +23,7 @@ from acg_calendar.artwork import ArtworkCache
 from acg_calendar.ical import calendar_bytes
 from acg_calendar.parser import ROOT, iso, resolve_versions, stamp
 from acg_calendar.reminders import ReminderEngine, check_event_offsets, native_available
-from acg_calendar.storage import Store
+from acg_calendar.storage import DEFAULT_SETTINGS, Store
 from acg_calendar.providers import create_registry
 from acg_calendar.workspace import WorkspaceService, timeline, sort_events
 from acg_calendar.network import NetworkManager, check_policy
@@ -97,6 +98,7 @@ class Application:
             "sync": self.store.get_meta("sync", {}), "notifications": self.store.notifications(),
             "native_available": self.desktop and native_available(),
             "desktop_delivery": self.store.get_meta("desktop_delivery"),
+            "desktop_window_pending": self.store.get_meta("desktop_window_pending"),
             "briefing_previews": self.store.get_meta("briefing_previews", []),
             "sync_by_game": {g: self.store.get_meta(p.sync_key, {}) for g, p in self.registry.providers.items()},
             "sync_schedule": {g: {**self.schedule.snapshot(p.sync_key, self.store.settings()['sync_interval_minutes']), 'enabled': self.auto_sync} for g, p in self.registry.providers.items()},
@@ -216,18 +218,27 @@ class Application:
             contents, network = self.check_restore(document, warnings)
         except ValueError as error:
             raise ValueError("备份未通过检查，当前数据未改变：" + str(error)) from None
+        window = backup.desktop_window(document.get("desktop_window"))
+        pending = {"id": secrets.token_urlsafe(24), "preferences": window, "restored_at": iso(dt.datetime.now(dt.timezone.utc))} if window is not None else None
         # Every personal write goes through Store.lock; holding it for replace, check and
         # rollback means no edit from another window can land in between and be lost.
         # Nothing under the lock touches NetworkManager, whose condition is taken before Store.lock.
         with self.store.lock:
             safety = backup.create(self.store, self.data_dir, "before-restore", app_version=__version__, plugins=self.registry.games, note="恢复其他备份前的当前数据")
             current = backup.snapshot(self.store)
-            backup.apply(self.store, contents)
+            previous_pending = self.store.get_meta("desktop_window_pending")
+            backup.apply(self.store, contents, desktop_window_pending=pending)
             try:
                 self.verify_personal_data()
             except Exception as error:
-                backup.apply(self.store, current)
+                backup.apply(self.store, current, desktop_window_pending=previous_pending)
                 raise ValueError("恢复后的数据无法读取，已回到恢复前的状态：" + str(error)) from None
+        # The desktop app rewrites its window file while running, so the backed-up window
+        # preferences are handed over through the state and applied by the desktop itself.
+        if window is not None:
+            warnings.append("桌面窗口位置与外观会在桌面版下次刷新时应用")
+        elif document.get("desktop_window") is not None:
+            warnings.append("备份中的桌面窗口偏好格式无效，已跳过")
         if network is not None:
             try:
                 self.network.update({"policy": network.get("policy", {}), "paused": network.get("paused", False)})
@@ -238,6 +249,96 @@ class Application:
         except Exception as error:
             warnings.append("个人数据已恢复，但提醒检查失败：" + str(error))
         return {"restored": backup.counts(contents), "from": document.get("created_at"), "safety_backup": safety["name"], "warnings": warnings}
+
+    def acknowledge_window(self, payload):
+        """Only consume the exact hand-over applied by the desktop, including across processes."""
+        if not isinstance(payload, dict) or set(payload) not in ({"id"}, {"restored_at"}):
+            raise ValueError("请提供桌面窗口恢复 ID")
+        with self.store.connection() as conn:
+            row = conn.execute("SELECT payload FROM meta WHERE id='desktop_window_pending'").fetchone()
+            pending = json.loads(row[0]) if row else None
+            # Older, already queued hand-overs had only a timestamp. They can still finish,
+            # but a timestamp must never acknowledge a new hand-over that has a unique ID.
+            key = "id" if pending and pending.get("id") else "restored_at"
+            if not pending or set(payload) != {key} or not isinstance(payload[key], str) or not payload[key] or pending.get(key) != payload[key]:
+                raise ValueError("没有匹配的待应用桌面窗口偏好")
+            if not conn.execute("DELETE FROM meta WHERE id='desktop_window_pending' AND payload=?", (row[0],)).rowcount:
+                raise ValueError("桌面窗口偏好已被新的恢复替换")
+
+    def game_records(self, payload):
+        """Personal records of one game: marks on its activities and versions, and plans tied to it.
+        Uses the stored snapshots, so a disabled or removed plugin's game can still be cleared."""
+        if not isinstance(payload, dict) or set(payload) != {"game"} or not isinstance(payload["game"], str):
+            raise ValueError("请提供游戏 ID game")
+        game = payload["game"]
+        versions = [v for v in self.store.versions() if v.get("game") == game]
+        if not versions:
+            raise LookupError("没有这个游戏的日历记录")
+        keys = {e["id"] for v in versions for e in v.get("events", [])} | {"version:" + v["id"] for v in versions}
+        state = {k: v for k, v in self.store.state().items() if k in keys}
+        plans = [p for p in self.store.plans() if p.get("game_id") == game]
+        name = next((g["name"] for g in self.registry.games if g["id"] == game), game)
+        return game, name, state, plans
+
+    def preview_clear(self, payload):
+        game, name, state, plans = self.game_records(payload)
+        return {"game": game, "name": name, "marks": len(state), "starred": sum(bool(s.get("starred")) for s in state.values()),
+                "completed": sum(bool(s.get("completed")) for s in state.values()), "notes": sum(bool(s.get("notes")) for s in state.values()),
+                "corrections": sum(bool(s.get("start_override") or s.get("end_override") or s.get("actual_end")) for s in state.values()),
+                "plans": len(plans)}
+
+    def clear_game_records(self, payload):
+        """Delete one game's personal records after an automatic backup; nothing else changes."""
+        with self.store.lock:
+            game, name, state, plans = self.game_records(payload)
+            summary = self.preview_clear(payload)
+            safety = backup.create(self.store, self.data_dir, "before-clear", app_version=__version__, plugins=self.registry.games, note="清除「" + name + "」个人记录之前")
+            with self.store.connection() as conn:
+                conn.executemany("DELETE FROM local_state WHERE id=?", [(k,) for k in state])
+                conn.executemany("DELETE FROM personal_plans WHERE id=?", [(p["id"],) for p in plans])
+        self.reminders.tick()
+        return {**summary, "safety_backup": safety["name"]}
+
+    def preview_restore(self, payload):
+        """What a restore would change, from the same checks as restore_backup; nothing is written."""
+        if set(payload) not in ({"name"}, {"backup"}):
+            raise ValueError("请提供备份文件名 name，或完整的备份内容 backup")
+        document = backup.read(self.data_dir, payload["name"]) if "name" in payload else payload["backup"]
+        warnings = []
+        try:
+            incoming, network = self.check_restore(document, warnings)
+        except ValueError as error:
+            raise ValueError("备份未通过检查：" + str(error)) from None
+        current = backup.snapshot(self.store)
+        titles = {e["id"]: e["title"] for v in self.versions() for e in v["events"]}
+        now, then = current["local_state"], incoming["local_state"]
+        changes = {}
+        for key, label in (("starred", "收藏"), ("completed", "完成状态"), ("ignored", "忽略状态")):
+            on = sorted(i for i in then.keys() | now.keys() if bool(then.get(i, {}).get(key)) and not now.get(i, {}).get(key))
+            off = sorted(i for i in then.keys() | now.keys() if bool(now.get(i, {}).get(key)) and not then.get(i, {}).get(key))
+            changes[key] = {"label": label, "added": len(on), "removed": len(off), "examples": [titles.get(i, i) for i in (on + off)[:5]]}
+        for key, label, fields in (("notes", "备注", ("notes",)), ("corrections", "日期校正", ("start_override", "end_override", "actual_end")),
+                                   ("event_reminders", "单活动提醒", ("reminder_minutes",))):
+            differ = sorted(i for i in then.keys() | now.keys() if any(then.get(i, {}).get(f) != now.get(i, {}).get(f) for f in fields))
+            changes[key] = {"label": label, "changed": len(differ), "examples": [titles.get(i, i.removeprefix("version:")) for i in differ[:5]]}
+        plans_now, plans_then = {p["id"]: p for p in current["personal_plans"]}, {p["id"]: p for p in incoming["personal_plans"]}
+        changes["plans"] = {"label": "个人计划", "added": len(plans_then.keys() - plans_now.keys()), "removed": len(plans_now.keys() - plans_then.keys()),
+                            "changed": sum(plans_then[k] != plans_now[k] for k in plans_then.keys() & plans_now.keys()),
+                            "examples": [p["title"] for k, p in {**plans_now, **plans_then}.items() if plans_then.get(k) != plans_now.get(k)][:5]}
+        settings_now = self.store.settings()
+        # A backup taken before any setting was saved restores the defaults.
+        settings_then = incoming["settings"] if incoming["settings"] is not None else DEFAULT_SETTINGS
+        changes["settings"] = {"label": "显示与提醒设置", "keys": sorted(k for k in SETTING_FIELDS if settings_then.get(k, settings_now.get(k)) != settings_now.get(k))}
+        changes["workspace"] = {"label": "布局与主题", "changed": (incoming["workspace"] or {}) != (current["workspace"] or {})}
+        changes["desktop_window"] = {"label": "桌面窗口位置与外观", "included": backup.desktop_window(document.get("desktop_window")) is not None}
+        network_now = self.network.snapshot()
+        network_keys = []
+        if network is not None:
+            network_keys = sorted(k for k, v in network.get("policy", {}).items() if network_now["policy"].get(k) != v)
+            if network_now["paused"] != network.get("paused", False):
+                network_keys.append("paused")
+        changes["network_policy"] = {"label": "采集设置", "keys": network_keys}
+        return {"from": document.get("created_at"), "app_version": document.get("app_version"), "changes": changes, "warnings": warnings}
 
     def check_restore(self, document, warnings):
         """All checks that need the running app; nothing is written here."""
@@ -295,7 +396,7 @@ class Application:
             raise ValueError("此运行环境暂不支持本机系统通知")
         if "timezone" in patch and (not isinstance(patch["timezone"], str) or not re.fullmatch(r"auto|UTC|[A-Za-z_+-]+(?:/[A-Za-z_+0-9-]+)+", patch["timezone"]) or len(patch["timezone"]) > 100):
             raise ValueError("时区格式无效")
-        if "view" in patch and patch["view"] not in {"timeline", "month", "list"}:
+        if "view" in patch and patch["view"] not in {"timeline", "month", "list", "upcoming"}:
             raise ValueError("不支持的日历视图")
         if "sync_interval_minutes" in patch and (type(patch["sync_interval_minutes"]) is not int or not 1080 <= patch["sync_interval_minutes"] <= 1440):
             raise ValueError("自动复查间隔需为 18–24 小时，另加 0–2 小时随机错峰")
@@ -363,7 +464,7 @@ def handler_for(application):
             host = self.headers.get("Host", "").split(":")[0].lower()
             return host in {"127.0.0.1", "localhost"}
 
-        def send(self, data, status=200, content_type="application/json; charset=utf-8", filename=None, cache_control="no-store"):
+        def send(self, data, status=200, content_type="application/json; charset=utf-8", filename=None, cache_control="no-store", etag=None):
             encoded = json.dumps(data, ensure_ascii=False).encode("utf-8") if not isinstance(data, bytes) else data
             self.send_response(status)
             self.send_header("Content-Type", content_type)
@@ -374,8 +475,25 @@ def handler_for(application):
             self.send_header("Content-Security-Policy", "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
             if filename:
                 self.send_header("Content-Disposition", 'attachment; filename="' + filename + '"')
+            if etag:
+                self.send_header("ETag", etag)
             self.end_headers()
             self.wfile.write(encoded)
+
+        def send_state(self):
+            # The tag covers everything but server_time, so a poll that already holds this
+            # state gets an empty 304 and skips parsing and merging it again.
+            data = application.state()
+            server_time = data.pop("server_time")
+            etag = '"' + hashlib.sha256(json.dumps(data, ensure_ascii=False).encode("utf-8")).hexdigest()[:32] + '"'
+            if self.headers.get("If-None-Match") == etag:
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                return
+            data["server_time"] = server_time
+            self.send(data, etag=etag)
 
         def do_GET(self):
             if not self.valid_host():
@@ -388,7 +506,7 @@ def handler_for(application):
                 if game not in application.registry.ids | {"all", "selected"}:
                     raise ValueError("不支持的游戏")
                 if path == "/api/state":
-                    return self.send(application.state())
+                    return self.send_state()
                 if path == "/api/workspace":
                     return self.send(application.workspace.get())
                 if path == "/api/network":
@@ -433,6 +551,7 @@ def handler_for(application):
                 assets = {"/": "index.html", "/app.js": "app.js", "/workspace.js": "workspace.js", "/styles.css": "styles.css", "/favicon.svg": "favicon.svg", "/assets/oroberyl.png": "assets/oroberyl.png", "/assets/arknights-logo.png": "assets/arknights-logo.png", "/assets/endfield-icon-zh.svg": "assets/endfield-icon-zh.svg"}
                 assets.update({"/customize.js": "customize.js", "/customize.css": "customize.css", "/design.css": "design.css", "/assets/arknights-app-icon.png": "assets/arknights-app-icon.png", "/assets/endfield-app-icon.png": "assets/endfield-app-icon.png"})
                 assets.update({'/planner.js':'planner.js', '/planner.css':'planner.css', '/plan-drawing.js':'plan-drawing.js'})
+                assets.update({'/navigation.js':'navigation.js', '/ux.css':'ux.css'})
                 if path not in assets:
                     return self.send({"error": "页面不存在"}, 404)
                 file = ROOT / "web" / assets[path]
@@ -467,7 +586,7 @@ def handler_for(application):
             try:
                 path = urllib.parse.urlsplit(self.path).path
                 length = int(self.headers.get("Content-Length", "0"))
-                if not 0 <= length <= (backup.MAX_BYTES if path == "/api/backups/restore" else 16000):
+                if not 0 <= length <= (backup.MAX_BYTES if path in {"/api/backups/restore", "/api/backups/preview"} else 16000):
                     return self.send({"error": "请求过大"}, 413)
                 try:
                     payload = json.loads(self.rfile.read(length) or b"{}")
@@ -494,6 +613,20 @@ def handler_for(application):
                     if self.command != "POST" or payload:
                         raise ValueError("创建备份不接受参数")
                     return self.send({"backup": application.create_backup(), "backups": backup.listing(application.data_dir)})
+                if path == "/api/desktop/window-applied":
+                    if self.command != "POST":
+                        raise ValueError("确认桌面恢复需使用 POST")
+                    application.acknowledge_window(payload)
+                    return self.send({"ok": True})
+                if path == "/api/games/records/preview":
+                    return self.send(application.preview_clear(payload))
+                if path == "/api/games/records/clear":
+                    cleared = application.clear_game_records(payload)
+                    return self.send({**application.state(), "cleared": cleared})
+                if path == "/api/backups/preview":
+                    if self.command != "POST":
+                        raise ValueError("预览恢复需使用 POST")
+                    return self.send(application.preview_restore(payload))
                 if path == "/api/backups/restore":
                     if self.command != "POST":
                         raise ValueError("恢复备份需使用 POST")

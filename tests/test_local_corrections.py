@@ -84,3 +84,12 @@ class LocalMaintenanceTests(TempStoreTest):
             urllib.request.urlopen(request)
         self.assertEqual(caught.exception.code, 400)
         self.assertEqual(json.loads(caught.exception.read()), {'error': '请求内容不是有效的 JSON'})
+
+
+class ViewSettingTests(TempStoreTest):
+    def test_upcoming_view_can_be_saved_on_wide_screens_too(self):
+        app = Application(self.directory, auto_sync=False, desktop=False)
+        app.update_settings({'view': 'upcoming'})
+        self.assertEqual(app.store.settings()['view'], 'upcoming')
+        with self.assertRaisesRegex(ValueError, '不支持的日历视图'):
+            app.update_settings({'view': 'agenda'})

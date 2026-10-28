@@ -53,7 +53,9 @@ public sealed partial class CalendarWindow
         if (sidebar.Visibility != Visibility.Collapsed || heading.Visibility != Visibility.Collapsed || footer.Visibility != Visibility.Collapsed)
             throw new Exception("Bubble mode still shows window controls");
         // Read-only native hit testing: transparent pixels must allow the desktop behind through.
-        bool wasTopmost = Topmost; Topmost = true; Activate();
+        // Screen hit testing needs a restored, visible window even if the self-check was started minimized.
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Show(); bool wasTopmost = Topmost; Topmost = true; Activate();
         await Task.Delay(180);
         IntPtr ownWindow = new WindowInteropHelper(this).Handle;
         Point cardScreen = PointToScreen(blank), gapScreen = PointToScreen(gap);

@@ -1,11 +1,24 @@
 {
   "schema_version": 1,
-  "ruleset_version": "0.1.0",
+  "ruleset_version": "0.2.0",
   "game_id": "arknights-cn",
   "game_name": "明日方舟",
   "server": "国服",
   "timezone": "Asia/Shanghai",
-  "source_label": "PRTS 社区 Wiki",
+  "source_label": "明日方舟官方活动预告",
+  "source_mode": "official",
+  "official": {
+    "index_url": "https://ak.hypergryph.com/news",
+    "max_articles": 4,
+    "max_images": 16,
+    "section_pattern": "^[一二三四五六七八九十百]+[、．.]\\s*",
+    "skip_section_pattern": "时装|服饰|礼包|组合包|家具|语音|装扮|采购中心|干员新增|新增干员|公开招募|纪录修复|记录修复",
+    "activity_pattern": "活动|寻访|签到|登录|招募|每日赠送|作战|试炼|限时开放",
+    "time_label_pattern": "活动时间|开放时间|开启时间|领取时间|招募期|预选期|兑换时间",
+    "campaign_pattern": "庆典|周年|新春|春节|夏日|夏季",
+    "exchange_pattern": "兑换|商店|补给站",
+    "source_policy": "official_dates_first_preserve_cached_wiki_no_automatic_prts_requests"
+  },
   "catalog_url": "https://prts.wiki/w/%E6%B4%BB%E5%8A%A8%E4%B8%80%E8%A7%88",
   "api_url": "https://prts.wiki/api.php",
   "max_activity_pages": 8,
@@ -18,5 +31,5 @@
   "unknown_policy": "keep_null_no_midnight_inference",
   "exchange_start_policy": "estimated_from_activity_until_explicit_announcement",
   "announcement_datetime_pattern": "(?:(?P<year>\\d{4})[年/\\-])?(?P<month>\\d{1,2})[月/\\-](?P<day>\\d{1,2})日?\\s*(?P<hour>\\d{1,2}):(?P<minute>\\d{2})",
-  "copyright": "PRTS 编辑内容遵循其 CC BY-NC-SA 4.0 说明；游戏素材另属原权利人，不适用本项目 MIT 代码许可"
+  "copyright": "官网公告与游戏素材归原权利人，不适用本项目 MIT 代码许可；历史 PRTS 编辑内容继续保留其 CC BY-NC-SA 4.0 署名与来源"
 }

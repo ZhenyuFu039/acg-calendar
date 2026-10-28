@@ -1,4 +1,4 @@
-"""PRTS CN calendar adapter. Wiki markup is parsed as data, never executed."""
+"""Official-first CN calendar adapter, with an explicit legacy PRTS parser."""
 from __future__ import annotations
 
 import datetime as dt
@@ -12,6 +12,8 @@ import urllib.parse
 
 from .artwork import ArtworkCache
 from .arknights_artwork import OfficialArknightsArtwork
+from .arknights_official import discover, parse_article, reuse_ids
+from .official import fetch_text
 from .network import network_job
 from .sync_progress import SyncProgress
 from .parser import ROOT, iso, stamp
@@ -265,9 +267,15 @@ def make_version(events, fetched_at, origin='live', errors=None):
 class ArknightsCollector:
     meta_key = 'sync:arknights-cn'
 
-    def __init__(self, store, data_dir: Path, fetcher=None, artwork=None, official_artwork=None):
+    def __init__(self, store, data_dir: Path, fetcher=None, artwork=None, official_artwork=None, *, official_fetcher=None, official_cache=None, source_mode=None):
         self.store, self.data_dir = store, data_dir
         self.fetcher = fetcher or WikiHTTP()
+        # A supplied legacy Wiki transport remains an explicit opt-in (including old fixtures).
+        self.source_mode = source_mode or ('prts' if fetcher is not None and official_fetcher is None else rules()['source_mode'])
+        if self.source_mode not in {'official', 'prts'}:
+            raise ValueError('不支持的明日方舟来源模式')
+        self.official_fetcher = official_fetcher or fetch_text
+        self.official_cache = official_cache or ArtworkCache(data_dir)
         self.lock = threading.Lock()
         self.last_attempt = None
         def image_allowed(url):
@@ -280,7 +288,7 @@ class ArknightsCollector:
             return
         version = json.loads((ROOT / 'samples/arknights-cn-calendar.json').read_text(encoding='utf-8'))
         self.store.save_version(version)
-        self.store.set_meta(self.meta_key, {'running': False, 'mode': 'snapshot', 'last_success': None, 'last_attempt': None, 'error': None, 'message': '内置 PRTS 活动快照，联网后更新'})
+        self.store.set_meta(self.meta_key, {'running': False, 'mode': 'snapshot', 'last_success': None, 'last_attempt': None, 'error': None, 'message': '内置历史活动快照，联网后优先读取官网活动预告'})
 
     def start(self, force=False):
         if not self.lock.acquire(blocking=False):
@@ -291,7 +299,7 @@ class ArknightsCollector:
         self.last_attempt = now
         previous = self.store.get_meta(self.meta_key, {})
         self.store.set_meta(self.meta_key, {**previous, 'running': True, 'last_attempt': iso(now), 'error': None})
-        threading.Thread(target=self._run, daemon=True, name='prts-sync').start()
+        threading.Thread(target=self._run, daemon=True, name='arknights-sync').start()
         return True
 
     def _run(self):
@@ -299,9 +307,10 @@ class ArknightsCollector:
             self.collect()
         except Exception as error:
             previous = self.store.get_meta(self.meta_key, {})
-            self.store.set_meta(self.meta_key, {**previous, 'running': False, 'stage': None, 'waiting': None, 'error': str(error)[:300], 'message': 'PRTS 同步失败，保留本地日历'})
+            label = '官网' if self.source_mode == 'official' else 'PRTS'
+            self.store.set_meta(self.meta_key, {**previous, 'running': False, 'stage': None, 'waiting': None, 'error': str(error)[:300], 'message': label + '同步失败，保留本地日历'})
             # Official pictures may refresh even when the independent date source is offline.
-            if self.official_artwork:
+            if self.source_mode == 'prts' and self.official_artwork:
                 version = next((v for v in self.store.versions() if v['id'] == VERSION_ID), None)
                 if version:
                     self.enrich(version)
@@ -320,7 +329,100 @@ class ArknightsCollector:
     def collect(self):
         progress = SyncProgress(self.store, self.meta_key)
         with progress.active():
-            return self._collect(progress)
+            return self._collect_official(progress) if self.source_mode == 'official' else self._collect(progress)
+
+    def _collect_official(self, progress):
+        config = rules()
+        official = config['official']
+        progress.stage('fetch', '明日方舟官网活动预告（不请求 PRTS）')
+        notices = discover(self.official_fetcher(official['index_url']), official)
+        previous = next((v for v in self.store.versions() if v['id'] == VERSION_ID), None)
+        old = (previous or {}).get('events', [])
+        errors, parsed, collected = [], 0, []
+        source_dir = self.data_dir / 'sources' / 'arknights-official-news'
+        now = dt.datetime.now(dt.timezone.utc); fetched = iso(now)
+        unavailable = False
+        image_attempts, image_errors = set(), []
+        image_limit = official.get('max_images', config['max_images'])
+        initial_images = sum(bool(e.get('artwork')) for e in old)
+
+        def pending_images(version):
+            pending = {}
+            for event in version['events']:
+                url = event.get('official', {}).get('image_url')
+                image = event.get('artwork', {})
+                if url and not (image.get('url') == url and self.official_cache.path(image.get('key', ''))):
+                    pending.setdefault(url, []).append(event)
+            return pending
+
+        def fill_images(version):
+            # One shared budget for the whole sync, not a fresh budget per notice. Finish
+            # already-confirmed banners before an unrelated later notice can time out.
+            if len(image_errors) >= 2:
+                return
+            progress.stage('images', '官网章节头图')
+            for url, events in pending_images(version).items():
+                if len(image_attempts) >= image_limit:
+                    break
+                if url in image_attempts:
+                    continue
+                image_attempts.add(url)
+                try:
+                    key = self.official_cache.cache(url)
+                    if not key:
+                        raise ValueError('未返回图片缓存')
+                    for event in events:
+                        event['artwork'] = {'key': key, 'path': '/api/artwork/' + key, 'url': url, 'source_url': event['official'].get('image_source_url') or event['source']['url'], 'source_title': event['section'], 'match': 'official_activity_section', 'shared_activity': event['category'] == 'exchange'}
+                    self.store.save_version(version)  # Show each downloaded banner immediately.
+                except Exception as error:
+                    message = '官网头图未更新：' + str(error)[:140]
+                    image_errors.append(message); errors.append(message)
+                    if len(image_errors) >= 2:
+                        break
+
+        def snapshot():
+            incoming = reuse_ids(collected, old)
+            merged = {e['id']: e for e in old}
+            merged.update({e['id']: e for e in incoming})
+            version = make_version(list(merged.values()), fetched, errors=errors.copy())
+            version.update(name='近期活动 · 官方预告', source={'cid': 'arknights-official', 'url': official['index_url'], 'title': '明日方舟官方活动预告', 'kind': 'official', 'label': '明日方舟官网', 'published_at': None, 'fetched_at': fetched, 'origin': 'live'}, analysis={'strategy': 'official_numbered_sections', 'ai_used': False, 'event_count': len(merged), 'articles': parsed, 'retained_cached_events': len(set(merged) - {e['id'] for e in incoming})})
+            self.store.save_version(version)
+            progress.calendar_saved([previous] if previous else [], [version])
+            return version
+
+        for notice in notices:
+            progress.stage('fetch', notice['title'])
+            try:
+                html = self.official_fetcher(notice['url'])
+            except Exception as error:
+                errors.append('官网公告 ' + notice['cid'] + ' 暂不可用：' + str(error)[:160])
+                unavailable = True
+                break  # Respect a refusal, cooldown or connection failure; no Wiki fallback.
+            try:
+                events, notes = parse_article(html, notice['cid'], official)
+            except ValueError as error:
+                errors.append('官网公告 ' + notice['cid'] + '：' + str(error)[:160])
+                continue
+            progress.stage('parse', notice['title'])
+            collected.extend(events); errors.extend(notes); parsed += 1
+            source_dir.mkdir(parents=True, exist_ok=True)
+            (source_dir / (notice['cid'] + '.html')).write_text(html, encoding='utf-8')
+            version = snapshot()  # Publish dates before another notice or any picture request.
+            fill_images(version)
+        if not parsed:
+            raise ValueError('官网未读取到可用活动；保留本地日历。' + '；'.join(errors)[:240])
+        version = snapshot()
+        remaining = len(pending_images(version))
+        version['warnings'] = errors
+        self.store.save_version(version)
+        notes = ['官网补充请求失败，本轮停止后续请求，已保存活动与图片'] if unavailable else []
+        if remaining:
+            notes.append(f'{remaining} 张官网头图待补齐，下次同步继续，沿用缓存')
+        progress.result['images']['ready'] = initial_images
+        progress.images_done([version], len(image_errors), notes)
+        counts = {category: sum(e['category'] == category for e in version['events']) for category in {'event', 'gacha', 'exchange'}}
+        self.store.set_meta(self.meta_key, progress.finish({'running': False, 'mode': 'live', 'source_mode': 'official', 'last_attempt': fetched, 'last_success': fetched, 'error': None, 'message': '已同步官网活动预告' + ('（有采集提示）' if errors else ''), 'page_count': parsed, 'event_counts': counts, 'pending_images': remaining, 'warnings': errors}))
+        return version
 
     def _collect(self, progress):
         progress.stage('fetch')

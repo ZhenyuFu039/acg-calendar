@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
   <meta name="theme-color" content="#f5f7f1">
   <meta name="description" content="本地运行的游戏活动日历：明日方舟与终末地排期、时间轴、时区换算和截止提醒。">
   <title>游时 · 游戏活动日历</title>
@@ -11,10 +11,12 @@
   <link rel="stylesheet" href="/customize.css">
   <link rel="stylesheet" href="/design.css">
   <link rel="stylesheet" href="/planner.css">
+  <link rel="stylesheet" href="/ux.css">
   <script src="/workspace.js" defer></script>
   <script src="/customize.js" defer></script>
   <script src="/plan-drawing.js" defer></script>
   <script src="/planner.js" defer></script>
+  <script src="/navigation.js" defer></script>
   <script src="/app.js" defer></script>
 </head>
 <body>
@@ -100,7 +102,7 @@
   </div>
   <p class="help-text">强调色用于色块，其文字单独校验对比度；支持亮黄、荧光绿。网页与桌面的圆角分别设置，软件标识保持固定形状；桌面气泡透明度独立保存。</p>
   <div class="settings-actions"><button type="button" id="save-theme" class="button button-primary">应用主题</button><button type="button" id="reset-theme" class="button">恢复标准</button><button type="button" id="export-theme" class="button">导出主题</button><label class="button">导入主题<input id="import-theme" type="file" accept="application/json,.json" class="sr-only"></label></div>
-</section><section data-preference-panel="network" hidden><p class="help-text">所有插件共用站点配额。暂停会停止后续请求，正在执行的请求将在超时范围内完成；本地日历和提醒继续运行。恢复不会清除站点冷却或请求额度。</p><label class="field-label">自动同步周期<select id="sync-interval"><option value="1080">每 18 小时后</option><option value="1440">每 24 小时后（默认）</option></select></label><p class="help-text">自动复查另随机延后 0–2 小时；首次或离线过期补查错峰 1–10 分钟。重启保留计划，倒计时与提醒在本地运行，不需要重新抓取。</p><div id="sync-schedule" class="help-text"></div><p id="network-summary" role="status"></p><button type="button" id="network-toggle" class="button">暂停联网</button><div class="preference-grid"><label>同站请求间隔（秒）<input id="network-interval_seconds" type="number" min="10" max="60"></label><label>每站每小时请求上限<input id="network-hourly_limit" type="number" min="20" max="120"></label><label>每轮每站请求上限<input id="network-round_limit" type="number" min="5" max="64"></label></div><button type="button" id="save-network" class="button button-primary">保存采集限制</button><div id="network-sites"></div><section class="backup-section" aria-labelledby="backup-title"><h3 id="backup-title">备份与恢复</h3><p class="help-text">个人数据备份包含收藏、完成状态、备注、日期校正、个人计划、显示设置、主题布局与采集限制；不含官方活动与图片缓存，它们可以重新同步。活动 JSON / ICS 导出只用于查看或导入其他日历，不能用于恢复。版本变化后首次启动会自动备份一次；恢复前也会先备份当前数据。</p><div class="backup-actions"><button type="button" id="create-backup" class="button button-primary">立即备份</button><button type="button" id="restore-backup-file-button" class="button">从文件恢复…</button><input id="restore-backup-file" type="file" accept=".json,application/json" hidden></div><p id="backup-status" role="status" class="help-text"></p><div id="backup-list"></div></section></section><section data-preference-panel="plugins" hidden><p class="help-text">停用的游戏不再显示、同步或提醒；收藏、完成、备注、校正和个人计划都会保留，重新启用即可恢复。安装或卸载：把完整插件文件夹放入或移出插件目录；移出文件夹同样不删除个人记录。启用、停用、安装和卸载都在退出并重新启动游时后生效。</p><div id="plugin-list"></div><div class="backup-actions"><button type="button" id="plugins-open-directory" class="button">打开插件目录</button></div><p id="plugins-status" class="help-text" role="status"></p></section>
+</section><section data-preference-panel="network" hidden><p class="help-text">所有插件共用站点配额。暂停会停止后续请求，正在执行的请求将在超时范围内完成；本地日历和提醒继续运行。恢复不会清除站点冷却或请求额度。</p><label class="field-label">自动同步周期<select id="sync-interval"><option value="1080">每 18 小时后</option><option value="1440">每 24 小时后（默认）</option></select></label><p class="help-text">自动复查另随机延后 0–2 小时；首次或离线过期补查错峰 1–10 分钟。重启保留计划，倒计时与提醒在本地运行，不需要重新抓取。</p><div id="sync-schedule" class="help-text"></div><p id="network-summary" role="status"></p><button type="button" id="network-toggle" class="button">暂停联网</button><div class="preference-grid"><label>同站请求间隔（秒）<input id="network-interval_seconds" type="number" min="10" max="60"></label><label>每站每小时请求上限<input id="network-hourly_limit" type="number" min="20" max="120"></label><label>每轮每站请求上限<input id="network-round_limit" type="number" min="5" max="64"></label></div><button type="button" id="save-network" class="button button-primary">保存采集限制</button><div id="network-sites"></div><section class="backup-section" aria-labelledby="backup-title"><h3 id="backup-title">备份与恢复</h3><p class="help-text">个人数据备份包含收藏、完成状态、备注、日期校正、个人计划、显示设置、主题布局与采集限制；不含官方活动与图片缓存，它们可以重新同步。活动 JSON / ICS 导出只用于查看或导入其他日历，不能用于恢复。版本变化后首次启动会自动备份一次；恢复前也会先备份当前数据。</p><div class="backup-actions"><button type="button" id="create-backup" class="button button-primary">立即备份</button><button type="button" id="restore-backup-file-button" class="button">从文件恢复…</button><input id="restore-backup-file" type="file" accept=".json,application/json" hidden></div><p id="backup-status" role="status" class="help-text"></p><div id="backup-preview" class="backup-preview" role="region" aria-label="恢复预览" hidden></div><div id="backup-list"></div></section></section><section data-preference-panel="plugins" hidden><p class="help-text">停用的游戏不再显示、同步或提醒；收藏、完成、备注、校正和个人计划都会保留，重新启用即可恢复。安装或卸载：把完整插件文件夹放入或移出插件目录；移出文件夹同样不删除个人记录。启用、停用、安装和卸载都在退出并重新启动游时后生效。</p><div id="plugin-list"></div><div class="backup-actions"><button type="button" id="plugins-open-directory" class="button">打开插件目录</button></div><p id="plugins-status" class="help-text" role="status"></p></section>
     <p id="preferences-error" role="status"></p></div></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
   <noscript><div class="load-error">请开启 JavaScript 以使用日历。公告解析在本地 Python 程序中运行。</div></noscript>

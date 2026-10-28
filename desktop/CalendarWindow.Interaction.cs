@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -19,7 +20,7 @@ namespace Playtime;
 public sealed partial class CalendarWindow
 {
     readonly Grid desktopRoot = new(), windowRoot = new();
-    readonly StackPanel compactActions = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
+    readonly WrapPanel compactActions = new() { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right };
     readonly Border edgeHandle = new();
     readonly CheckBox residentToggle = new(), edgeToggle = new();
     readonly DispatcherTimer edgeTimer = new() { Interval = TimeSpan.FromMilliseconds(200) };
@@ -39,12 +40,17 @@ public sealed partial class CalendarWindow
 
     void UpdatePinButtons()
     {
-        foreach (var button in new[] { pin, compactPin }.Where(b => b != null))
+        foreach (var button in new[] { compactPin }.Where(b => b != null))
         {
             var icon = new ShapePath { Data = Geometry.Parse("M5,1 L13,1 M7,1 L7,7 L4,11 L14,11 L11,7 L11,1 M9,11 L9,17"), Stroke = Ink, StrokeThickness = 1.8, Width = 18, Height = 18, Stretch = Stretch.Uniform, Fill = Topmost ? Green : Brushes.Transparent };
             var content = new StackPanel { Orientation = Orientation.Horizontal };
             content.Children.Add(icon);
-            if (button.Tag is not true) content.Children.Add(new TextBlock { Text = Topmost ? " 已置顶" : " 置顶", VerticalAlignment = VerticalAlignment.Center });
+            if (button.Tag is not true)
+            {
+                // The new label is not in the visual tree yet, so give it the theme colour and text scale here.
+                var label = new TextBlock { Text = Topmost ? " 已置顶" : " 置顶", VerticalAlignment = VerticalAlignment.Center };
+                label.SetValue(BaseFontProperty, button.FontSize); ApplyWorkspaceVisuals(label); content.Children.Add(label);
+            }
             button.Content = content; button.ToolTip = Topmost ? "取消窗口置顶" : "置顶窗口";
             AutomationProperties.SetHelpText(button, Topmost ? "当前已置顶" : "当前未置顶");
         }
@@ -52,12 +58,11 @@ public sealed partial class CalendarWindow
 
     void BuildInteractionShell()
     {
-        desktopRoot.RowDefinitions.Add(new RowDefinition()); desktopRoot.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+        desktopRoot.RowDefinitions.Add(new RowDefinition()); desktopRoot.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto }); desktopRoot.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         desktopRoot.Children.Add(desktopLayout);
-        compactPin = PinButton(true); compactActions.Children.Add(compactPin);
-        quickSidebar = Button("☰", () => OpenSidebarPage("calendar")); quickSidebar.MinWidth = 34; quickSidebar.ToolTip = "打开侧边栏：日历、外观、提醒、采集";
-        AutomationProperties.SetName(quickSidebar, "打开侧边栏"); compactActions.Children.Add(quickSidebar);
-        compactActions.Margin = new Thickness(0, 3, 2, 0); Grid.SetRow(compactActions, 1); desktopRoot.Children.Add(compactActions);
+        BuildQuickActions();
+        Grid.SetRow(quickHint, 1); desktopRoot.Children.Add(quickHint);
+        compactActions.Margin = new Thickness(0, 3, 2, 0); Grid.SetRow(compactActions, 2); desktopRoot.Children.Add(compactActions);
         windowRoot.Children.Add(desktopRoot);
         edgeHandle.Background = Green; edgeHandle.CornerRadius = new CornerRadius(5); edgeHandle.Visibility = Visibility.Collapsed;
         edgeHandle.Child = new TextBlock { Text = "游\n时\n‹", TextAlignment = TextAlignment.Center, VerticalAlignment = VerticalAlignment.Center, FontSize = 11, Foreground = Ink };
@@ -80,30 +85,34 @@ public sealed partial class CalendarWindow
 
     void BuildResidentSettings()
     {
-        Section(desktopSettings, "常驻与窗口行为");
-        residentToggle.Content = "关闭主窗口后保留桌面挂件"; residentToggle.Margin = new Thickness(0, 0, 0, 10);
-        residentToggle.Click += (_, _) => { keepWidgetOnClose = residentToggle.IsChecked == true; SavePreferences(); };
+        Section(desktopSettings, "关闭与常驻");
+        residentToggle.Content = "点 × 时保留桌面挂件（不勾选则收起到托盘）"; residentToggle.Margin = new Thickness(0, 0, 0, 10);
+        residentToggle.Click += (_, _) => { keepWidgetOnClose = residentToggle.IsChecked == true; SavePreferences(); Saved(keepWidgetOnClose ? "点 × 时会保留桌面挂件" : "点 × 时会收起到托盘"); };
         desktopSettings.Children.Add(residentToggle);
         edgeToggle.Content = "挂件靠边时自动隐藏"; edgeToggle.Margin = new Thickness(0, 0, 0, 8);
-        edgeToggle.Click += (_, _) => { edgeAutoHide = edgeToggle.IsChecked == true; if (!edgeAutoHide) RevealEdge(); edgeLeaveSince = null; SavePreferences(); };
+        edgeToggle.Click += (_, _) => { edgeAutoHide = edgeToggle.IsChecked == true; if (!edgeAutoHide) RevealEdge(); edgeLeaveSince = null; SavePreferences(); Saved(edgeAutoHide ? "挂件靠边时会自动隐藏" : "挂件不再自动隐藏"); };
         desktopSettings.Children.Add(edgeToggle);
-        var note = Text("关闭后挂件不占任务栏。靠近屏幕左右边缘，移开约 1 秒收起，移入边缘标签展开；托盘“退出游时”结束程序。", 10);
+        var note = Text("挂件和托盘里的游时都在运行，提醒照常发送；挂件不占任务栏。靠边隐藏：贴近屏幕左右边缘，移开约 1 秒收起，移入边缘标签展开。只有“退出游时”才结束程序并停止提醒。", 10);
         note.Foreground = Muted; desktopSettings.Children.Add(note);
     }
 
     void OpenSidebarPage(string page)
     {
-        RevealEdge(); sidebarPage = page; settingsOpen = page != "calendar"; sidebarOpen = true;
-        ApplyPresentation(); Show(); Activate(); SavePreferences();
+        RevealEdge();
+        if (sidebarOpen) sidebarOffsets[sidebarPage] = sidebarScroll.VerticalOffset;
+        bool switching = !sidebarOpen || sidebarPage != page;
+        sidebarPage = page; settingsOpen = page != "calendar"; sidebarOpen = true;
+        ApplyPresentation(); Show(); Activate(); SavePreferences(); _ = LoadPageData(page);
+        if (switching) { sidebarScroll.UpdateLayout(); sidebarScroll.ScrollToVerticalOffset(sidebarOffsets.GetValueOrDefault(page)); }
     }
 
     void UpdateInteractionChrome()
     {
-        compactActions.Visibility = compact ? Visibility.Visible : Visibility.Collapsed;
-        pin.Visibility = compact ? Visibility.Collapsed : Visibility.Visible;
+        compactActions.Visibility = Visibility.Visible; // One bar in every window mode.
+        UpdateQuickActions();
         ShowInTaskbar = !compact;
         residentToggle.IsChecked = keepWidgetOnClose; edgeToggle.IsChecked = edgeAutoHide;
-        UpdatePinButtons(); ApplyWorkspaceVisuals(compactActions);
+        UpdatePinButtons(); ApplyWorkspaceVisuals(compactActions); quickHint.Background = Surface; ApplyWorkspaceVisuals(quickHint);
         if (compact && !sidebarOpen) sidebar.Visibility = Visibility.Collapsed;
     }
 
@@ -111,14 +120,25 @@ public sealed partial class CalendarWindow
     {
         if (exiting) return;
         RevealEdge();
-        if (!keepWidgetOnClose) { SavePreferences(); Hide(); return; }
+        if (!keepWidgetOnClose) { SavePreferences(); Hide(); TrayHint(); return; }
+        bool wasWidget = compact && !sidebarOpen;
         sidebarOpen = false; ShowMode(true); ShowInTaskbar = false;
+        ShowHint(wasWidget ? "已是桌面挂件。要隐藏窗口请用“更多 → 收起到托盘”，结束程序请用“退出游时”。" : "已切换为桌面挂件，提醒继续运行。可在“更多 → 外观”改为点 × 收起到托盘。");
         if (edgeAutoHide)
         {
             var area = DesktopWorkArea(); Left = Left + Width / 2 < area.Left + area.Width / 2 ? area.Left : area.Right - Width;
             CollapseEdge();
         }
         SavePreferences();
+    }
+
+    // Hiding leaves no window on screen, so say once per run where the program went.
+    bool trayHinted;
+    void TrayHint()
+    {
+        if (trayHinted || smoke) return;
+        trayHinted = true;
+        tray.ShowBalloonTip(5000, "游时仍在运行", "已收起到托盘，提醒继续有效。点托盘图标重新打开，右键选择“退出游时”结束程序。", System.Windows.Forms.ToolTipIcon.None);
     }
 
     Rect DesktopWorkArea()

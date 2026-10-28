@@ -1,0 +1,116 @@
+/* Task-based navigation; colors and geometry continue to come from the user's theme. */
+.ux-workspace .skip-link{position:fixed;top:8px;left:12px;z-index:1000;padding:10px 16px;background:var(--paper);color:var(--ink);border:2px solid var(--ink);transform:translateY(-200%)}
+.ux-workspace .skip-link:focus{transform:none}
+.ux-workspace :focus-visible{outline:2px solid var(--ink);outline-offset:3px}
+.ux-workspace .workspace-rail :focus-visible,.ux-workspace .sidebar :focus-visible{outline-color:var(--nav-ink)}
+.ux-workspace .page-heading{display:none!important}
+.ux-workspace:not(.heading-compact) .page-heading{display:flex!important;align-items:center;padding:6px 0;min-height:0}
+.ux-workspace:not(.heading-compact) .page-heading .display-title{font-size:calc(30px * var(--ui-scale,1));line-height:1}
+.ux-workspace:not(.heading-compact) .page-heading h2{font-size:calc(18px * var(--ui-scale,1));margin:4px 0}
+.ux-workspace .settings-timezone{display:flex;align-items:center;gap:10px}
+.ux-workspace #preferences-dialog[data-section=games] .settings-timezone{display:none}
+.ux-workspace .main-content{padding:6px 16px}
+.ux-workspace .workspace-modules{gap:4px}
+.ux-workspace .header-actions{display:flex;align-items:center;gap:8px}
+.ux-workspace .header-actions .rail-action{min-height:32px;width:auto;padding:5px 9px;display:flex;flex-direction:row;gap:5px;border:1px solid var(--line)}
+.ux-workspace .header-timezone{display:flex;align-items:center;gap:5px;font-size:calc(11px * var(--ui-scale,1))}
+.ux-workspace .header-timezone select{padding:5px;max-width:140px}
+.ux-workspace .header-actions .official-time-notice{font-size:calc(10px * var(--ui-scale,1));max-width:145px;line-height:1.4;margin:0}
+.ux-workspace .workspace-id,.ux-workspace .game-card,.ux-workspace .sidebar-note,.ux-workspace .rail-index,.ux-workspace .rail-foot{display:none}
+.ux-workspace .sidebar{padding:14px 12px}
+.ux-workspace .sidebar>.sidebar-label{font-size:calc(12px * var(--ui-scale,1));margin:0 0 8px}
+.ux-workspace #manage-plugins{font-size:calc(11px * var(--ui-scale,1));margin-bottom:10px}
+.ux-workspace .sidebar.filters-reduced #view-filters{display:none}
+.ux-workspace .mobile-filter-label{display:none}
+.ux-workspace .version-label{margin-top:10px}
+.ux-workspace .module-frame>.deadline-strip{padding:7px 12px!important;min-height:38px!important}
+.ux-workspace .deadline-strip strong{font-size:calc(17px * var(--ui-scale,1))}
+.ux-workspace .reward-summary{padding:7px 12px!important;min-height:38px}
+.ux-workspace .reward-summary-amount strong{font-size:calc(20px * var(--ui-scale,1))}
+.ux-workspace #source-status{font-size:calc(11px * var(--ui-scale,1));white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-height:calc(26px * var(--ui-scale,1));padding:3px 0}
+.ux-workspace #source-status>span:last-child{overflow:hidden;text-overflow:ellipsis}
+.ux-workspace #source-status{display:flex;align-items:center;gap:6px}
+.ux-workspace #source-status>span:nth-child(2){min-width:0;overflow:hidden;text-overflow:ellipsis}
+.ux-workspace #source-status #source-details{margin-left:auto;white-space:nowrap;font-size:calc(11px * var(--ui-scale,1))}
+.ux-workspace .sync-result{padding:10px 0;border-bottom:1px solid var(--line)}
+.ux-workspace .sync-result dl{display:grid;grid-template-columns:80px 1fr;gap:7px;font-size:calc(13px * var(--ui-scale,1))}
+.ux-workspace .sync-result dt{color:var(--muted)}
+.ux-workspace .sync-result dd{margin:0;overflow-wrap:anywhere}
+.ux-workspace .sync-error{white-space:pre-wrap;overflow-wrap:anywhere}
+.ux-workspace .calendar-toolbar{padding:6px 12px!important;gap:10px}
+.ux-workspace .calendar-context{padding:0 12px 3px;font-size:calc(11px * var(--ui-scale,1));min-height:18px}
+.ux-workspace .catalog-tools{padding:5px 12px!important;gap:7px}
+.ux-workspace #catalog-count{display:none}
+.ux-workspace .calendar-legend{padding:4px 12px;font-size:calc(11px * var(--ui-scale,1));flex-wrap:wrap}
+.ux-workspace .calendar-legend>span:not(:first-child){display:none}
+.ux-workspace .main-footer{font-size:calc(11px * var(--ui-scale,1));padding-top:3px}
+.ux-workspace .calendar-expand{width:auto!important;padding:5px 8px;display:flex;align-items:center;gap:5px;font-size:calc(12px * var(--ui-scale,1));height:auto}
+.ux-workspace .calendar-expand svg{width:16px;height:16px}
+.ux-workspace .axis-day{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px}
+.ux-workspace .axis-date{font-size:calc(12px * var(--ui-scale,1));white-space:nowrap;line-height:1.2}
+.ux-workspace .axis-day .density-day{height:auto;width:auto;min-width:18px;padding:2px;background:var(--panel-alt);border:1px solid var(--line);font-size:calc(11px * var(--ui-scale,1));line-height:1.2}
+.ux-workspace .density-day.date-inspected{outline:2px solid var(--secondary)}
+.ux-workspace .fit-version .axis-day .density-day span{font-size:calc(10px * var(--ui-scale,1))}
+.ux-workspace .day-tabs,.ux-workspace .day-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.ux-workspace .day-tabs [aria-pressed=true]{background:var(--green);color:var(--accent-ink)}
+.ux-workspace [data-preference-tab=plugins]{display:none}
+.ux-workspace #preferences-dialog[data-section=games] .preference-tabs,.ux-workspace #preferences-dialog[data-section=games] #notification-settings{display:none}
+.ux-workspace .network-advanced,.ux-workspace .sync-schedules,.ux-workspace #reminder-rules,.ux-workspace .detail-explanation,.ux-workspace .detail-reminder{margin:14px 0;padding:10px 0;border-top:1px solid var(--line)}
+.ux-workspace summary{cursor:pointer}
+.ux-workspace .install-calendar{padding-bottom:14px;border-bottom:1px solid var(--line)}
+.ux-workspace .detail-actions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+.ux-workspace .detail-description{white-space:pre-line}
+.ux-workspace .detail-time-value{font-size:calc(18px * var(--ui-scale,1))}
+.ux-workspace .upcoming-text strong,.ux-workspace .catalog-event strong{font-size:calc(13px * var(--ui-scale,1))}
+.ux-workspace .upcoming-text small,.ux-workspace .upcoming-time{font-size:calc(11px * var(--ui-scale,1))}
+.ux-workspace .upcoming-time strong{font-size:calc(14px * var(--ui-scale,1))}
+.ux-workspace .backup-section{margin-top:0}
+body[data-calendar-view=month] #calendar{display:flex;flex-direction:column;overflow:auto;min-height:0}
+.ux-workspace .deadline-month{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));flex:1;min-height:65px;position:relative}
+.ux-workspace .deadline-month .month-cell{min-height:0;position:relative;display:flex;flex-direction:column;gap:3px;padding:5px 7px;overflow:hidden}
+.ux-workspace .deadline-month .month-date{position:static;align-self:flex-start;font-size:calc(13px * var(--ui-scale,1));padding:2px;background:none;white-space:nowrap}
+.ux-workspace .deadline-month .density-day{position:static;display:flex;flex-wrap:wrap;gap:5px;font-size:calc(12px * var(--ui-scale,1));padding:3px;border:0;background:var(--panel-alt);color:var(--ink);text-align:left}
+.ux-workspace .deadline-month .month-quiet{font-size:calc(11px * var(--ui-scale,1));color:var(--muted)}
+.ux-workspace .deadline-month .month-plan{position:static;font-size:calc(11px * var(--ui-scale,1));padding:2px;align-self:flex-start}
+.ux-workspace .density-level-2{background:color-mix(in srgb,var(--secondary) 8%,var(--paper))}
+.ux-workspace .density-level-3{background:color-mix(in srgb,var(--secondary) 16%,var(--paper))}
+.ux-workspace .deadline-month .today{border-top:3px solid var(--secondary)}
+@media(max-width:1100px){.ux-workspace .header-context,.ux-workspace .header-actions #data-button,.ux-workspace .header-actions .official-time-notice{display:none}.ux-workspace .header-timezone{font-size:0}.ux-workspace .calendar-expand .focus-label{font-size:calc(11px * var(--ui-scale,1))}}
+@media(max-width:850px){
+  .ux-workspace .filter-placeholder{grid-row:2;grid-column:1}
+  .ux-workspace .header-actions #inbox-button svg{display:block;width:16px;height:16px}.ux-workspace .header-actions #inbox-button{padding:5px;font-size:calc(11px * var(--ui-scale,1))}
+  .ux-workspace .header-actions #inbox-button>span:not(.unread){display:none}
+  .ux-workspace .header-actions #inbox-button .unread{position:static;inset:auto;margin:0;min-width:16px}
+  .ux-workspace .header-timezone{display:none}.ux-workspace .app-header{height:52px}
+  .ux-workspace .workspace-rail{height:48px}.ux-workspace .workspace-rail .rail-action{min-height:44px;padding:4px 8px}
+  .ux-workspace .sidebar:not(.sidebar-expanded){padding:6px 10px!important;min-height:42px}
+  .ux-workspace .sidebar:not(.sidebar-expanded) #manage-plugins{display:none}
+  .ux-workspace .sidebar.sidebar-expanded{position:fixed;inset:auto 0 0 0!important;width:100%!important;max-height:75dvh!important;height:auto!important;overflow:auto!important;display:block!important;z-index:40;background:var(--paper);border-top:3px solid var(--secondary);padding:12px 18px!important;box-shadow:0 -20px 0 100vmax color-mix(in srgb,var(--ink) 22%,transparent)}
+  .ux-workspace .sidebar.sidebar-expanded #sidebar-more{display:block;position:sticky;top:0;background:var(--paper);padding:8px;margin-left:auto}
+  .ux-workspace .main-content{padding:6px 8px}
+  .ux-workspace .module-frame>.deadline-strip{min-height:30px!important;padding:5px 8px!important}
+  .ux-workspace .deadline-strip>span:first-child,.ux-workspace .deadline-strip>span:nth-child(3),.ux-workspace .reward-summary p{display:none}
+  .ux-workspace .reward-summary{padding:5px 8px!important}
+  .ux-workspace .calendar-toolbar{padding:7px 8px!important;display:flex;flex-wrap:wrap;gap:7px}
+  .ux-workspace .calendar-expand{order:0!important;margin-left:auto;min-height:32px}
+  .ux-workspace .view-controls{width:100%;justify-content:space-between}
+  .ux-workspace #catalog-count,.ux-workspace .calendar-context,.ux-workspace .calendar-legend,.ux-workspace .main-footer{display:none}
+  .ux-workspace .calendar-context.links-open{display:block!important;padding:5px 8px}
+  .ux-workspace .calendar-context #visible-summary{display:none}
+  .ux-workspace #filter-button .filter-label{display:none}
+  .ux-workspace #filter-button .mobile-filter-label{display:inline}
+  .ux-workspace .catalog-tools{padding:6px 8px!important}
+  .ux-workspace .event-search{min-width:110px;flex:1}
+  .ux-workspace #plans-button{display:none}
+  .ux-workspace .catalog-tools #filter-button{font-size:calc(11px * var(--ui-scale,1));padding:5px}
+  .ux-workspace #preferences-dialog .preference-tabs{display:flex;flex-wrap:wrap}
+  .ux-workspace .deadline-month{min-height:90px}
+  .ux-workspace .deadline-month .month-cell{padding:5px 2px}
+  .ux-workspace .deadline-month .density-day{font-size:calc(11px * var(--ui-scale,1));gap:2px;padding:2px}
+  .ux-workspace .month-quiet{visibility:hidden}
+}
+@media(pointer:coarse){
+  .ux-workspace .header-actions button,.ux-workspace .view-switch button,.ux-workspace #filter-button,.ux-workspace #sidebar-more,.ux-workspace #calendar-expand,.ux-workspace #more-tools,.ux-workspace #reset-filters,.ux-workspace .day-actions button,.ux-workspace .day-tabs button{min-height:44px}
+  .ux-workspace .workspace-rail .rail-action{min-height:48px}
+}
+@media(prefers-reduced-motion:reduce){.ux-workspace *{scroll-behavior:auto!important;animation:none!important;transition:none!important}}

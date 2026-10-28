@@ -51,7 +51,7 @@ window.PlaytimeCustomize=(()=>{
     $('#network-toggle').textContent=n.paused?'恢复联网':'暂停联网';
     $('#network-sites').innerHTML=n.sites.length?n.sites.map(s=>`<div class="network-site"><strong>${escape(s.site)}</strong><span>${s.paused?'已暂停':s.active?'请求中':s.next_allowed_at?'等待 / 冷却':'可请求'} · 本小时 ${s.requests}/${n.policy.hourly_limit}</span><p>${s.next_allowed_at?'下次允许请求：'+escape(new Date(s.next_allowed_at).toLocaleString()):'遵守站点配额与请求间隔'}${s.error?' · '+escape(s.error):''}</p><button type="button" data-network-site="${escape(s.site)}" data-paused="${!s.paused}" class="button button-small">${s.paused?'恢复该站':'暂停该站'}</button></div>`).join(''):'<p class="help-text">尚未发起联网请求。离线快照和已有图片仍可显示。</p>';
   }
-  const reasons={manual:'手动备份',upgrade:'升级前自动备份','before-restore':'恢复前自动备份'};
+  const reasons={manual:'手动备份',upgrade:'升级前自动备份','before-restore':'恢复前自动备份','before-clear':'清除记录前自动备份'};
   function backupStatus(text,error=false){const node=$('#backup-status');node.textContent=text;node.classList.toggle('error',error);}
   function paintBackups(rows){
     $('#backup-list').innerHTML=rows.length?rows.map(b=>{
@@ -61,8 +61,35 @@ window.PlaytimeCustomize=(()=>{
     }).join(''):'<p class="help-text">还没有备份。</p>';
   }
   async function backups(){try{paintBackups((await host.api('/api/backups')).backups);}catch(error){backupStatus('无法读取备份列表：'+error.message,true);}}
+  // F14: a restore first shows what it would change; only the explicit confirmation writes.
+  const settingNames={timezone:'显示时区',view:'默认视图',reminders_enabled:'提醒开关',reminder_offsets:'提醒提前量',native_notifications:'系统通知',sync_interval_minutes:'自动同步周期',hide_completed:'隐藏已完成',active_game:'当前游戏',reminder_scope:'提醒的游戏',disabled_plugins:'停用的插件'};
+  let pendingRestore=null;
+  function previewLines(p){
+    const c=p.changes,lines=[],eg=x=>x.examples?.length?`（例：${x.examples.map(escape).join('、')}）`:'';
+    if(c.starred.added||c.starred.removed)lines.push(`收藏：新增 ${c.starred.added} · 取消 ${c.starred.removed}${eg(c.starred)}`);
+    if(c.completed.added||c.completed.removed)lines.push(`完成状态：标记 ${c.completed.added} · 取消 ${c.completed.removed}${eg(c.completed)}`);
+    if(c.ignored?.added||c.ignored?.removed)lines.push(`忽略状态：忽略 ${c.ignored.added} · 取消 ${c.ignored.removed}${eg(c.ignored)}`);
+    if(c.event_reminders?.changed)lines.push(`单活动提醒：改动 ${c.event_reminders.changed} 条${eg(c.event_reminders)}`);
+    if(c.notes.changed)lines.push(`备注：改动 ${c.notes.changed} 条${eg(c.notes)}`);
+    if(c.corrections.changed)lines.push(`日期校正：改动 ${c.corrections.changed} 处${eg(c.corrections)}`);
+    if(c.plans.added||c.plans.removed||c.plans.changed)lines.push(`个人计划：恢复 ${c.plans.added} · 移除 ${c.plans.removed} · 改动 ${c.plans.changed}${eg(c.plans)}`);
+    if(c.settings.keys.length)lines.push('设置：'+c.settings.keys.map(k=>settingNames[k]||k).join('、'));
+    if(c.workspace.changed)lines.push('布局与主题恢复为备份中的样子');
+    if(c.desktop_window?.included)lines.push('桌面窗口位置与外观恢复为备份中的样子（桌面版下次刷新时应用）');
+    if(c.network_policy?.keys.length){const names={interval_seconds:'同站请求间隔',hourly_limit:'每站每小时请求上限',round_limit:'每轮每站请求上限',paused:'联网暂停状态'};lines.push('采集设置：'+c.network_policy.keys.map(k=>names[k]||k).map(escape).join('、'));}
+    return lines;
+  }
   async function restore(body,label){
-    if(!confirm(`用「${label}」替换当前的收藏、完成状态、备注、日期校正、个人计划和设置？\n恢复前会自动备份当前数据，可随时恢复回来。`))return;
+    backupStatus('正在比对备份与当前数据…');
+    try{
+      const p=await host.api('/api/backups/preview','POST',body),lines=previewLines(p),box=$('#backup-preview');
+      pendingRestore=body;backupStatus('');
+      box.innerHTML=`<strong>恢复「${escape(label)}」将会：</strong>${lines.length?'<ul>'+lines.map(l=>`<li>${l}</li>`).join('')+'</ul>':'<p>与当前数据相同，没有需要恢复的改动。</p>'}${p.warnings.length?'<p class="help-text">注意：'+p.warnings.map(escape).join('；')+'</p>':''}<p class="help-text">恢复前会自动备份当前数据，可随时恢复回来。</p><div class="backup-actions"><button type="button" class="button button-primary" data-confirm-restore>确认恢复</button><button type="button" class="button" data-cancel-restore>取消</button></div>`;
+      box.hidden=false;box.querySelector('[data-confirm-restore]').focus();
+    }catch(error){pendingRestore=null;$('#backup-preview').hidden=true;backupStatus('无法恢复，当前数据未改变：'+error.message,true);}
+  }
+  async function confirmRestore(){
+    const body=pendingRestore;pendingRestore=null;$('#backup-preview').hidden=true;if(!body)return;
     backupStatus('正在恢复…');
     try{
       const {result,backups:rows}=await host.api('/api/backups/restore','POST',body);paintBackups(rows);await host.refresh();
@@ -75,15 +102,24 @@ window.PlaytimeCustomize=(()=>{
   async function plugins(){
     try{
       const report=await host.api('/api/plugins'),rows=report.plugins;
-      $('#plugin-list').innerHTML=`<p class="help-text">内置：${report.builtins.map(g=>escape(g.name)).join('、')}（随程序提供，不能停用）。插件目录：${escape(report.directory)}</p>`+(rows.length?rows.map(p=>`<div class="backup-row plugin-row"><strong>${escape(p.name||p.folder)}${p.server?' · '+escape(p.server):''}</strong><span>${escape(pluginStatus[p.status]||p.status)}${p.restart_required?` · ${p.enabled_setting?'已设为启用':'已设为停用'}，重启游时后生效`:''}${p.error?' · '+escape(p.error):''}</span><span>文件夹 ${escape(p.folder)}${p.version?' · 版本 '+escape(p.version):''}${p.api_version?' · 插件 API '+escape(p.api_version):''}${p.source_label?' · '+escape(p.source_label):''}</span>${p.status==='manifest_disabled'?'':`<button type="button" class="button button-small" data-plugin-toggle="${escape(p.folder)}" data-enable="${!p.enabled_setting}">${p.enabled_setting?'停用':'启用'}</button>`}</div>`).join(''):'<p class="help-text">插件目录中还没有插件。</p>');
+      const clearButton=(id,name)=>id?`<button type="button" class="text-button" data-clear-records="${escape(id)}" data-name="${escape(name)}">清除个人记录…</button>`:'';
+      $('#plugin-list').innerHTML=`<p class="help-text">内置：${report.builtins.map(g=>escape(g.name)+' '+clearButton(g.id,g.name)).join('、')}（随程序提供，不能停用）。插件目录：${escape(report.directory)}</p>`+(rows.length?rows.map(p=>`<div class="backup-row plugin-row"><strong>${escape(p.name||p.folder)}${p.server?' · '+escape(p.server):''}</strong><span>${escape(pluginStatus[p.status]||p.status)}${p.restart_required?` · ${p.enabled_setting?'已设为启用':'已设为停用'}，重启游时后生效`:''}${p.error?' · '+escape(p.error):''}</span><span>文件夹 ${escape(p.folder)}${p.version?' · 版本 '+escape(p.version):''}${p.api_version?' · 插件 API '+escape(p.api_version):''}${p.source_label?' · '+escape(p.source_label):''} ${clearButton(p.id,p.name||p.folder)}</span>${p.status==='manifest_disabled'?'':`<button type="button" class="button button-small" data-plugin-toggle="${escape(p.folder)}" data-enable="${!p.enabled_setting}">${p.enabled_setting?'停用':'启用'}</button>`}</div>`).join(''):'<p class="help-text">插件目录中还没有插件。</p>');
     }catch(error){$('#plugins-status').textContent='无法读取插件：'+error.message;}
   }
-  function select(value){tab=value;for(const node of document.querySelectorAll('[data-preference-panel]'))node.hidden=node.dataset.preferencePanel!==tab;for(const b of document.querySelectorAll('[data-preference-tab]'))b.setAttribute('aria-selected',String(b.dataset.preferenceTab===tab));$('#preferences-title').textContent=tab==='network'?'数据与同步':tab==='plugins'?'日历插件':'外观与布局';}
+  function select(value){
+    tab=value;
+    for(const node of document.querySelectorAll('[data-preference-panel]')){
+      const name=node.dataset.preferencePanel;node.hidden=name!==tab;node.id='preferences-panel-'+name;
+      node.setAttribute('role',name==='plugins'?'region':'tabpanel');node.setAttribute('aria-labelledby',name==='plugins'?'preferences-title':'preferences-tab-'+name);
+    }
+    for(const b of document.querySelectorAll('[data-preference-tab]')){const name=b.dataset.preferenceTab,selected=name===tab;b.id='preferences-tab-'+name;b.setAttribute('aria-controls','preferences-panel-'+name);b.setAttribute('aria-selected',String(selected));b.tabIndex=selected?0:-1;}
+    $('#preferences-title').textContent=tab==='network'?'同步与网络':tab==='plugins'?'游戏管理':tab==='backup'?'备份与恢复':'设置 · 外观与布局';$('#preferences-dialog').dataset.section=tab==='plugins'?'games':'settings';$('#preferences-dialog').scrollTop=0;
+  }
   function open(value='layout'){
     if(!host.state())return;
     layout=structuredClone(host.state().workspace.layout);paintLayout();paintTheme(host.state().workspace.theme);
     const n=host.state().network;for(const key of Object.keys(n.policy))$('#network-'+key).value=n.policy[key];
-    $('#preferences-error').textContent='';backupStatus('');opened=true;select(value);network();if(value==='network')backups();if(value==='plugins')plugins();host.openDialog('#preferences-dialog');
+    $('#preferences-error').textContent='';backupStatus('');opened=true;select(value);network();if(value==='network'||value==='backup')backups();if(value==='plugins')plugins();host.openDialog('#preferences-dialog');
     $('#workspace-button').setAttribute('aria-expanded',String(value!=='network'));$('#data-button').setAttribute('aria-expanded',String(value==='network'));
   }
   function download(value){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));a.download='playtime-theme.json';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
@@ -93,13 +129,19 @@ window.PlaytimeCustomize=(()=>{
       for(const [group,fields] of Object.entries(colorGroups))$('#theme-'+group).innerHTML=Object.entries(fields).map(([key,label])=>`<label>${label}<input id="theme-${key}" type="color"></label>`).join('');
       host=api;W.configure(layout=>host.mutate('/api/workspace',{layout},'PATCH'));
       $('#preferences-dialog').addEventListener('close',()=>{opened=false;$('#workspace-button').setAttribute('aria-expanded','false');$('#data-button').setAttribute('aria-expanded','false');});
+      $('.preference-tabs').addEventListener('keydown',e=>{
+        const current=e.target.closest('[data-preference-tab]');if(!current||e.altKey||e.ctrlKey||e.metaKey||!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+        const tabs=[...document.querySelectorAll('[data-preference-tab]')].filter(n=>!n.disabled&&n.checkVisibility());if(!tabs.length)return;
+        const i=tabs.indexOf(current),next=e.key==='Home'?tabs[0]:e.key==='End'?tabs.at(-1):tabs[(i+(e.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length];
+        e.preventDefault();next.focus();next.click();
+      });
       document.addEventListener('click',async e=>{
         const b=e.target.closest('button');if(!b)return;
         if(b.id==='workspace-button'){open('theme');return;}
         if(b.id==='data-button'){open('network');return;}
         if(b.id==='rail-calendar'){document.querySelector('#calendar-expand').focus({preventScroll:true});return;}
-        if(b.id==='rail-games'){const next=structuredClone(host.state().workspace.layout);next.sidebar.visible=!next.sidebar.visible;await host.mutate('/api/workspace',{layout:next},'PATCH');return;}
-        if(b.dataset.preferenceTab){select(b.dataset.preferenceTab);if(tab==='network')backups();if(tab==='plugins')plugins();return;}
+        if(b.id==='rail-games'){open('plugins');return;}
+        if(b.dataset.preferenceTab){select(b.dataset.preferenceTab);if(tab==='network'||tab==='backup')backups();if(tab==='plugins')plugins();return;}
         if(b.id==='manage-plugins'){open('plugins');return;}
         if(b.dataset.pluginToggle){
           // One plugin per request, and the whole list waits for it, so quick successive clicks cannot overwrite each other.
@@ -108,7 +150,24 @@ window.PlaytimeCustomize=(()=>{
           finally{list.removeAttribute('aria-busy');await plugins();}
           return;
         }
+        // Clearing a game's records is destructive: preview first, then an explicit confirmation; a backup is made automatically.
+        if(b.dataset.clearRecords){
+          try{
+            const p=await host.api('/api/games/records/preview','POST',{game:b.dataset.clearRecords});
+            $('#plugins-status').innerHTML=`<div class="backup-preview"><strong>清除「${escape(p.name)}」的个人记录：</strong><ul><li>收藏 ${p.starred} · 完成 ${p.completed} · 备注 ${p.notes} · 日期校正 ${p.corrections}（共 ${p.marks} 条标记）</li><li>关联的个人计划 ${p.plans} 项</li></ul><p class="help-text">只删除这个游戏的个人记录，官方活动、插件文件和其他游戏不受影响。删除前会自动备份，可在“数据与同步 → 备份与恢复”中恢复。</p><div class="backup-actions"><button type="button" class="button button-primary" data-confirm-clear="${escape(p.game)}">确认清除</button><button type="button" class="button" data-cancel-clear>取消</button></div></div>`;
+            $('#plugins-status [data-confirm-clear]').focus();
+          }catch(error){$('#plugins-status').textContent='无法清除：'+error.message;}
+          return;
+        }
+        if(b.hasAttribute('data-cancel-clear')){$('#plugins-status').textContent='已取消，个人记录未改变。';return;}
+        if(b.dataset.confirmClear){
+          try{const r=await host.api('/api/games/records/clear','POST',{game:b.dataset.confirmClear});host.applyState?.(r);await host.refresh();$('#plugins-status').textContent=`已清除「${r.cleared.name}」的 ${r.cleared.marks} 条标记和 ${r.cleared.plans} 项计划；清除前的数据已备份为 ${r.cleared.safety_backup}。`;}
+          catch(error){$('#plugins-status').textContent='清除失败，个人记录未改变：'+error.message;}
+          return;
+        }
         if(b.id==='plugins-open-directory'){try{const r=await host.api('/api/plugins/open-directory','POST',{});$('#plugins-status').textContent='已打开：'+r.directory;}catch(error){$('#plugins-status').textContent=error.message;}return;}
+        if(b.hasAttribute('data-confirm-restore')){await confirmRestore();return;}
+        if(b.hasAttribute('data-cancel-restore')){pendingRestore=null;$('#backup-preview').hidden=true;backupStatus('已取消，当前数据未改变。');return;}
         if(b.dataset.restoreBackup){await restore({name:b.dataset.restoreBackup},b.closest('.backup-row').querySelector('strong').textContent);return;}
         if(b.dataset.layoutMove){layoutFields();const i=Number(b.dataset.layoutMove),to=i+Number(b.dataset.step);layout.modules.splice(to,0,layout.modules.splice(i,1)[0]);paintLayout();return;}
         if(b.dataset.networkSite){await host.mutate('/api/network',{site:b.dataset.networkSite,paused:b.dataset.paused==='true'},'PATCH');network();return;}

@@ -40,7 +40,8 @@ window.PlaytimeWorkspace = (() => {
       focused=value;document.body.classList.toggle('calendar-focused',value);
       const button=document.querySelector('#calendar-expand');
       button.setAttribute('aria-pressed',String(value));
-      button.title=value?'收起时间轴（Esc）':'展开时间轴';button.setAttribute('aria-label',button.title);
+      button.title=value?'退出专注（Esc）':'专注时间轴';button.setAttribute('aria-label',button.title);
+      if(button.querySelector('.focus-label'))button.querySelector('.focus-label').textContent=value?'退出专注':'专注时间轴';
       button.querySelector('path').setAttribute('d',value?'m6 3 6 6 6-6M6 21l6-6 6 6':'m6 9 6-6 6 6M6 15l6 6 6-6');
       sizeModules();
     },

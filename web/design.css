@@ -121,7 +121,7 @@ body.heading-compact .heading-toggle{margin-top:0}
 .plans-next{flex:1;min-width:0;font-size:12px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 #unscheduled{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;max-height:64px;padding:6px 18px}
 #unscheduled h3{margin:0 6px 0 0}#unscheduled button{margin:0;padding:3px 8px}
-#upcoming-view,.more-tools{display:none}
+.more-tools{display:none}
 .upcoming-list{padding:4px 0}
 .upcoming-day{border-bottom:1px solid var(--line)}
 .upcoming-day h3{display:flex;justify-content:space-between;gap:8px;margin:0;padding:10px 14px 6px;font-size:13px;background:var(--panel-alt)}
@@ -133,7 +133,7 @@ body.heading-compact .heading-toggle{margin-top:0}
 .upcoming-time{display:grid;justify-items:end;font-size:11px;color:var(--muted)}.upcoming-time strong{font-size:14px;color:var(--ink)}
 .upcoming-uncertain .upcoming-item{border-left-style:dashed}
 @media(max-width:850px){
-  #upcoming-view,.more-tools{display:inline-flex}
+  .more-tools{display:inline-flex}
   .heading-toggle{display:none}
   .calendar-context:not(.links-open) #calendar-context-links{display:none}
   .calendar-context{flex-wrap:wrap}
@@ -170,7 +170,6 @@ body.heading-compact .heading-toggle{margin-top:0}
   .calendar-toolbar .calendar-expand{order:3}
   .calendar-toolbar:has(.list-mode) #period-title{display:none}
   .calendar-toolbar:has(.list-mode) .date-navigation{display:none}
-  body:has(#upcoming-view[aria-pressed=true]) #fit-version{display:none}
 }
 @media(max-width:850px){
   body .page-heading>div:first-child{display:none!important}
@@ -199,3 +198,11 @@ body.heading-compact .heading-toggle{margin-top:0}
 @media(max-width:850px){.sidebar:not(.sidebar-expanded){flex-direction:row!important;align-items:center}}
 @media(max-width:850px){.upcoming-item{padding:7px 12px}.upcoming-day h3{padding:8px 12px 5px}}
 .upcoming-phase{color:var(--ink);font-weight:600}
+@media(max-width:850px){
+  /* F19: dialogs open as bottom sheets on phones, above the keyboard, with a sticky header and close button. */
+  dialog[open]{position:fixed;inset:auto 0 var(--keyboard-offset,0px) 0;margin:0;width:100%!important;max-width:100%;max-height:calc(var(--viewport-height,100dvh) - 12px);border-radius:16px 16px 0 0!important;border-bottom:0;animation:sheet-in .18s ease-out}
+  dialog[open] .dialog-header{position:sticky;top:0;z-index:3}
+  dialog[open] .dialog-header .icon-button,dialog[open] [data-close]{min-width:40px;min-height:40px}
+}
+@keyframes sheet-in{from{transform:translateY(28px);opacity:.6}}
+body:has(#upcoming-view[aria-pressed=true]) #fit-version{display:none}

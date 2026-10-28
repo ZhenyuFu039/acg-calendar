@@ -19,11 +19,11 @@ from .reminders import check_event_offsets
 FORMAT = "playtime-personal-backup"
 SCHEMA_VERSION = 1
 SECTIONS = {"local_state", "personal_plans", "settings", "workspace", "network_policy"}
-REASONS = {"manual", "upgrade", "before-restore"}
-AUTOMATIC = {"upgrade", "before-restore"}
+REASONS = {"manual", "upgrade", "before-restore", "before-clear"}
+AUTOMATIC = {"upgrade", "before-restore", "before-clear"}
 KEEP_AUTOMATIC = 20
 MAX_BYTES = 8_000_000
-NAME = re.compile(r"playtime-backup-\d{8}-\d{6}(?:-\d+)?-(?:manual|upgrade|before-restore)\.json")
+NAME = re.compile(r"playtime-backup-\d{8}-\d{6}(?:-\d+)?-(?:manual|upgrade|before-restore|before-clear)\.json")
 PLAN_ID = re.compile(r"plan-[a-f0-9]{32}")
 
 
@@ -219,6 +219,16 @@ def validate(document):
             "workspace": workspace, "network_policy": network}
 
 
+def desktop_window(value):
+    """Desktop window preferences from a backup, or None when absent or not a small flat object."""
+    if not isinstance(value, dict) or len(value) > 40:
+        return None
+    for key, item in value.items():
+        if not isinstance(key, str) or len(key) > 40 or not (item is None or isinstance(item, (bool, int, float)) or (isinstance(item, str) and len(item) <= 64)):
+            return None
+    return value
+
+
 def check_state(key, value):
     """The same field rules as Application.update_event and the maintenance endpoint."""
     allowed = {"actual_end"} if key.startswith("version:") else {"completed", "ignored", "starred", "notes", "reminder_minutes", "start_override", "end_override"}
@@ -236,7 +246,7 @@ def check_state(key, value):
         raise ValueError("校正的结束时间必须晚于开始时间")
 
 
-def apply(store, contents):
+def apply(store, contents, *, desktop_window_pending=None):
     """Replace personal tables in one transaction; any error leaves current data unchanged."""
     with store.connection() as conn:
         conn.execute("BEGIN IMMEDIATE")
@@ -249,3 +259,10 @@ def apply(store, contents):
                 conn.execute("DELETE FROM meta WHERE id=?", (key,))
             else:
                 conn.execute("INSERT INTO meta VALUES (?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload", (key, json.dumps(contents[key], ensure_ascii=False)))
+        # Publish the window hand-over in the same commit as the personal data. A restore
+        # without window preferences cancels an older, not-yet-applied hand-over.
+        if desktop_window_pending is None:
+            conn.execute("DELETE FROM meta WHERE id='desktop_window_pending'")
+        else:
+            conn.execute("INSERT INTO meta VALUES ('desktop_window_pending',?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload",
+                         (json.dumps(desktop_window_pending, ensure_ascii=False),))

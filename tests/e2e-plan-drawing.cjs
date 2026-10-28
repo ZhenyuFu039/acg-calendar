@@ -19,7 +19,7 @@ const base='http://127.0.0.1:8804',DAY=86400000;
     await page.goto(base);await page.locator('#game-select option[value="sample-game"]').waitFor({state:'attached'});await page.locator('#game-select').selectOption('sample-game');
     await page.waitForFunction(()=>document.body.dataset.game==='sample-game'&&!document.querySelector('#game-select').disabled);await page.locator('#fit-version').click();await page.locator('.fit-version').waitFor();
     assert.equal(await page.locator('[data-plan-create-track]').count(),0);assert.equal(await page.locator('#plan-draw-tools').isVisible(),false);
-    await page.locator('#plans-button').click();assert.equal(await page.locator('[data-plan-summary]').count(),3);
+    await page.locator('#rail-plans').click();assert.equal(await page.locator('[data-plan-summary]').count(),3);
     assert.equal(await page.locator(`[data-plan-summary="${first.id}"] .plan-coverage [data-event]`).count(),2);
     assert.equal(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage [data-event]`).count(),1);
     assert.match(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage`).textContent(),/示例兑换处/);assert.match(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage`).textContent(),/预计 \/ 待定/);
@@ -31,11 +31,11 @@ const base='http://127.0.0.1:8804',DAY=86400000;
     await page.locator(`[data-plan-summary="${exchange.id}"] summary`).click();
     await page.screenshot({path:path.join(output,'all-plans-and-activities.png')});
     await page.locator('#plans-dialog [data-close]').click();await page.locator('[data-fold-parent]').first().click();await page.waitForFunction(()=>document.querySelector('[data-fold-parent]').getAttribute('aria-expanded')==='false');
-    await page.locator('#plans-button').click();assert.equal(await page.locator(`[data-plan-summary="${first.id}"] .plan-coverage [data-event]`).count(),1);assert.equal(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage [data-event]`).count(),0);
+    await page.locator('#rail-plans').click();assert.equal(await page.locator(`[data-plan-summary="${first.id}"] .plan-coverage [data-event]`).count(),1);assert.equal(await page.locator(`[data-plan-summary="${exchange.id}"] .plan-coverage [data-event]`).count(),0);
     await page.locator('#plans-dialog [data-close]').click();await page.locator('[data-fold-parent]').first().click();
-    await page.locator('#plans-button').click();await page.locator('[data-start-plan]').click();await page.locator('[data-plan-create-track]').waitFor();
+    await page.locator('#rail-plans').click();await page.locator('[data-start-plan]').click();await page.locator('[data-plan-create-track]').waitFor();
     assert.equal(await page.locator('#plans-dialog').evaluate(d=>d.open),false);assert.equal(await page.locator('#calendar-expand').getAttribute('aria-pressed'),'true');
-    const axis=async()=>await page.evaluate(()=>{const a=document.querySelector('.day-axis'),r=a.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,lo:Date.parse(a.querySelector('[data-deadline-day]').dataset.deadlineDay)/86400000,days:a.querySelectorAll('[data-deadline-day]').length};});
+    const axis=async()=>await page.evaluate(()=>{const a=document.querySelector('.day-axis'),r=a.getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,lo:Date.parse(a.querySelector('.axis-date').getAttribute('aria-label'))/86400000,days:a.querySelectorAll('.axis-date').length};});
     let a=await axis(),track=await page.locator('[data-plan-create-track]').boundingBox();
     const x=(date,axis)=>axis.x+(Date.parse(date)/DAY-axis.lo)/axis.days*axis.width;
     // Reverse drag; a local state poll must not tear down the captured track.
@@ -52,18 +52,18 @@ const base='http://127.0.0.1:8804',DAY=86400000;
     let saved=(await state()).plans.find(p=>p.title==='拖选生成的规划');assert.ok(saved);assert.equal(await page.locator(`[data-plan-summary="${saved.id}"] .plan-coverage [data-event]`).count(),2);
     await page.locator('#plans-dialog [data-close]').click();await page.locator('.personal-plan-bar').filter({hasText:'拖选生成的规划'}).waitFor();
     // Click-only and Esc cancel do not save; normal event clicking resumes.
-    await page.locator('#plans-button').click();await page.locator('[data-start-plan]').click();await page.locator('[data-plan-create-track]').click();assert.equal(await page.locator('#plan-editor-dialog').evaluate(d=>d.open),false);
+    await page.locator('#rail-plans').click();await page.locator('[data-start-plan]').click();await page.locator('[data-plan-create-track]').click();assert.equal(await page.locator('#plan-editor-dialog').evaluate(d=>d.open),false);
     await page.keyboard.press('Escape');await page.waitForTimeout(450);assert.equal(await page.locator('[data-plan-create-track]').count(),0);
     await page.locator('.event-bar').first().click();await page.locator('#detail-dialog[open]').waitFor();await page.locator('#detail-dialog [data-close]').click();assert.equal((await state()).plans.length,4);
     // An external game change aborts only the pending drag, never writes a stale selection.
-    await page.locator('#plans-button').click();await page.locator('[data-start-plan]').click();track=await page.locator('[data-plan-create-track]').boundingBox();
+    await page.locator('#rail-plans').click();await page.locator('[data-start-plan]').click();track=await page.locator('[data-plan-create-track]').boundingBox();
     await page.mouse.move(track.x+30,track.y+30);await page.mouse.down();await page.mouse.move(track.x+90,track.y+30,{steps:4});
     await request('/api/workspace','PATCH',{view:{scope:'single',selected_games:['arknights-cn']}});await page.evaluate(()=>window.dispatchEvent(new Event('focus')));
     await page.waitForFunction(()=>document.body.dataset.game==='arknights-cn'&&!document.querySelector('.plan-selection-overlay'));
     await page.mouse.up();assert.equal(await page.locator('#plan-editor-dialog').evaluate(d=>d.open),false);assert.equal((await state()).plans.length,4);
     await page.keyboard.press('Escape');await page.locator('#game-select').selectOption('sample-game');await page.waitForFunction(()=>document.body.dataset.game==='sample-game'&&!document.querySelector('#game-select').disabled);await page.locator('#fit-version').click();await page.locator('.fit-version').waitFor();
     // The selected wall-clock range is validated in its own zone across DST (25h).
-    await page.locator('#plans-button').click();await page.locator('[data-start-plan]').click();await page.locator('#plan-draw-step').selectOption('1440');
+    await page.locator('#rail-plans').click();await page.locator('[data-start-plan]').click();await page.locator('#plan-draw-step').selectOption('1440');
     a=await axis();track=await page.locator('[data-plan-create-track]').boundingBox();await page.mouse.move(x('2026-11-01T00:00:00Z',a),track.y+30);await page.mouse.down();await page.mouse.move(x('2026-11-02T00:00:00Z',a),track.y+30,{steps:10});await page.mouse.up();
     await page.locator('#plan-editor-dialog[open]').waitFor();assert.equal(await page.locator('#plan-start').inputValue(),'2026-11-01T00:00');assert.equal(await page.locator('#plan-end').inputValue(),'2026-11-02T00:00');
     await page.locator('#plan-title').fill('夏令时整日规划');await page.locator('#plan-form button[type=submit]').click();await page.locator('#plans-dialog[open]').waitFor();
@@ -71,9 +71,9 @@ const base='http://127.0.0.1:8804',DAY=86400000;
     // Empty official scope still has a drawing lane; temporary mode never survives reload.
     await page.locator('#plans-dialog [data-close]').click();await page.locator('#event-search').fill('没有这个活动');for(let i=0;i<4;i++)await page.locator('#next-period').click();
     assert.equal(await page.locator('.personal-plan-bar').count(),0);assert.equal(await page.locator('.event-bar').count(),0);
-    await page.locator('#month-view').click();await page.locator('.month-cell').first().waitFor();await page.locator('#plans-button').click();await page.locator('[data-start-plan]').click();await page.locator('[data-plan-create-track]').waitFor();
+    await page.locator('#month-view').click();await page.locator('.month-cell').first().waitFor();await page.locator('#rail-plans').click();await page.locator('[data-start-plan]').click();await page.locator('[data-plan-create-track]').waitFor();
     await page.setViewportSize({width:320,height:720});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));assert.equal(await page.locator('#plan-draw-cancel').isVisible(),true);
-    await page.reload();await page.locator('#plans-button').waitFor();assert.equal(await page.locator('#plan-draw-tools').isVisible(),false);
+    await page.reload();await page.locator('#rail-plans').waitFor();assert.equal(await page.locator('#plan-draw-tools').isVisible(),false);
     await page.goto(base+'/?planner=1');await page.locator('#plans-dialog[open]').waitFor();assert.equal(await page.locator('[data-plan-summary]').count(),5,'Native desktop entry opens the complete overview');
     const after=(await state()).events.filter(e=>e.game==='sample-game');for(let i=0;i<2;i++){assert.deepEqual(after[i].start,source[i].start);assert.deepEqual(after[i].end,source[i].end);}
     assert.deepEqual(errors,[]);console.log('PASS: opt-in forward/reverse pointer drawing, polling capture, draft confirmation, Esc/click cancellation, unchanged normal clicks, 25h DST range, empty timeline, mobile/reload; all plans and overlap details respect visible rows/folds and preserve official dates');

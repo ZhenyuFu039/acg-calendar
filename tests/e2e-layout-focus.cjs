@@ -44,8 +44,8 @@ const nested=()=>[...document.querySelectorAll('body *')].filter(e=>{const s=get
     await page.screenshot({path:path.join(output,'wide-default.png')});
     await page.locator('[data-plans-fold]').click();await page.locator('#personal-plans-panel .plan-card').waitFor();
     await page.locator('[data-plans-fold]').click();assert.equal(await page.locator('#personal-plans-panel .plan-card').count(),0);
-    await page.locator('#heading-toggle').click();assert.equal(await page.locator('.display-title').isVisible(),true);
-    await page.locator('#heading-toggle').click();assert.equal(await page.locator('.display-title').isVisible(),false);
+    await page.locator('#workspace-button').click();await page.locator('[data-preference-tab="layout"]').click();await page.locator('#heading-toggle').click();await page.locator('#preferences-dialog [data-close]').click();assert.equal(await page.locator('.display-title').isVisible(),true);
+    await page.locator('#workspace-button').click();await page.locator('[data-preference-tab="layout"]').click();await page.locator('#heading-toggle').click();await page.locator('#preferences-dialog [data-close]').click();assert.equal(await page.locator('.display-title').isVisible(),false);
 
     // F18 step 1: an unchanged poll keeps the very same node and focus.
     const name=page.locator('#calendar .event-name[data-event]').nth(1);const id=await name.getAttribute('data-event');
@@ -95,9 +95,18 @@ const nested=()=>[...document.querySelectorAll('body *')].filter(e=>{const s=get
     // Secondary links live under 更多; plan creation uses the form on phones.
     assert.equal(await page.locator('#maintenance-button').isVisible(),false);
     await page.locator('#more-tools').click();assert.equal(await page.locator('a[href^="/api/calendar.ics"]').isVisible(),true);
-    await page.locator('#plans-button').click();await page.locator('[data-start-plan]').click();await page.locator('#plan-editor-dialog[open]').waitFor();
+    await page.locator('#rail-plans').click();await page.locator('[data-start-plan]').click();await page.locator('#plan-editor-dialog[open]').waitFor();
     assert.equal(await page.evaluate(()=>document.body.classList.contains('plan-creating')),false);
     await page.screenshot({path:path.join(output,'phone-timeline.png')});
+    // Phone dialogs are bottom sheets; with a short viewport (as when the keyboard is open) the
+    // header and close button stay visible and the focused field and save button can be reached.
+    await page.waitForTimeout(400);
+    let sheet=await page.locator('#plan-editor-dialog').evaluate(d=>{const r=d.getBoundingClientRect();return [Math.round(r.bottom),Math.round(r.width),innerHeight,innerWidth];});
+    assert.equal(sheet[0],sheet[2],'Sheet sits on the bottom edge');assert.equal(sheet[1],sheet[3],'Sheet spans the width');
+    await page.setViewportSize({width:375,height:420});await page.locator('#plan-notes').focus();await page.waitForTimeout(700);
+    const fit=await page.locator('#plan-editor-dialog').evaluate(d=>{const r=d.getBoundingClientRect(),n=d.querySelector('#plan-notes').getBoundingClientRect();d.querySelector('#plan-form button[type=submit]').scrollIntoView({block:'nearest'});const s=d.querySelector('#plan-form button[type=submit]').getBoundingClientRect(),c=d.querySelector('[data-close]').getBoundingClientRect();return {inside:r.top>=0&&r.bottom<=innerHeight,notes:n.top>=r.top&&n.bottom<=r.bottom,save:s.top>=0&&s.bottom<=innerHeight,close:c.top>=r.top&&c.bottom<=innerHeight};});
+    assert.deepEqual(fit,{inside:true,notes:true,save:true,close:true});
+    await page.setViewportSize({width:375,height:812});
     // Back to wide: the saved desktop view is used again.
     await page.locator('#plan-editor-dialog [data-close]').click();await page.setViewportSize({width:1440,height:900});
     await page.waitForFunction(v=>document.querySelector('#'+v+'-view').getAttribute('aria-pressed')==='true',data.settings.view);
@@ -111,6 +120,6 @@ const nested=()=>[...document.querySelectorAll('body *')].filter(e=>{const s=get
     await page.locator('#source-status',{hasText:'日历已更新 · 补齐活动图片… · 等待 web.hycdn.cn 请求间隔约 10 秒'}).waitFor({timeout:15000});
     await page.locator('#game-select').selectOption('arknights-cn');
     await page.locator('#source-status',{hasText:'上次同步：新增 2 · 更新 1 · 补齐图片 3 张 · 1 张图片暂不可用'}).waitFor({timeout:15000});
-    assert.deepEqual(errors,[]);console.log('PASS: sync stages and results in the status line, unchanged polls keep nodes and focus, rebuilds restore focus, compact wide layout with folded plans, phone document scroll with upcoming list (≥4 rows, phase closings named), local phone view preference, narrow timeline, More menu, form-only phone planning');
+    assert.deepEqual(errors,[]);console.log('PASS: sync stages and results in the status line, unchanged polls keep nodes and focus, rebuilds restore focus, compact wide layout with folded plans, phone document scroll with upcoming list (≥4 rows, phase closings named), local phone view preference, narrow timeline, More menu, form-only phone planning, bottom-sheet dialogs with sticky close and reachable save on a short viewport');
   }finally{if(browser)await browser.close();server.kill();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

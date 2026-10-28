@@ -14,7 +14,7 @@ const base='http://127.0.0.1:8808';
     page.on('pageerror',e=>errors.push(e.message));
     await page.goto(base+'/?game='+games[0]);await page.locator('#calendar .event-name').first().waitFor();
     assert.match(await page.locator('#combination-help').textContent(),/提醒覆盖全部已安装游戏/);
-    await page.locator('#inbox-button').click();await page.locator('#reminder-dialog[open]').waitFor();
+    await page.locator('#inbox-button').click();await page.locator('#reminder-rules summary').click();await page.locator('#reminder-dialog[open]').waitFor();
     assert.equal(await page.locator('input[name="reminder-scope"][value="all"]').isChecked(),true,'Existing installs keep reminding every game');
     assert.equal(await page.locator('.reminder-scope-games').isVisible(),false);
     // First custom choice starts from the current combination (one game here).
@@ -39,11 +39,11 @@ const base='http://127.0.0.1:8808';
       assert.equal(await page.locator('[data-reminder-game]:checked').count(),0);
     }
     await page.reload();await page.locator('#calendar .event-name').first().waitFor();
-    await page.locator('#inbox-button').click();await page.locator('#reminder-settings',{hasText:'未选择任何游戏，截止提醒不会发送'}).waitFor();
+    await page.locator('#inbox-button').click();await page.locator('#reminder-rules summary').click();await page.locator('#reminder-settings',{hasText:'未选择任何游戏，截止提醒不会发送'}).waitFor();
     assert.equal(await page.locator('[data-reminder-game]:checked').count(),0);
     await page.locator('#reminder-dialog [data-close]').click();
     await page.waitForFunction(()=>document.querySelector('#combination-help').textContent.includes('未选择提醒游戏'));
-    await page.locator('#inbox-button').click();await page.locator('input[name="reminder-scope"][value="all"]').check();
+    await page.locator('#inbox-button').click();await page.locator('#reminder-rules summary').click();await page.locator('input[name="reminder-scope"][value="all"]').check();
     await page.waitForFunction(()=>document.querySelector('#combination-help').textContent.includes('提醒覆盖全部已安装游戏'));
     await page.setViewportSize({width:375,height:812});assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1));
     await page.screenshot({path:path.join(output,'reminder-scope-phone.png')});

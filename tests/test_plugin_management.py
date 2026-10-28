@@ -3,6 +3,7 @@ import json
 import shutil
 
 from app import Application
+from acg_calendar import backup
 from acg_calendar.parser import ROOT
 from test_calendar import TempStoreTest
 
@@ -137,3 +138,45 @@ class PluginToggleEdgeTests(TempStoreTest):
             with self.assertRaises(ValueError):
                 app.set_plugin_enabled(payload)
         self.assertEqual(self.store.settings()['disabled_plugins'], [])
+
+
+class ClearGameRecordsTests(TempStoreTest):
+    def setUp(self):
+        super().setUp()
+        shutil.copytree(SAMPLE, self.directory / 'plugins' / 'sample-game')
+        self.app = Application(self.directory, auto_sync=False, desktop=False)
+        self.sample = [e for v in self.app.versions() if v['game'] == 'sample-game' for e in v['events']]
+        self.other = next(e for v in self.app.versions() if v['game'] == 'endfield-cn' for e in v['events'])
+        self.app.update_event(self.sample[0]['id'], {'starred': True, 'notes': '示例备注'})
+        self.app.update_event(self.sample[1]['id'], {'completed': True})
+        self.app.update_event(self.other['id'], {'starred': True, 'notes': '其他游戏'})
+        self.plan = self.app.workspace.plan({'title': '示例计划', 'start': '2026-11-01T00:00:00Z', 'end': '2026-11-01T01:00:00Z', 'timezone': 'UTC', 'game_id': 'sample-game'})
+        self.free = self.app.workspace.plan({'title': '未关联计划', 'start': '2026-11-01T00:00:00Z', 'end': '2026-11-01T01:00:00Z', 'timezone': 'UTC'})
+
+    def test_preview_counts_and_clear_touches_only_that_game(self):
+        preview = self.app.preview_clear({'game': 'sample-game'})
+        self.assertEqual({k: preview[k] for k in ('marks', 'starred', 'completed', 'notes', 'plans')}, {'marks': 2, 'starred': 1, 'completed': 1, 'notes': 1, 'plans': 1})
+        before = len(backup.listing(self.directory))
+        result = self.app.clear_game_records({'game': 'sample-game'})
+        state = self.store.state()
+        self.assertNotIn(self.sample[0]['id'], state)
+        self.assertNotIn(self.sample[1]['id'], state)
+        self.assertEqual(state[self.other['id']]['notes'], '其他游戏')
+        self.assertEqual([p['id'] for p in self.store.plans()], [self.free['id']])
+        self.assertEqual(len(backup.listing(self.directory)), before + 1)
+        self.assertEqual(backup.listing(self.directory)[0]['reason'], 'before-clear')
+        # The automatic backup brings everything back.
+        self.app.restore_backup({'name': result['safety_backup']})
+        self.assertEqual(self.store.state()[self.sample[0]['id']]['notes'], '示例备注')
+        self.assertIn(self.plan['id'], [p['id'] for p in self.store.plans()])
+
+    def test_disabled_game_can_be_cleared_and_unknown_games_are_rejected(self):
+        self.app.set_plugin_enabled({'folder': 'sample-game', 'enabled': False})
+        app = Application(self.directory, auto_sync=False, desktop=False)
+        self.assertNotIn('sample-game', app.registry.ids)
+        self.assertEqual(app.clear_game_records({'game': 'sample-game'})['marks'], 2)
+        with self.assertRaises(LookupError):
+            app.preview_clear({'game': 'no-such-game'})
+        for payload in ({}, {'game': 1}, {'game': 'sample-game', 'extra': 1}):
+            with self.assertRaises(ValueError):
+                app.preview_clear(payload)

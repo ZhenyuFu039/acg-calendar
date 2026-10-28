@@ -22,15 +22,26 @@
   const scopeEvents = () => allEvents().filter(e=>S.game==='all'||(S.game==='selected'?W.selected().includes(e.game):e.version_id===S.version));
   const gameInfo = () => S.data?.games.find(g=>g.id===S.game);
   const gameLabel = event => W.game(event.game)?.short_name || event.game_name || event.game;
-  const syncState = () => combined()?{running:Object.values(S.data.sync_by_game).some(s=>s.running),error:Object.values(S.data.sync_by_game).map(s=>s.error).filter(Boolean).join('；')}:S.data.sync_by_game[S.game]||S.data.sync;
+  const scopedSyncs = () => S.data.games.filter(g=>S.game==='all'||W.selected().includes(g.id)).map(g=>S.data.sync_by_game[g.id]||{});
+  const syncState = () => combined()?{running:scopedSyncs().some(s=>s.running),error:scopedSyncs().map(s=>s.error).filter(Boolean).join('；')}:S.data.sync_by_game[S.game]||S.data.sync;
+  // Building an Intl.DateTimeFormat is far slower than using one, and a timeline render
+  // converts thousands of instants; keep one formatter per time zone.
+  const formatters=new Map();
+  function formatter(timeZone) {
+    let f=formatters.get(timeZone);
+    if(!f){f=new Intl.DateTimeFormat('en-US', {timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});formatters.set(timeZone,f);}
+    return f;
+  }
+  // The system zone is read again with each state update, so a changed OS zone still applies.
+  const localZone=()=>S.localZone||(S.localZone=Intl.DateTimeFormat().resolvedOptions().timeZone);
   function zone() {
     const candidate = S.data?.settings.timezone;
-    const value = candidate && candidate !== 'auto' ? candidate : Intl.DateTimeFormat().resolvedOptions().timeZone;
-    try { new Intl.DateTimeFormat('en-US', {timeZone:value}).format(); return value; }
+    const value = candidate && candidate !== 'auto' ? candidate : localZone();
+    try { formatter(value); return value; }
     catch { return 'UTC'; }
   }
   function dateParts(value, timeZone=zone()) {
-    return Object.fromEntries(new Intl.DateTimeFormat('en-US', {timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'}).formatToParts(new Date(value)).map(part => [part.type,part.value]));
+    return Object.fromEntries(formatter(timeZone).formatToParts(new Date(value)).map(part => [part.type,part.value]));
   }
   function civil(value) {
     const p = dateParts(value);
@@ -63,6 +74,16 @@
     return `${minutes}分钟`;
   }
   const narrow=matchMedia('(max-width:850px)');
+  // Phone bottom sheets stay above the on-screen keyboard: browsers that do not resize the
+  // layout for the keyboard still report the visible area through visualViewport.
+  if(window.visualViewport){
+    const fit=()=>{const v=visualViewport,root=document.documentElement.style;root.setProperty('--viewport-height',v.height+'px');root.setProperty('--keyboard-offset',Math.max(0,innerHeight-v.height-v.offsetTop)+'px');};
+    visualViewport.addEventListener('resize',fit);visualViewport.addEventListener('scroll',fit);fit();
+  }
+  document.addEventListener('focusin',event=>{
+    const field=event.target.closest?.('dialog input,dialog textarea,dialog select');
+    if(field&&narrow.matches)setTimeout(()=>field.scrollIntoView({block:'center',behavior:'smooth'}),250);
+  });
   const local={
     get(key,fallback){try{const v=JSON.parse(localStorage.getItem('playtime.'+key));return v??fallback;}catch{return fallback;}},
     set(key,value){try{localStorage.setItem('playtime.'+key,JSON.stringify(value));}catch{}}
@@ -75,8 +96,8 @@
     return S.data.settings.view;
   }
   // On phones the filter sidebar folds to the game picker; the saved desktop sidebar is untouched.
-  function paintSidebar(){const open=local.get('sidebar.v1.narrow',false)===true;$('.sidebar').classList.toggle('sidebar-expanded',open);const b=$('#sidebar-more');b.setAttribute('aria-expanded',String(open));b.textContent=open?'收起筛选 ▴':'范围与筛选 ▾';}
-  function headingCompact(){return local.get('heading.v1',innerHeight<1000?'compact':'full')==='compact';}
+  function paintSidebar(open=false){$('.sidebar').classList.toggle('sidebar-expanded',open);const b=$('#sidebar-more');b.setAttribute('aria-expanded',String(open));b.textContent=open?'收起筛选 ▴':'范围与筛选 ▾';}
+  function headingCompact(){return local.get('heading.v1','compact')==='compact';}
   function paintHeading(){
     const compact=headingCompact();document.body.classList.toggle('heading-compact',compact);
     const b=$('#heading-toggle');b.textContent=compact?'展开标题':'收起标题';b.setAttribute('aria-expanded',String(!compact));
@@ -203,9 +224,10 @@
     if(S.view==='timeline')return tree(shown);
     if(S.view==='list')return tree(filtered);
     if(S.view==='upcoming'){const {byId,nodes,uncertain}=upcomingRows(filtered),ids=new Set([...nodes.map(n=>n.event_id),...uncertain.map(e=>e.id)]);const drawn=[...ids].map(id=>byId.get(id));return {inView:drawn,visible:drawn,folded:0,overflow:0};}
-    const [first,last]=monthGrid(lo,hi),inView=filtered.filter(e=>overlaps(e,first,last)),drawn=new Map();
-    for(let week=first;week<last;week+=7)for(const [event] of monthWeek(inView,week,week+7).placed)drawn.set(event.id,event);
-    return {inView,visible:[...drawn.values()],folded:0,overflow:inView.length-drawn.size};
+    const [first,last]=monthGrid(lo,hi),byId=new Map(filtered.map(e=>[e.id,e])),ids=new Set();
+    for(let day=first;day<last;day++)for(const node of P.density(day).rows)if(byId.has(node.event_id))ids.add(node.event_id);
+    const drawn=[...ids].map(id=>byId.get(id));
+    return {inView:drawn,visible:drawn,folded:0,overflow:0};
   }
   // F16: explain what the current filters hide, per reason and by stable id, so a hidden
   // activity is not mistaken for a failed sync. Buttons clear only their own filter.
@@ -216,7 +238,7 @@
     const focus=[...base].filter(id=>!afterFocus.has(id)).length,range=[...afterFocus].filter(id=>!inRange.has(id)).length;
     const games=S.game==='all'?S.data.games.map(g=>g.id):S.game==='selected'?W.selected():[gameInfo()?.id||S.game];
     const added=new Set(games.flatMap(g=>S.data.sync_by_game?.[g]?.result?.calendar?.added_ids||[]));
-    const newHidden=scope.filter(e=>added.has(e.id)&&!visibleIds.has(e.id)).length;
+    const newlyHidden=scope.filter(e=>added.has(e.id)&&!visibleIds.has(e.id)),newHidden=newlyHidden.length;
     // A version picker can hide a whole new version; count those per version, without switching.
     const scopeIds=new Set(scope.map(e=>e.id)),otherVersions=new Map();
     for(const e of allEvents())if(games.includes(e.game)&&!e.ignored&&added.has(e.id)&&!scopeIds.has(e.id))otherVersions.set(e.version_id,(otherVersions.get(e.version_id)||0)+1);
@@ -225,8 +247,8 @@
     if(!hidden&&!newHidden&&!otherVersions.size){el.hidden=true;patch(el,'');return;}
     el.hidden=false;
     const versionName=id=>S.data.versions.find(v=>v.id===id)?.name||id;
-    const outside={timeline:'日期范围外',month:'本月网格外',upcoming:'近期截止只列未来截止，其余'}[S.view];
-    patch(el,`${[...otherVersions].map(([id,n])=>`<strong>「${esc(versionName(id))}」有 ${n} 条上次同步新增的活动</strong><button type="button" class="text-button" data-unhide="version" data-version="${esc(id)}">查看该版本</button>`).join('')}${newHidden?`<strong>上次同步新增的 ${newHidden} 条活动未显示</strong>`:''}<span>当前显示 ${visible.length} / 本范围 ${scope.length} 项${hidden?`，筛选隐藏 ${hidden} 项`:''}${counts.length>1?'（各原因可能重叠）':''}：</span>${counts.map(([id,label,n])=>`<button type="button" class="text-button" data-unhide="${id}">${label} ${n} · 显示</button>`).join('')}${focus?`<button type="button" class="text-button" data-unhide="focus">日期聚焦 ${focus} · 取消聚焦</button>`:''}${range&&outside?`<button type="button" class="text-button" data-unhide="range">${outside} ${range} · 在全部活动中查看</button>`:''}${overflow>0?`<button type="button" class="text-button" data-unhide="range">月历每格最多 3 条，另有 ${overflow} 项收在“+N 项”中 · 在全部活动中查看</button>`:''}${folded>0?`<span>另有 ${folded} 条子活动已折叠</span>`:''}`);
+    const outside={timeline:'日期范围外',month:'本月无明确截止（或已完成）',upcoming:'近期截止只列未来截止，其余'}[S.view];
+    patch(el,`${[...otherVersions].map(([id,n])=>`<strong>「${esc(versionName(id))}」有 ${n} 条上次同步新增的活动</strong><button type="button" class="text-button" data-unhide="version" data-version="${esc(id)}">查看该版本</button>`).join('')}${newHidden?`<strong>上次同步新增的 ${newHidden} 条活动未显示：${newlyHidden.slice(0,3).map(e=>esc(cleanTitle(e))).join('、')}${newHidden>3?'…':''}</strong>`:''}<span>${S.view==='month'?'截止总览已计入':'当前显示'} ${visible.length} / 本范围 ${scope.length} 项${hidden?`，筛选隐藏 ${hidden} 项`:''}${counts.length>1?'（各原因可能重叠）':''}：</span>${counts.map(([id,label,n])=>`<button type="button" class="text-button" data-unhide="${id}">${label} ${n} · 显示</button>`).join('')}${focus?`<button type="button" class="text-button" data-unhide="focus">日期聚焦 ${focus} · 取消聚焦</button>`:''}${range&&outside?`<button type="button" class="text-button" data-unhide="range">${outside} ${range} · 在全部活动中查看</button>`:''}${overflow>0?`<button type="button" class="text-button" data-unhide="range">月历每格最多 3 条，另有 ${overflow} 项收在“+N 项”中 · 在全部活动中查看</button>`:''}${folded>0?`<span>另有 ${folded} 条子活动已折叠</span>`:''}`);
   }
   function filteredEvents() {return P.filterFocus(baseFilteredEvents());}
   function range() {
@@ -242,11 +264,18 @@
     const end=event.end.at?civil(event.end.at):Infinity;
     return start<hi && end>lo;
   }
+  // A state poll may carry data from before a write. refresh() does not poll while any write is
+  // unfinished (activeWrites), and drops an answer if a write started or ended meanwhile (writes
+  // counts both); the write's own response, or the next poll, brings the newer state.
+  S.writes=0;S.activeWrites=0;
   async function api(path, method='GET', body) {
-    const response=await fetch(path,{method,headers:method==='GET'?{}:{'Content-Type':'application/json','X-Calendar-Token':S.data.csrf_token},body:body===undefined?undefined:JSON.stringify(body)});
-    const result=await response.json();
-    if(!response.ok) throw new Error(result.error || '请求失败');
-    return result;
+    const write=method!=='GET';if(write){S.writes++;S.activeWrites++;}
+    try{
+      const response=await fetch(path,{method,headers:method==='GET'?{}:{'Content-Type':'application/json','X-Calendar-Token':S.data.csrf_token},body:body===undefined?undefined:JSON.stringify(body)});
+      const result=await response.json();
+      if(!response.ok) throw new Error(result.error || '请求失败');
+      return result;
+    }finally{if(write){S.writes++;S.activeWrites--;}}
   }
   function toast(message,error=false) {
     const el=$('#toast');
@@ -255,18 +284,20 @@
   }
   async function mutate(path,body={},method='POST') {
     const generation=S.scopeGeneration;
+    if(typeof body?.view==='object'&&body.view&&'focus' in body.view)S.focusWrites=(S.focusWrites||0)+1; // Lets a reset in progress see a newer focus choice.
     try { const data=await api(path,method,body); if(generation===S.scopeGeneration)applyState(data); return true; }
     catch(error) { toast(error.message,true);return false; }
   }
   async function selectScope(game,selected_games,reset=false) {
     if(S.scoping)return;
+    S.dateIntent=(S.dateIntent||0)+1;
     S.scopeGeneration=(S.scopeGeneration||0)+1;S.scoping=true;
     const controls=[$('#game-select'),...document.querySelectorAll('[data-select-game]')];controls.forEach(c=>c.disabled=true);
     try {
       if(game!=='selected')await api('/api/settings','POST',{active_game:game});
       const data=await api('/api/workspace','PATCH',{view:{scope:['all','selected'].includes(game)?game:'single',selected_games}});
       S.game=game;S.version=null;S.rules=null;
-      if(reset){S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));$('#event-search').value='';}
+      if(reset){S.explicitAnchor=null;S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));$('#event-search').value='';}
       S.scoping=false;applyState(data);
     }catch(error){toast(error.message,true);S.scoping=false;render();}
     finally{S.scoping=false;$('#game-select').disabled=false;document.querySelectorAll('[data-select-game]').forEach(c=>c.disabled=false);}
@@ -274,7 +305,7 @@
   function applyState(data) {
     if(S.scoping)return;
     const first=!S.initialized;
-    S.data=data;W.accept(data);
+    S.data=data;S.localZone=null;S.stateTag=null;W.accept(data);
     const scopeSignature=JSON.stringify([W.view.scope,W.selected()]);
     if(S.scopeSignature&&S.scopeSignature!==scopeSignature)S.game=W.view.scope==='single'?W.selected()[0]:W.view.scope;
     S.scopeSignature=scopeSignature;
@@ -290,13 +321,18 @@
       buildFilters();S.initialized=true;
     }
     const focusDate=W.view.focus.date;
-    if(focusDate&&(first||S.lastFocusDate!==focusDate)){const day=Date.parse(focusDate)/DAY,[lo,hi]=range();if(S.view==='month'||day<lo||day>=hi)S.anchor=day;}
+    if(focusDate&&(first||S.lastFocusDate!==focusDate)){const day=Date.parse(focusDate)/DAY,[lo,hi]=range();if(S.view==='month'||day<lo||day>=hi){S.dateIntent=(S.dateIntent||0)+1;S.anchor=day;}}
     S.lastFocusDate=focusDate;
     deliverBrowserNotices(data.notifications);
+    if(first){
+      const requested=new URLSearchParams(location.search),v=requested.get('view'),d=requested.get('date');
+      if(['timeline','month','list','upcoming'].includes(v))S.view=v;
+      if(d&&/^\d{4}-\d{2}-\d{2}$/.test(d)&&Number.isFinite(Date.parse(d))&&new Date(d).toISOString().slice(0,10)===d)S.explicitAnchor=S.anchor=Date.parse(d)/DAY;
+    }
     render();
     if(first)P.query();
     window.PlaytimeCustomize.update();
-    if(first&&new URLSearchParams(location.search).has("appearance")){const url=new URL(location.href),panel=url.searchParams.get('appearance');url.searchParams.delete('appearance');history.replaceState(null,'',url);if(panel==='reminders')openReminders();else window.PlaytimeCustomize.open(['layout','theme','network'].includes(panel)?panel:'theme');}
+    if(first&&new URLSearchParams(location.search).has("appearance")){const url=new URL(location.href),panel=url.searchParams.get('appearance');url.searchParams.delete('appearance');history.replaceState(null,'',url);if(panel==='reminders')openReminders();else window.PlaytimeCustomize.open(['layout','theme','network','backup','plugins'].includes(panel)?panel:'theme');}
     if($('#reminder-dialog').open) renderInbox();
     $('#load-error').hidden=true;
   }
@@ -335,7 +371,7 @@
     $('#month-view').setAttribute('aria-pressed',S.view==='month');
     $('#list-view').setAttribute('aria-pressed',S.view==='list');
     $('.range-control').hidden=S.view!=='timeline'||S.fit;
-    $('#fit-version').textContent=S.fit?'退出全览':'版本全览';
+    $('#fit-version').textContent=S.fit?'恢复日期范围':'日期全览';
     $('#fit-version').setAttribute('aria-pressed',Boolean(S.fit));
     $('.date-navigation').classList.toggle('list-mode',['list','upcoming'].includes(S.view));
     const [lo,hi]=range();
@@ -344,7 +380,7 @@
     const filtered=filteredEvents(), shown=['list','upcoming'].includes(S.view)?filtered:filtered.filter(event=>overlaps(event,lo,hi));
     const pending=filtered.filter(e=>!e.end.at&&e.time_kind!=='point').length;
     const total=scopeEvents().length;
-    $('#visible-summary').textContent=S.view==='upcoming'?`筛选后 ${filtered.length} 项 · 按显示时区列出未来截止`:S.view==='list'?`本版本共 ${total} 项 · 当前显示 ${shown.length} 项`:`日期范围内 ${shown.length} / 筛选后 ${filtered.length} 项 · 本版本 ${total} 项`;
+    $('#visible-summary').textContent=S.view==='month'?`本月明确截止关联 ${viewProjection(filtered,shown,lo,hi).visible.length} 项活动 · 筛选后 ${filtered.length} 项`:S.view==='upcoming'?`筛选后 ${filtered.length} 项 · 按显示时区列出未来截止`:S.view==='list'?`本版本共 ${total} 项 · 当前显示 ${shown.length} 项`:`日期范围内 ${shown.length} / 筛选后 ${filtered.length} 项 · 本版本 ${total} 项`;
     $('#catalog-count').textContent=`${S.view==='list'?'全部列表不受日期范围限制':S.fit?'版本时间轴总览':'范围外活动可在“全部活动”查看'}${pending?' · '+pending+' 项截止待定':''}`;
     if(S.view==='list') $('#period-title').textContent=`「${version.name}」全部活动`;
     if(S.view==='upcoming') $('#period-title').textContent='近期截止';
@@ -354,8 +390,9 @@
     $('#sync-button').disabled=sync.running;
     $('#sync-button').classList.toggle('syncing',Boolean(sync.running));
     $('#sync-button').lastChild.textContent=sync.running?'同步中…':'同步资料';
-    $('#sync-status').textContent=combined()?'各来源独立同步 · 数据保存在本机':sync.last_success?`最近同步 ${format(sync.last_success,{year:true})} · 数据保存在本机`:`${gameInfo().source_label}快照 ${format(version.source.fetched_at,{year:true})} · 数据保存在本机`;
-    W.renderModules();P.update();renderClock();syncTime();
+    $('#sync-status').textContent=combined()?'各来源独立同步 · 数据保存在本机':sync.last_success?`最近同步 ${format(sync.last_success,{year:true})} · 数据保存在本机`:`${version.source.label||gameInfo().source_label}快照 ${format(version.source.fetched_at,{year:true})} · 数据保存在本机`;
+    document.body.dataset.calendarView=S.view;
+    W.renderModules();P.update();window.PlaytimeUX?.update(S.data);renderClock();syncTime();
   }
   W.register('sources',()=>renderSourceStatus(activeVersion()));
   W.register('rewards',()=>renderRewardSummary(activeVersion()));
@@ -391,12 +428,14 @@
     return '上次同步：'+changes+(i.added?` · 补齐图片 ${i.added} 张`:'')+(i.failed?` · ${i.failed} 张图片暂不可用`:'')+(i.notes?.length?' · '+i.notes.join('；'):'');
   }
   function renderSourceStatus(version) {
+    if(window.PlaytimeUX?.ready)return; // The task navigation owns the concise status and diagnostic cards.
     const sync=syncState(), target=$('#source-status');
     if(S.game!=='endfield-cn') {
+      const sourceLabel=S.game==='arknights-cn'&&version.source.kind==='community_wiki'?'PRTS 社区 Wiki（历史缓存，后续同步优先官网）':gameInfo()?.source_label;
       const running=combined()?S.data.games.filter(g=>(S.game==='all'||W.selected().includes(g.id))&&S.data.sync_by_game[g.id]?.running).map(g=>g.short_name+' '+syncProgress(S.data.sync_by_game[g.id])):[];
-      const label=combined()?S.data.games.filter(g=>S.game==='all'||W.selected().includes(g.id)).map(g=>g.short_name+'：'+g.source_label).join('；')+(running.length?' · 同步中：'+running.join('；'):''):gameInfo().source_label+' · '+gameInfo().server+' · '+gameInfo().timezone+(version.warnings?.length?' · '+version.warnings.length+' 项采集提示':'');
+      const label=combined()?S.data.games.filter(g=>S.game==='all'||W.selected().includes(g.id)).map(g=>g.short_name+'：'+g.source_label).join('；')+(running.length?' · 同步中：'+running.join('；'):''):sourceLabel+' · '+gameInfo().server+' · '+gameInfo().timezone+(version.warnings?.length?' · '+version.warnings.length+' 项采集提示':'');
       const progress=combined()?'':syncProgress(sync);
-      target.innerHTML=`<span class="status-point"></span><span>${esc(label+(sync.running?(combined()?'':' · '+progress):sync.error?' · 同步失败，保留缓存':progress?' · '+progress:S.game==='arknights-cn'&&version.source.origin==='snapshot'?' · 当前为内置快照':''))}</span>`;
+      target.innerHTML=`<span class="status-point"></span><span>${esc(label+(sync.running?(combined()?'':' · '+progress):sync.error?' · 同步失败，保留缓存：'+sync.error:progress?' · '+progress:S.game==='arknights-cn'&&version.source.origin==='snapshot'?' · 当前为内置快照':''))}</span>`;
       target.classList.toggle('warning',Boolean(sync.error||version.warnings?.length));target.title=sync.error||(version.warnings||[]).join('；');return;
     }
     let message;
@@ -489,18 +528,11 @@
     let html='<div class="month-head">'+['一','二','三','四','五','六','日'].map(day=>`<span>周${day}</span>`).join('')+'</div>';
     for(let week=0;week<weeks;week++) {
       const lo=first+week*7,hi=lo+7;
-      const {visible,placed}=monthWeek(events,lo,hi),bars=[],drawn=placed.map(([e])=>e.id);
-      for(const [event,lane] of placed) {
-        if(event.time_kind==='point') {
-          const serial=Math.floor(civil(event.start.at)),left=(serial-lo)/7*100;
-          bars.push(`<button type="button" class="event-bar" style="--category:${categories[event.category].color};--bar-left:${left}%;--bar-width:${100/7}%;--progress:0%;--bar-top:${38+lane*25}px" data-event="${event.id}" title="${esc(cleanTitle(event)+' '+format(event.start.at))}"><span class="bar-label">◆ ${esc(cleanTitle(event))}</span></button>`);
-        } else bars.push(bar(event,lo,hi,{month:true,top:38+lane*25}));
-      }
       const cells=Array.from({length:7},(_,i)=>{
-        const day=lo+i,date=serialDate(day),extra=visible.filter(e=>overlaps(e,day,day+1)&&!drawn.includes(e.id)).length;
-        return `<div class="month-cell ${day<monthStart||day>=monthEnd?'outside':''} ${day===today?'today':''}"><button type="button" class="month-date" data-day="${day}" aria-label="${shortDay(day,true)}的全部活动">${date.getUTCDate()}</button>${P.densityButton(day,true)}${P.monthPlans(day)}${extra?`<button type="button" class="month-more" data-day="${day}">+${extra} 项</button>`:''}</div>`;
+        const day=lo+i,date=serialDate(day),count=P.density(day).rows.length;
+        return `<div class="month-cell density-level-${Math.min(3,count)} ${day<monthStart||day>=monthEnd?'outside':''} ${day===today?'today':''}"><button type="button" class="month-date" data-day="${day}" aria-label="${shortDay(day,true)}当日明细">${date.getUTCDate()}${day===today?' · 今天':''}</button>${P.densityButton(day,true)}${P.monthPlans(day)}</div>`;
       }).join('');
-      html+=`<div class="month-week">${cells}${bars.join('')}</div>`;
+      html+=`<div class="month-week deadline-month">${cells}</div>`;
     }
     return html;
   }
@@ -533,7 +565,7 @@
   function endpointDetail(endpoint,role,event) {
     if(role==='end'&&event.time_kind==='point') return '<div class="detail-time-value">更新节点</div><div class="detail-time-state">公告未设活动截止时间</div>';
     const value=endpoint.at?format(endpoint.at,{year:true}):'尚未公布';
-    const basis=endpoint.reference==='briefing_explicit'?'官方版本导览明确':endpoint.reference==='activity_start'?'兑换开始未单列，暂按活动开始展示':endpoint.state==='unknown'?(referenceLabels[endpoint.reference]||'需要核对来源'):endpoint.state==='exact'&&event.game==='arknights-cn'?'PRTS 国服明确时间':endpointLabels[endpoint.state];
+    const basis=endpoint.reference==='briefing_explicit'?'官方版本导览明确':endpoint.reference==='activity_start'?'兑换开始未单列，暂按活动开始展示':endpoint.state==='unknown'?(referenceLabels[endpoint.reference]||'需要核对来源'):endpoint.state==='exact'&&event.game==='arknights-cn'?(event.source.kind==='official'?'官网国服明确时间':'PRTS 国服明确时间'):endpointLabels[endpoint.state];
     return `<div class="detail-time-value">${esc(value)}</div><div class="detail-time-state">${esc(basis)}</div>`;
   }
   function renderDetail(event) {
@@ -577,7 +609,10 @@
       panel.innerHTML=`<strong>PRTS 社区 Wiki · 国服</strong><p>页面修订 ${esc(event.source.revision_id)} · ${esc(event.source.revised_at||'')}<br>社区整理资料，具体变更以游戏与官方公告为准。</p><a href="${esc(event.source.revision_url)}" target="_blank" rel="noopener noreferrer">查看本次解析的固定修订 ↗</a> · <a href="${esc(event.source.license.url)}" target="_blank" rel="noopener noreferrer">${esc(event.source.license.name)}</a>`;
       link.after(panel);
     }
-    if(event.artwork?.match==='official_activity_heading' && /^https:\/\/ak\.hypergryph\.com\/news\/\d+$/.test(event.artwork.source_url||'')) {
+    if(event.game==='arknights-cn' && event.source.kind==='official') {
+      $('#detail-content .source-box .help-text').textContent=`${event.source.time_label}：${event.source.time_text}\n官网发布日期：${format(event.source.published_at,{timeZone:serverZone,year:true})} · 按公告章节规则解析，未调用 AI`;
+    }
+    if(['official_activity_heading','official_activity_section'].includes(event.artwork?.match) && /^https:\/\/ak\.hypergryph\.com\/news\/\d+$/.test(event.artwork.source_url||'')) {
       const panel=document.createElement('section');panel.className='wiki-evidence official-art-evidence';
       panel.innerHTML=`<strong>活动图片 · 明日方舟官网</strong><p>${esc(event.artwork.source_title)}${event.artwork.shared_activity?' · 与主活动共用横幅':''}</p><a href="${esc(event.artwork.source_url)}" target="_blank" rel="noopener noreferrer">阅读图片对应的官方公告 ↗</a>`;
       $('#detail-content .source-link').after(panel);
@@ -590,7 +625,7 @@
       panel.innerHTML=`<strong>官方版本导览 · ${esc(source.title)}</strong><p>国服时间依据：${esc(start)} → ${esc(end)}</p><p>${source.match==='parent_activity'?'关联到同一玩法的素材，当前阶段时间沿用更新公告。':source.conflicts.length?'两份官方来源的时间存在差异，当前保留版本更新公告时间。':'已与版本更新公告核对；维护相关时间仍保留待确认标记。'}</p><a class="source-link" href="${esc(source.news_url)}" target="_blank" rel="noopener noreferrer">阅读导览上线公告 ↗</a> <a class="source-link" href="${esc(source.source_url)}" target="_blank" rel="noopener noreferrer">打开官方导览（入口随版本更新）↗</a>`;
       $('#detail-content .source-link').after(panel);
     }
-    addOfficialTimeNotice($('#detail-dialog'));P.detail(event);
+    addOfficialTimeNotice($('#detail-dialog'));P.detail(event);window.PlaytimeUX?.detail(event);
   }
   function openAgenda(day) {
     const events=filteredEvents().filter(e=>overlaps(e,day,day+1)).sort((a,b)=>Date.parse(a.start.at)-Date.parse(b.start.at));
@@ -668,35 +703,43 @@
   }
   async function switchView(view) {
     if(S.view===view) return;
+    S.dateIntent=(S.dateIntent||0)+1;
+    if(view==='month')S.anchor=W.view.focus.date?Date.parse(W.view.focus.date)/DAY:S.explicitAnchor??Math.floor(civil(now()));
     S.view=view;S.fit=false;S.days=Number($('#range-select').value);
     if(narrow.matches){local.set(NARROW_VIEW,view);render();return;}
     render();await mutate('/api/settings',{view});
   }
   // Crossing the breakpoint adopts that screen class's view, except during plan drawing.
-  narrow.addEventListener('change',()=>{if(!S.data||P.creating)return;S.view=preferredView();S.fit=false;render();});
-  async function showAll(view='list') {
+  narrow.addEventListener('change',()=>{if(!S.data||P.creating)return;S.dateIntent=(S.dateIntent||0)+1;S.view=preferredView();S.fit=false;render();});
+  async function showAll() {
     S.categories=new Set(Object.keys(categories));S.includePending=true;
     $('#event-search').value='';$('#include-pending').checked=true;buildFilters();
-    S.view=view;S.fit=false;S.days=Number($('#range-select').value);
-    if(narrow.matches)local.set(NARROW_VIEW,view);
-    await api('/api/settings','POST',narrow.matches?{hide_completed:false}:{hide_completed:false,view});
-    await mutate('/api/workspace',{view:{hide_future:false,focus:{date:null,event_id:null}}},'PATCH');
+    const focusWrites=S.focusWrites||0;
+    await api('/api/settings','POST',{hide_completed:false});
+    // The reset joins the focus queue, so a date or activity picked before it ran has been saved
+    // (and is kept), and one picked after it waits and lands last.
+    await P.queueFocus(()=>mutate('/api/workspace',{view:{hide_future:false,...((S.focusWrites||0)===focusWrites?{focus:{date:null,event_id:null}}:{})}},'PATCH'));
   }
   async function fitVersion() {
     if(S.fit) {S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));render();return;}
-    await showAll('timeline');
-    const events=scopeEvents().filter(e=>!e.invalid_interval);
+    const switching=switchView('timeline'),intent=S.dateIntent||0;
+    await switching;
+    // A later view/date action wins even if this settings response arrived afterwards.
+    if((S.dateIntent||0)!==intent||S.view!=='timeline')return;
+    const events=filteredEvents().filter(e=>!e.invalid_interval);
     const starts=events.filter(e=>e.start.at).map(e=>civil(e.start.at));
     const ends=events.flatMap(e=>[e.start.at,e.end.at]).filter(Boolean).map(value=>civil(value));
     if(!starts.length) return;
     const lo=Math.floor(Math.min(...starts)),hi=Math.floor(Math.max(...ends))+1;
-    if(hi-lo>120) {await showAll();toast('版本跨度超过 120 天，已用完整列表展示全部活动');return;}
+    if(hi-lo>120) {S.view='list';render();toast('日期跨度超过 120 天，已用活动列表保留筛选展示');return;}
     S.fit=true;S.anchor=lo;S.days=Math.max(7,hi-lo);render();
   }
   function movePeriod(direction) {
+    S.dateIntent=(S.dateIntent||0)+1;
     if(S.fit) {S.fit=false;S.days=Number($('#range-select').value);}
     if(S.view==='timeline') S.anchor+=direction*S.days;
     else { const d=serialDate(S.anchor);S.anchor=Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+direction,1)/DAY; }
+    S.explicitAnchor=S.anchor;
     render();
   }
   document.addEventListener('click',async event=>{
@@ -708,7 +751,7 @@
       if($('#reward-dialog').open) $('#reward-dialog').close();
       openEvent(target.dataset.event);return;
     }
-    if(target.dataset.day) {if(await P.focusDay(Number(target.dataset.day)))openAgenda(Number(target.dataset.day));return;}
+    if(target.dataset.day) {P.deadlines(Number(target.dataset.day),'activities');return;}
     if(target.dataset.unhide) {
       switch(target.dataset.unhide){
         case 'category':S.categories=new Set(Object.keys(categories));buildFilters();render();break;
@@ -742,16 +785,16 @@
       case 'reward-details':openRewardDetails();break;
       case 'previous-period':movePeriod(-1);break;
       case 'next-period':movePeriod(1);break;
-      case 'today-button':S.fit=false;S.days=Number($('#range-select').value);S.anchor=Math.floor(civil(now()));render();break;
+      case 'today-button':S.dateIntent=(S.dateIntent||0)+1;S.fit=false;S.days=Number($('#range-select').value);S.explicitAnchor=S.anchor=Math.floor(civil(now()));render();break;
       case 'upcoming-view':await switchView('upcoming');break;
-      case 'sidebar-more':{const open=!$('.sidebar').classList.contains('sidebar-expanded');local.set('sidebar.v1.narrow',open);paintSidebar();break;}
+      case 'sidebar-more':paintSidebar(!$('.sidebar').classList.contains('sidebar-expanded'));break;
       case 'heading-toggle':local.set('heading.v1',headingCompact()?'full':'compact');paintHeading();W.renderModules();break;
       case 'more-tools':{const open=target.getAttribute('aria-expanded')!=='true';target.setAttribute('aria-expanded',String(open));target.textContent=open?'收起 ▴':'更多 ▾';$('.calendar-context').classList.toggle('links-open',open);break;}
       case 'timeline-view':await switchView('timeline');break;
       case 'month-view':await switchView('month');break;
       case 'list-view':await switchView('list');break;
       case 'fit-version':await fitVersion();break;
-      case 'reset-filters':await showAll();break;
+      case 'reset-filters':await showAll();render();break;
       case 'sync-button':
         if(await mutate('/api/sync',{game:S.game})) toast('正在同步当前游戏资料…');
         break;
@@ -829,9 +872,9 @@
       case 'game-select':
         for(const dialog of document.querySelectorAll('dialog[open]')) dialog.close();
         await selectScope(target.value,target.value==='all'?S.data.games.map(g=>g.id):target.value==='selected'?W.selected():[target.value],true);break;
-      case 'version-select':S.version=target.value;S.anchor=Math.floor(civil(activeVersion().maintenance.start||now()));render();break;
+      case 'version-select':S.dateIntent=(S.dateIntent||0)+1;S.explicitAnchor=null;S.version=target.value;S.anchor=Math.floor(civil(activeVersion().maintenance.start||now()));render();break;
       case 'timezone-select':await mutate('/api/settings',{timezone:target.value});if(W.view.focus.date)await mutate('/api/workspace',{view:{focus_timezone:zone()}},'PATCH');break;
-      case 'range-select':S.fit=false;S.days=Number(target.value);render();break;
+      case 'range-select':S.dateIntent=(S.dateIntent||0)+1;S.fit=false;S.days=Number(target.value);render();break;
       case 'hide-completed':await mutate('/api/settings',{hide_completed:target.checked});break;
       case 'include-pending':S.includePending=target.checked;render();break;
       case 'reminders-enabled':await mutate('/api/settings',{reminders_enabled:target.checked});break;
@@ -872,9 +915,15 @@
     if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom) dialog.close();
   }));
   async function refresh() {
-    if(S.scoping)return;
-    const generation=S.scopeGeneration;
-    try {const data=await api('/api/state');if(generation===S.scopeGeneration)applyState(data);}
+    if(S.scoping||S.activeWrites)return;
+    const generation=S.scopeGeneration,writes=S.writes;
+    try {
+      // The tag names the state last taken from a poll; any other state applied since clears it.
+      const response=await fetch('/api/state',{headers:S.stateTag?{'If-None-Match':S.stateTag}:{}});
+      if(response.status===304){if(S.data)render();return;} // Unchanged data; render still follows the clock.
+      const data=await response.json();if(!response.ok)throw new Error(data.error||'请求失败');
+      if(generation===S.scopeGeneration&&writes===S.writes){applyState(data);S.stateTag=response.headers.get('ETag');}
+    }
     catch(error) {
       if(!S.data) {$('#load-error').textContent='无法连接本地程序：'+error.message+'。请运行 start.ps1 或 python app.py。';$('#load-error').hidden=false;}
       else {$('#source-status').textContent='本地连接已断开，请检查程序是否仍在运行。现有日历保留显示。';$('#source-status').classList.add('warning');}
@@ -896,6 +945,7 @@
   }
   P.init({state:()=>S.data,game:()=>S.game,zone,dateParts,format,civil,range,isTimeline:()=>S.view==='timeline',timelineEvents:()=>{const[lo,hi]=range();return P.arrange(filteredEvents().filter(e=>overlaps(e,lo,hi)));},prepareTimeline:preparePlanning,render,toast,baseEvents:baseFilteredEvents,events:filteredEvents,api,mutate,applyState,openDialog,openAgenda,openEvent});
   window.PlaytimeCustomize.init({state:()=>S.data,mutate,openDialog,api,refresh,toast});
+  window.PlaytimeUX.init({state:()=>S.data,game:()=>S.game,version:activeVersion,progress:syncProgress,zone,format,mutate,openReminders,render,toast});
   refresh();
   S.pollTimer=setInterval(refresh,10000);
   setInterval(()=>{if(S.data){renderClock();syncTime();}},30000);

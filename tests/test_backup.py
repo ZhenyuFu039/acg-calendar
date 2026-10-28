@@ -1,5 +1,6 @@
 """Personal-data backup, restore and the automatic copy before upgrades."""
 from http.server import ThreadingHTTPServer
+from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
@@ -13,6 +14,7 @@ import app as app_module
 from app import Application, handler_for
 from acg_calendar import backup
 from acg_calendar.parser import iso, stamp
+from acg_calendar.storage import Store
 from test_calendar import TempStoreTest
 
 import datetime as dt
@@ -294,3 +296,268 @@ class BackupHttpTests(TempStoreTest):
         for path in ("/api/backups/..%2Fcalendar.sqlite3", "/api/backups/calendar.sqlite3", "/api/backups/playtime-backup-20260101-000000-manual.json"):
             status, _, _ = self.request(path)
             self.assertIn(status, {400, 404}, path)
+
+    def test_clear_records_returns_state_after_the_deletion(self):
+        version = self.app.versions()[0]
+        event = version["events"][0]
+        self.app.update_event(event["id"], {"starred": True, "notes": "待清除"})
+        plan = self.app.workspace.plan({"title": "待清除计划", "start": "2026-11-01T00:00:00Z", "end": "2026-11-01T01:00:00Z", "timezone": "UTC", "game_id": version["game"]})
+        status, raw, _ = self.request("/api/games/records/clear", {"game": version["game"]})
+        self.assertEqual(status, 200)
+        response = json.loads(raw)
+        cleared = next(e for e in response["events"] if e["id"] == event["id"])
+        self.assertFalse(cleared["starred"])
+        self.assertEqual(cleared["notes"], "")
+        self.assertNotIn(plan["id"], [p["id"] for p in response["plans"]])
+        self.assertEqual(response["cleared"]["starred"], 1)
+        self.assertEqual(response["cleared"]["plans"], 1)
+
+
+class RestorePreviewTests(TempStoreTest):
+    def setUp(self):
+        super().setUp()
+        self.app = Application(self.directory, auto_sync=False, desktop=False)
+        self.events = [e for v in self.app.versions() for e in v["events"]][:3]
+
+    def test_preview_counts_changes_without_writing(self):
+        a, b, c = self.events
+        self.app.update_event(a["id"], {"starred": True, "notes": "备份里的备注"})
+        plan = self.app.workspace.plan({"title": "备份里的计划", "start": "2026-11-01T00:00:00Z", "end": "2026-11-01T01:00:00Z", "timezone": "UTC"})
+        made = self.app.create_backup()
+        # After the backup: unstar a, star b, change a's note, correct c, drop the plan, add another, change the time zone.
+        self.app.update_event(a["id"], {"starred": False, "notes": "现在的备注"})
+        self.app.update_event(b["id"], {"starred": True, "completed": True})
+        self.app.update_event(c["id"], {"end_local": "2027-01-01T08:00", "timezone": "UTC"})
+        self.app.store.delete_plan(plan["id"])
+        self.app.workspace.plan({"title": "新计划", "start": "2026-12-01T00:00:00Z", "end": "2026-12-01T01:00:00Z", "timezone": "UTC"})
+        self.app.update_settings({"timezone": "Asia/Tokyo"})
+        before = (self.store.state(), self.store.plans(), self.store.settings(), len(backup.listing(self.directory)))
+        preview = self.app.preview_restore({"name": made["name"]})
+        self.assertEqual(before, (self.store.state(), self.store.plans(), self.store.settings(), len(backup.listing(self.directory))), "preview writes nothing, makes no safety backup")
+        c_ = preview["changes"]
+        self.assertEqual((c_["starred"]["added"], c_["starred"]["removed"]), (1, 1))
+        self.assertIn(a["title"], c_["starred"]["examples"])
+        self.assertEqual((c_["completed"]["added"], c_["completed"]["removed"]), (0, 1))
+        self.assertEqual(c_["notes"]["changed"], 1)
+        self.assertEqual(c_["corrections"]["changed"], 1)
+        self.assertEqual((c_["plans"]["added"], c_["plans"]["removed"], c_["plans"]["changed"]), (1, 1, 0))
+        self.assertEqual(sorted(c_["plans"]["examples"]), ["备份里的计划", "新计划"])
+        self.assertIn("timezone", c_["settings"]["keys"])
+
+    def test_preview_uses_the_restore_checks(self):
+        made = self.app.create_backup()
+        document = backup.read(self.directory, made["name"])
+        del document["contents"]["personal_plans"]
+        with self.assertRaisesRegex(ValueError, "备份未通过检查"):
+            self.app.preview_restore({"backup": document})
+        self.assertEqual(self.app.preview_restore({"name": made["name"]})["changes"]["plans"], {"label": "个人计划", "added": 0, "removed": 0, "changed": 0, "examples": []})
+
+    def test_preview_includes_ignored_and_individual_reminders(self):
+        event = self.events[0]
+        self.app.update_event(event["id"], {"ignored": True, "reminder_minutes": []})
+        made = self.app.create_backup()
+        self.app.update_event(event["id"], {"ignored": False, "reminder_minutes": [60]})
+        changes = self.app.preview_restore({"name": made["name"]})["changes"]
+        self.assertEqual((changes["ignored"]["added"], changes["ignored"]["removed"]), (1, 0))
+        self.assertEqual(changes["event_reminders"]["changed"], 1)
+        self.assertEqual(changes["event_reminders"]["examples"], [event["title"]])
+        self.app.restore_backup({"name": made["name"]})
+        restored = self.store.state()[event["id"]]
+        self.assertTrue(restored["ignored"])
+        self.assertEqual(restored["reminder_minutes"], [])
+
+    def test_preview_includes_network_changes_without_touching_limits(self):
+        self.app.network.update({"policy": {"interval_seconds": 60}, "paused": True})
+        made = self.app.create_backup()
+        self.app.network.update({"policy": {"interval_seconds": 10}, "paused": False})
+        before = self.app.network.snapshot()
+        changes = self.app.preview_restore({"name": made["name"]})["changes"]
+        self.assertEqual(changes["network_policy"]["keys"], ["interval_seconds", "paused"])
+        self.assertEqual(self.app.network.snapshot(), before)
+        self.app.restore_backup({"name": made["name"]})
+        self.assertTrue(self.app.network.snapshot()["paused"])
+        self.assertEqual(self.app.network.snapshot()["policy"]["interval_seconds"], 60)
+
+    def test_preview_network_absent_or_partial_matches_restore_semantics(self):
+        document = backup.read(self.directory, self.app.create_backup()["name"])
+        self.app.network.update({"policy": {"interval_seconds": 60}, "paused": True})
+        document["contents"]["network_policy"] = None
+        self.assertEqual(self.app.preview_restore({"backup": document})["changes"]["network_policy"]["keys"], [])
+        self.app.restore_backup({"backup": document})
+        self.assertTrue(self.app.network.snapshot()["paused"])
+        document["contents"]["network_policy"] = {"policy": {"hourly_limit": 20}, "paused": True}
+        self.assertEqual(self.app.preview_restore({"backup": document})["changes"]["network_policy"]["keys"], ["hourly_limit"])
+        self.app.restore_backup({"backup": document})
+        self.assertEqual(self.app.network.snapshot()["policy"]["interval_seconds"], 60)
+
+
+class DesktopWindowRestoreTests(TempStoreTest):
+    def setUp(self):
+        super().setUp()
+        self.app = Application(self.directory, auto_sync=False, desktop=False)
+
+    def test_window_preferences_are_handed_to_the_desktop(self):
+        (self.directory / "desktop-window.json").write_text(json.dumps({"left": 40, "top": 50, "card_opacity": 0.6, "bubble_mode": True, "game": "endfield-cn"}), encoding="utf-8")
+        made = self.app.create_backup()
+        (self.directory / "desktop-window.json").write_text(json.dumps({"left": 900}), encoding="utf-8")
+        self.assertTrue(self.app.preview_restore({"name": made["name"]})["changes"]["desktop_window"]["included"])
+        result = self.app.restore_backup({"name": made["name"]})
+        self.assertIn("桌面窗口位置与外观会在桌面版下次刷新时应用", result["warnings"])
+        pending = self.app.state()["desktop_window_pending"]
+        self.assertEqual(pending["preferences"]["card_opacity"], 0.6)
+        # The file itself is left to the desktop app, which may be running and rewriting it.
+        self.assertEqual(json.loads((self.directory / "desktop-window.json").read_text(encoding="utf-8")), {"left": 900})
+
+    def test_invalid_window_preferences_are_skipped(self):
+        made = self.app.create_backup()
+        document = backup.read(self.directory, made["name"])
+        document["desktop_window"] = {"left": {"nested": True}}
+        result = self.app.restore_backup({"backup": document})
+        self.assertIn("备份中的桌面窗口偏好格式无效，已跳过", result["warnings"])
+        self.assertIsNone(self.app.state()["desktop_window_pending"])
+
+    def document(self, opacity):
+        document = backup.read(self.directory, self.app.create_backup()["name"])
+        document["desktop_window"] = {"card_opacity": opacity}
+        return document
+
+    def test_same_second_restores_have_distinct_ids_and_reject_old_ack(self):
+        first, second = self.document(.4), self.document(.8)
+        with patch.object(app_module, "iso", return_value="2026-10-26T00:00:00Z"):
+            self.app.restore_backup({"backup": first})
+            a = self.store.get_meta("desktop_window_pending")
+            self.app.restore_backup({"backup": second})
+            b = self.store.get_meta("desktop_window_pending")
+        self.assertEqual(a["restored_at"], b["restored_at"])
+        self.assertNotEqual(a["id"], b["id"])
+        for old in ({"id": a["id"]}, {"restored_at": a["restored_at"]}):
+            with self.assertRaises(ValueError):
+                self.app.acknowledge_window(old)
+        self.assertEqual(self.store.get_meta("desktop_window_pending"), b)
+        self.app.acknowledge_window({"id": b["id"]})
+        self.assertIsNone(self.store.get_meta("desktop_window_pending"))
+
+    def test_personal_data_and_window_pending_are_committed_together(self):
+        document = self.document(.4)
+        document["contents"]["settings"] = {**self.store.settings(), "timezone": "Asia/Tokyo"}
+        # Read from another Store as soon as the restore reaches validation: both sections
+        # must already belong to the same restore, not an old pending/new personal-data mix.
+        reader = Store(self.store.path)
+        def verify():
+            self.assertEqual(reader.settings()["timezone"], "Asia/Tokyo")
+            self.assertEqual(reader.get_meta("desktop_window_pending")["preferences"], {"card_opacity": .4})
+        with patch.object(self.app, "verify_personal_data", side_effect=verify):
+            self.app.restore_backup({"backup": document})
+
+    def test_failed_validation_restores_previous_pending(self):
+        self.app.restore_backup({"backup": self.document(.4)})
+        previous = self.store.get_meta("desktop_window_pending")
+        document = self.document(.8)
+        with patch.object(self.app, "verify_personal_data", side_effect=RuntimeError("读取失败")):
+            with self.assertRaisesRegex(ValueError, "已回到恢复前"):
+                self.app.restore_backup({"backup": document})
+        self.assertEqual(self.store.get_meta("desktop_window_pending"), previous)
+
+    def test_windowless_restore_cancels_an_older_pending_handover(self):
+        document = self.document(.4)
+        self.app.restore_backup({"backup": document})
+        document["desktop_window"] = None
+        self.app.restore_backup({"backup": document})
+        self.assertIsNone(self.store.get_meta("desktop_window_pending"))
+
+    def test_concurrent_restores_keep_personal_data_and_pending_paired(self):
+        first, second = self.document(.4), self.document(.8)
+        first["contents"]["settings"] = {**self.store.settings(), "timezone": "Asia/Tokyo"}
+        second["contents"]["settings"] = {**self.store.settings(), "timezone": "UTC"}
+        entered, release, second_started, second_done = (threading.Event() for _ in range(4))
+        errors = []
+        original_apply = backup.apply
+        def paused_apply(*args, **kwargs):
+            original_apply(*args, **kwargs)
+            if threading.current_thread().name == "restore-first":
+                entered.set()
+                if not release.wait(5):
+                    raise RuntimeError("restore test timed out")
+        def restore(document, started=None, done=None):
+            try:
+                if started:
+                    started.set()
+                self.app.restore_backup({"backup": document})
+            except Exception as error:
+                errors.append(error)
+            finally:
+                if done:
+                    done.set()
+        a = threading.Thread(target=restore, args=(first,), name="restore-first")
+        b = threading.Thread(target=restore, args=(second, second_started, second_done))
+        with patch.object(backup, "apply", side_effect=paused_apply):
+            a.start()
+            try:
+                self.assertTrue(entered.wait(5))
+                b.start()
+                self.assertTrue(second_started.wait(5))
+                self.assertFalse(second_done.wait(.1), "the second restore must wait for the first critical section")
+            finally:
+                release.set()
+                a.join(5)
+                if b.ident is not None:
+                    b.join(5)
+        self.assertFalse(a.is_alive() or b.is_alive())
+        self.assertEqual(errors, [])
+        self.assertEqual(self.store.settings()["timezone"], "UTC")
+        self.assertEqual(self.store.get_meta("desktop_window_pending")["preferences"], {"card_opacity": .8})
+
+    def test_ack_does_not_clear_a_replacement_from_another_store(self):
+        self.app.restore_backup({"backup": self.document(.4)})
+        pending = self.store.get_meta("desktop_window_pending")
+        replacement = {**pending, "id": "different-id", "preferences": {"card_opacity": .8}}
+        other = Store(self.store.path)
+        original_connection = self.app.store.connection
+        @contextmanager
+        def interleaved_connection():
+            with original_connection() as conn:
+                class Interleaved:
+                    def execute(_, sql, args=()):
+                        if sql.startswith("DELETE FROM meta WHERE id='desktop_window_pending'"):
+                            other.set_meta("desktop_window_pending", replacement)
+                        return conn.execute(sql, args)
+                yield Interleaved()
+        with patch.object(self.app.store, "connection", interleaved_connection):
+            with self.assertRaisesRegex(ValueError, "新的恢复替换"):
+                self.app.acknowledge_window({"id": pending["id"]})
+        self.assertEqual(self.store.get_meta("desktop_window_pending"), replacement)
+
+
+class DesktopWindowAppliedHttpTests(TempStoreTest):
+    def setUp(self):
+        super().setUp()
+        self.app = Application(self.directory, auto_sync=False, desktop=False)
+        self.server = ThreadingHTTPServer(("127.0.0.1", 0), handler_for(self.app))
+        self.base = "http://127.0.0.1:" + str(self.server.server_port)
+        threading.Thread(target=self.server.serve_forever, daemon=True).start()
+        self.addCleanup(self.server.server_close)
+        self.addCleanup(self.server.shutdown)
+
+    def post(self, payload):
+        request = urllib.request.Request(self.base + "/api/desktop/window-applied", data=json.dumps(payload).encode(), headers={"X-Calendar-Token": self.app.csrf})
+        try:
+            with urllib.request.urlopen(request) as response:
+                return response.status
+        except urllib.error.HTTPError as error:
+            return error.code
+
+    def test_only_the_matching_hand_over_is_cleared(self):
+        self.app.store.set_meta("desktop_window_pending", {"preferences": {"left": 1}, "restored_at": "2026-10-25T00:00:00Z"})
+        self.assertEqual(self.post({"restored_at": "2026-10-24T00:00:00Z"}), 400)
+        self.assertIsNotNone(self.app.store.get_meta("desktop_window_pending"))
+        self.assertEqual(self.post({"restored_at": "2026-10-25T00:00:00Z"}), 200)
+        self.assertIsNone(self.app.store.get_meta("desktop_window_pending"))
+
+    def test_new_handovers_require_the_matching_unique_id(self):
+        self.store.set_meta("desktop_window_pending", {"id": "new-id", "preferences": {"left": 1}, "restored_at": "2026-10-26T00:00:00Z"})
+        for payload in ({"id": "old-id"}, {"restored_at": "2026-10-26T00:00:00Z"}, {"id": None}, {}):
+            self.assertEqual(self.post(payload), 400)
+            self.assertIsNotNone(self.store.get_meta("desktop_window_pending"))
+        self.assertEqual(self.post({"id": "new-id"}), 200)
+        self.assertIsNone(self.store.get_meta("desktop_window_pending"))
+        self.assertEqual(self.post({"id": "new-id"}), 400)

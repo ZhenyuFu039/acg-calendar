@@ -17,7 +17,7 @@ const fetch=url=>new Promise((resolve,reject)=>{http.get(url,r=>{const b=[];r.on
   await page.locator('#game-select').selectOption('zzz-cn');await page.waitForFunction(()=>document.body.dataset.game==='zzz-cn');
   const state=await(await fetch(base+'/api/state')).json();assert.equal(state.games.length,5);
   const versions=state.versions.filter(v=>v.game==='zzz-cn');assert.equal(versions.length,2);
-  await page.locator('#reset-filters').click();
+  await page.locator('#reset-filters').click();await page.locator('#list-view').click();
   await page.locator('#version-select').selectOption(versions.find(v=>v.name==='3.3版本').id);
   await page.locator('#list-view').click();await page.waitForFunction(()=>document.querySelectorAll('.catalog-event').length===5);
   assert.equal(await page.locator('#reward-summary').isVisible(),false);

@@ -32,7 +32,7 @@ atomic_json(p/'events.json',feed)
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(base);await page.locator('#game-select').selectOption('azurlane-cn');
   await page.waitForFunction(()=>document.body.dataset.game==='azurlane-cn');
-  await page.locator('#reset-filters').click();
+  await page.locator('#reset-filters').click();await page.locator('#list-view').click();
   await page.waitForFunction(()=>document.querySelectorAll('.catalog-event').length===5);
   const state=await (await fetch(base+'/api/state')).json();
   const rows=state.events.filter(e=>e.game==='azurlane-cn');
